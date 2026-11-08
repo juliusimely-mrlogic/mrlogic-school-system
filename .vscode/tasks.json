@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run XSS guard test",
+			"type": "shell",
+			"command": "node tests/xss_guard_test.js",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify B1 XSS evidence and syntax",
+			"type": "shell",
+			"command": "node -e \"const fs=require('fs'); const p='public/js/app.js'; const lines=fs.readFileSync(p,'utf8').split(/\\r?\\n/); const re=/(innerHTML|outerHTML|insertAdjacentHTML|document\\.write|eval\\s*\\()/; for (let i=0;i<lines.length;i++){ if(re.test(lines[i])) console.log((i+1)+': '+lines[i].trim()); }\"; echo \"APP_JS_PATTERN_EXIT:$?\"; node tests/xss_guard_test.js; echo \"XSS_TEST_EXIT:$?\"; node --check public/js/app.js; echo \"JS_SYNTAX_EXIT:$?\"",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

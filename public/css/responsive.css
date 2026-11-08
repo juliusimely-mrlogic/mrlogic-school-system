@@ -1,0 +1,186 @@
+/**
+ * MR LOGIC SCHOOL SYSTEM - Responsive Layouts & Print Stylesheets
+ */
+
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--mobile-bottom-nav-height);
+  background: #ffffff;
+  border-top: 1px solid var(--slate-200);
+  z-index: 60;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  justify-content: space-around;
+  align-items: center;
+}
+
+.bottom-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--slate-500);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  flex: 1;
+}
+
+.bottom-nav-btn.active {
+  color: var(--primary-600);
+}
+
+.bottom-nav-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.hamburger-btn {
+  display: none;
+  font-size: 1.5rem;
+  color: var(--slate-700);
+  padding: 6px;
+  cursor: pointer;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+}
+
+/* Tablet & Mobile Breakpoints */
+@media (max-width: 900px) {
+  .hamburger-btn {
+    display: block;
+  }
+
+  .role-switcher-label {
+    display: none;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: -280px;
+    width: 280px;
+    transition: transform var(--transition-normal);
+  }
+
+  .app-sidebar.open {
+    transform: translateX(280px);
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  #content-area {
+    padding: 16px;
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + 24px);
+  }
+
+  .school-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  .brand-title-group span {
+    display: none;
+  }
+
+  .role-switcher {
+    display: none; /* Accessible in menu drawer on phones */
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+/* Official Tanzanian Student Report Card Print Styles */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .top-header,
+  .app-sidebar,
+  .mobile-bottom-nav,
+  .btn,
+  .role-switcher,
+  .modal-close-btn,
+  .modal-footer {
+    display: none !important;
+  }
+
+  #app-layout, #main-wrapper, #content-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .modal-overlay {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  .modal-dialog {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .report-card-printable {
+    page-break-after: always;
+    padding: 20px;
+  }
+
+  .report-card-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .report-signature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 50px;
+  }
+
+  .signature-line {
+    border-top: 1px solid #000;
+    padding-top: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+}

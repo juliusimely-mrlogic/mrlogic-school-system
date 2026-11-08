@@ -1,0 +1,547 @@
+/**
+ * MR LOGIC SCHOOL SYSTEM - REST API Routing & Dispatcher
+ */
+const { authenticate, requireRole } = require('../middleware/auth');
+const { resolveTenant, enforceTenantAccess } = require('../middleware/tenant');
+const db = require('../db/database');
+const authService = require('../services/authService');
+const schoolService = require('../services/schoolService');
+const studentService = require('../services/studentService');
+const teacherService = require('../services/teacherService');
+const staffService = require('../services/staffService');
+const levelService = require('../services/levelService');
+const academicService = require('../services/academicService');
+const examService = require('../services/examService');
+const gradingService = require('../services/gradingService');
+const reportService = require('../services/reportService');
+const dashboardService = require('../services/dashboardService');
+
+const SUPER_ADMIN = ['SUPER_ADMIN'];
+const SCHOOL_ADMINS = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
+const ACADEMIC_MANAGERS = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACADEMIC_MASTER', 'ACADEMIC_ASSISTANT'];
+const TEACHER_MANAGERS = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACADEMIC_MASTER'];
+const SCHOOL_LEADERS = [...ACADEMIC_MANAGERS, 'HEAD_TEACHER', 'SCHOOL_MANAGER'];
+const TEACHER_VIEWERS = [...TEACHER_MANAGERS, 'ACADEMIC_ASSISTANT', 'HEAD_TEACHER', 'SCHOOL_MANAGER'];
+const SCHOOL_ACADEMIC_READERS = [...SCHOOL_LEADERS, 'TEACHER'];
+const MARK_ENTRY = [...ACADEMIC_MANAGERS, 'TEACHER'];
+const REPORT_READERS = [...SCHOOL_ACADEMIC_READERS];
+
+const API_ROLE_POLICIES = [
+  { method: 'GET', path: /^\/api\/auth\/me$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'GET', path: /^\/api\/schools$/, roles: SUPER_ADMIN },
+  { method: 'GET', path: /^\/api\/schools\/\d+$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'POST', path: /^\/api\/schools$/, roles: SUPER_ADMIN },
+  { method: 'PUT', path: /^\/api\/schools\/\d+$/, roles: SCHOOL_ADMINS },
+  { method: 'GET', path: /^\/api\/schools\/\d+\/staff$/, roles: SCHOOL_ADMINS },
+  { method: 'POST', path: /^\/api\/schools\/\d+\/staff$/, roles: SCHOOL_ADMINS },
+  { method: 'GET', path: /^\/api\/dashboard$/, roles: SCHOOL_LEADERS },
+  { method: 'GET', path: /^\/api\/students$/, roles: SCHOOL_ADMINS },
+  { method: 'POST', path: /^\/api\/students$/, roles: SCHOOL_ADMINS },
+  { method: 'GET', path: /^\/api\/students\/\d+$/, roles: SCHOOL_ADMINS },
+  { method: 'PUT', path: /^\/api\/students\/\d+$/, roles: SCHOOL_ADMINS },
+  { method: 'GET', path: /^\/api\/teachers\/generate-username$/, roles: TEACHER_MANAGERS },
+  { method: 'GET', path: /^\/api\/teachers$/, roles: TEACHER_VIEWERS },
+  { method: 'POST', path: /^\/api\/teachers$/, roles: TEACHER_MANAGERS },
+  { method: 'GET', path: /^\/api\/teachers\/\d+$/, roles: TEACHER_VIEWERS },
+  { method: 'PUT', path: /^\/api\/teachers\/\d+$/, roles: TEACHER_MANAGERS },
+  { method: 'DELETE', path: /^\/api\/teachers\/\d+$/, roles: TEACHER_MANAGERS },
+  { method: 'GET', path: /^\/api\/academics\/(years|terms|classes|streams|subjects)$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'GET', path: /^\/api\/academics\/combinations$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'POST', path: /^\/api\/academics\/streams$/, roles: ACADEMIC_MANAGERS },
+  { method: 'GET', path: /^\/api\/exams$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'POST', path: /^\/api\/exams$/, roles: ACADEMIC_MANAGERS },
+  { method: 'POST', path: /^\/api\/exams\/\d+\/lock$/, roles: ACADEMIC_MANAGERS },
+  { method: 'GET', path: /^\/api\/exams\/\d+\/marks$/, roles: SCHOOL_ACADEMIC_READERS },
+  { method: 'POST', path: /^\/api\/exams\/\d+\/marks$/, roles: MARK_ENTRY },
+  { method: 'POST', path: /^\/api\/exams\/\d+\/process$/, roles: ACADEMIC_MANAGERS },
+  { method: 'GET', path: /^\/api\/reports\/broadsheet\/\d+$/, roles: REPORT_READERS },
+  { method: 'GET', path: /^\/api\/reports\/report-card\/\d+\/\d+$/, roles: REPORT_READERS },
+  { method: 'GET', path: /^\/api\/reports\/subject-analysis\/\d+$/, roles: REPORT_READERS }
+];
+function authorizeApiRequest(req, res, pathname) {
+  const policy = API_ROLE_POLICIES.find(
+    item => item.method === req.method && item.path.test(pathname)
+  );
+  if (!policy) return null;
+
+  let allowed = true;
+  requireRole(policy.roles)(req, res, () => {
+    allowed = true;
+  });
+  if (!policy.roles.includes(req.user.role)) allowed = false;
+  return allowed;
+}
+
+function requireSchoolScope(res, schoolId) {
+  if (Number.isSafeInteger(schoolId) && schoolId > 0) return true;
+  sendJson(res, 400, { error: 'A valid school_id is required.' });
+  return false;
+}
+const LOGIN_MAX_FAILS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginFailures = new Map();
+
+function loginKey(req, username) {
+  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+  return `${String(username).trim().toUpperCase()}|${ip}`;
+}
+
+function loginBlockedSeconds(key) {
+  const rec = loginFailures.get(key);
+  if (!rec) return 0;
+  if (Date.now() - rec.first > LOGIN_WINDOW_MS) {
+    loginFailures.delete(key);
+    return 0;
+  }
+  if (rec.count >= LOGIN_MAX_FAILS) {
+    return Math.ceil((rec.first + LOGIN_WINDOW_MS - Date.now()) / 1000);
+  }
+  return 0;
+}
+
+function recordLoginFailure(key) {
+  if (loginFailures.size > 5000) loginFailures.clear();
+  const rec = loginFailures.get(key);
+  if (!rec || Date.now() - rec.first > LOGIN_WINDOW_MS) {
+    loginFailures.set(key, { count: 1, first: Date.now() });
+  } else {
+    rec.count++;
+  }
+}
+function sendJson(res, statusCode, data) {
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-School-Id',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+  });
+  res.end(JSON.stringify(data));
+}
+
+function handleApiRequest(req, res, pathname, query, body) {
+  // CORS Preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-School-Id',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    });
+    res.end();
+    return;
+  }
+
+  // 1. PUBLIC AUTH ROUTES
+  if (pathname === '/api/auth/login' && req.method === 'POST') {
+    const { username, password } = body || {};
+    if (typeof username !== 'string' || !username ||
+        typeof password !== 'string' || !password) {
+      return sendJson(res, 400, { error: 'Username and password are required.' });
+    }
+    const key = loginKey(req, username);
+    const waitSeconds = loginBlockedSeconds(key);
+    if (waitSeconds > 0) {
+      return sendJson(res, 429, {
+        error: `Majaribio mengi yasiyo sahihi. Subiri dakika ${Math.ceil(waitSeconds / 60)} kisha ujaribu tena.`
+      });
+    }
+    const result = authService.authenticateUser(username, password);
+    if (!result.success) {
+      recordLoginFailure(key);
+      return sendJson(res, 401, { error: result.error });
+    }
+    loginFailures.delete(key);
+    return sendJson(res, 200, result);
+  }
+
+  const user = authenticate(req);
+  if (!user) {
+    return sendJson(res, 401, { error: 'Authentication required. Please log in.' });
+  }
+
+  req.user = user;
+  req.query = query;
+  req.body = body;
+
+  const routeAuthorization = authorizeApiRequest(req, res, pathname);
+  if (routeAuthorization === false) return;
+  if (routeAuthorization === null) {
+    return sendJson(res, 404, { error: `Endpoint not found: ${pathname}` });
+  }
+
+  let effectiveSchoolId;
+  try {
+    effectiveSchoolId = resolveTenant(req);
+  } catch (error) {
+    return sendJson(res, error.statusCode || 403, { error: error.message });
+  }
+  req.tenantSchoolId = effectiveSchoolId;
+
+  if (effectiveSchoolId !== null) {
+    const school = db.get(`SELECT id FROM schools WHERE id = ?`, [effectiveSchoolId]);
+    if (!school) return sendJson(res, 404, { error: 'School not found' });
+  }
+
+  // AUTH ME
+  if (pathname === '/api/auth/me' && req.method === 'GET') {
+    return sendJson(res, 200, { user });
+  }
+
+  // SCHOOLS ROUTES
+  if (pathname === '/api/schools' && req.method === 'GET') {
+    const schools = schoolService.getAllSchools();
+    return sendJson(res, 200, { schools });
+  }
+// SCHOOL STAFF (leadership accounts)
+  const staffMatch = pathname.match(/^\/api\/schools\/(\d+)\/staff$/);
+  if (staffMatch) {
+    const staffSchoolId = Number(staffMatch[1]);
+    return enforceTenantAccess(req, res, staffSchoolId, () => {
+      try {
+        if (req.method === 'GET') {
+          return sendJson(res, 200, { staff: staffService.listStaff(staffSchoolId) });
+        }
+        if (req.method === 'POST') {
+          const result = staffService.createStaff(staffSchoolId, body, req.user.role);
+          return sendJson(res, 201, { success: true, ...result });
+        }
+        return sendJson(res, 404, { error: `Endpoint not found: ${pathname}` });
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
+    });
+  }
+  if (pathname.startsWith('/api/schools/') && req.method === 'GET') {
+    const schoolId = Number(pathname.split('/')[3]);
+    return enforceTenantAccess(req, res, schoolId, () => {
+      const school = schoolService.getSchoolById(schoolId);
+      if (!school) return sendJson(res, 404, { error: 'School not found' });
+      return sendJson(res, 200, { school });
+    });
+  }
+if (pathname === '/api/schools' && req.method === 'POST') {
+    try {
+      const school = schoolService.createSchool(body);
+      return sendJson(res, 201, { success: true, school });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/schools/') && req.method === 'PUT') {
+    const schoolId = Number(pathname.split('/')[3]);
+    return enforceTenantAccess(req, res, schoolId, () => {
+      try {
+        if (req.user.role !== 'SUPER_ADMIN' && body && typeof body === 'object') {
+          delete body.isActive;
+        }
+        const school = schoolService.updateSchool(schoolId, body);
+        return sendJson(res, 200, { success: true, school });
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
+    });
+  }
+  // DASHBOARD ROUTE
+  if (pathname === '/api/dashboard' && req.method === 'GET') {
+    try {
+      // If super admin requested without specific school, allow overview
+      const isGlobalView = query.all === 'true' && req.user.role === 'SUPER_ADMIN';
+      const targetSchool = isGlobalView ? null : effectiveSchoolId;
+      if (!isGlobalView && !requireSchoolScope(res, targetSchool)) return;
+
+      const data = dashboardService.getDashboardSummary(targetSchool);
+      return sendJson(res, 200, data);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // STUDENTS ROUTES
+  if (pathname === '/api/students' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const options = {
+      classId: query.class_id ? parseInt(query.class_id, 10) : null,
+      streamId: query.stream_id ? parseInt(query.stream_id, 10) : null,
+      gender: query.gender || null,
+      status: query.status || 'ACTIVE',
+      search: query.search || '',
+      limit: query.limit ? parseInt(query.limit, 10) : 50,
+      offset: query.offset ? parseInt(query.offset, 10) : 0
+    };
+    const result = studentService.getStudents(schoolId, options);
+    return sendJson(res, 200, result);
+  }
+
+  if (pathname.startsWith('/api/students/') && req.method === 'GET') {
+    const studentId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const student = studentService.getStudentById(schoolId, studentId);
+    if (!student) return sendJson(res, 404, { error: 'Student not found' });
+    return sendJson(res, 200, { student });
+  }
+
+  if (pathname === '/api/students' && req.method === 'POST') {
+    try {
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const student = studentService.createStudent(schoolId, body);
+      return sendJson(res, 201, { success: true, student });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/students/') && req.method === 'PUT') {
+    try {
+      const studentId = parseInt(pathname.split('/')[3], 10);
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const student = studentService.updateStudent(schoolId, studentId, body);
+      return sendJson(res, 200, { success: true, student });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  // TEACHERS ROUTES
+  if (pathname === '/api/teachers/generate-username' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const name = query.name || '';
+    const username = teacherService.generateUniqueUsername(name, schoolId);
+    return sendJson(res, 200, { username });
+  }
+
+  if (pathname === '/api/teachers' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const teachers = teacherService.getTeachers(schoolId);
+    return sendJson(res, 200, { teachers });
+  }
+
+  if (pathname.startsWith('/api/teachers/') && req.method === 'GET') {
+    const teacherId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const teacher = teacherService.getTeacherById(schoolId, teacherId);
+    if (!teacher) return sendJson(res, 404, { error: 'Teacher not found' });
+    return sendJson(res, 200, { teacher });
+  }
+
+  if (pathname === '/api/teachers' && req.method === 'POST') {
+    try {
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const teacher = teacherService.createTeacher(schoolId, body);
+      return sendJson(res, 201, { success: true, teacher });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/teachers/') && req.method === 'PUT') {
+    try {
+      const teacherId = parseInt(pathname.split('/')[3], 10);
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const teacher = teacherService.updateTeacher(schoolId, teacherId, body);
+      return sendJson(res, 200, { success: true, teacher });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/teachers/') && req.method === 'DELETE') {
+    try {
+      const teacherId = parseInt(pathname.split('/')[3], 10);
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const result = teacherService.deleteTeacher(schoolId, teacherId);
+      return sendJson(res, 200, result);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  // ACADEMICS ROUTES
+  if (pathname === '/api/academics/years' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const teacherUserId = req.user.role === 'TEACHER' ? req.user.id : null;
+    const years = academicService.getAcademicYears(schoolId, teacherUserId);
+    return sendJson(res, 200, { years });
+  }
+
+  if (pathname === '/api/academics/terms' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const yearId = query.year_id ? parseInt(query.year_id, 10) : null;
+    const teacherUserId = req.user.role === 'TEACHER' ? req.user.id : null;
+    const terms = academicService.getTerms(schoolId, yearId, teacherUserId);
+    return sendJson(res, 200, { terms });
+  }
+
+  if (pathname === '/api/academics/classes' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const teacherUserId = req.user.role === 'TEACHER' ? req.user.id : null;
+    const classes = academicService.getClassesWithStreams(schoolId, teacherUserId);
+    return sendJson(res, 200, { classes });
+  }
+
+  if (pathname === '/api/academics/streams' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const classId = query.class_id ? parseInt(query.class_id, 10) : null;
+    const teacherUserId = req.user.role === 'TEACHER' ? req.user.id : null;
+    const streams = academicService.getStreams(schoolId, classId, teacherUserId);
+    return sendJson(res, 200, { streams });
+  }
+
+  if (pathname === '/api/academics/streams' && req.method === 'POST') {
+    try {
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const classId = parseInt(body.classId, 10);
+      const stream = academicService.createStream(schoolId, classId, body.name);
+      return sendJson(res, 201, { success: true, stream });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname === '/api/academics/subjects' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const teacherUserId = req.user.role === 'TEACHER' ? req.user.id : null;
+    const subjects = academicService.getSubjects(schoolId, teacherUserId);
+    return sendJson(res, 200, { subjects });
+  }
+
+  // EXAMINATIONS ROUTES
+  if (pathname === '/api/academics/combinations' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    return sendJson(res, 200, { combinations: levelService.getCombinations(schoolId) });
+  }
+  if (pathname === '/api/exams' && req.method === 'GET') {
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const options = {
+      classId: query.class_id ? parseInt(query.class_id, 10) : null,
+      academicYearId: query.year_id ? parseInt(query.year_id, 10) : null,
+      teacherUserId: req.user.role === 'TEACHER' ? req.user.id : null
+    };
+    const exams = examService.getExaminations(schoolId, options);
+    return sendJson(res, 200, { exams });
+  }
+
+  if (pathname.startsWith('/api/exams/') && pathname.endsWith('/lock') && req.method === 'POST') {
+    const examId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const exam = examService.toggleExamLock(schoolId, examId, body.isLocked);
+    return sendJson(res, 200, { success: true, exam });
+  }
+
+  if (pathname.startsWith('/api/exams/') && pathname.endsWith('/marks') && req.method === 'GET') {
+    const examId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const subjectId = parseInt(query.subject_id, 10);
+    const streamId = query.stream_id ? parseInt(query.stream_id, 10) : null;
+    if (!subjectId) return sendJson(res, 400, { error: 'Subject ID is required' });
+
+    try {
+      const sheet = examService.getMarksSheet(schoolId, examId, subjectId, streamId, req.user);
+      return sendJson(res, 200, sheet);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/exams/') && pathname.endsWith('/marks') && req.method === 'POST') {
+    const examId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    const subjectId = parseInt(body.subjectId, 10);
+    const marksList = body.marks || [];
+
+    try {
+      const result = examService.saveMarks(schoolId, examId, subjectId, marksList, req.user?.id, req.user);
+      return sendJson(res, 200, result);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/exams/') && pathname.endsWith('/process') && req.method === 'POST') {
+    const examId = parseInt(pathname.split('/')[3], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+
+    try {
+      const result = gradingService.processExamResults(examId, schoolId);
+      return sendJson(res, 200, result);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname === '/api/exams' && req.method === 'POST') {
+    try {
+      const schoolId = effectiveSchoolId;
+      if (!requireSchoolScope(res, schoolId)) return;
+      const exam = examService.createExam(schoolId, body);
+      return sendJson(res, 201, { success: true, exam });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  // REPORTS ROUTES
+  if (pathname.startsWith('/api/reports/broadsheet/') && req.method === 'GET') {
+    const examId = parseInt(pathname.split('/')[4], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    try {
+      const broadsheet = reportService.getExamBroadsheet(schoolId, examId, req.user);
+      return sendJson(res, 200, broadsheet);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/reports/report-card/') && req.method === 'GET') {
+    const parts = pathname.split('/');
+    const examId = parseInt(parts[4], 10);
+    const studentId = parseInt(parts[5], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    try {
+      const card = reportService.getStudentReportCard(schoolId, examId, studentId, req.user);
+      return sendJson(res, 200, card);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/reports/subject-analysis/') && req.method === 'GET') {
+    const examId = parseInt(pathname.split('/')[4], 10);
+    const schoolId = effectiveSchoolId;
+    if (!requireSchoolScope(res, schoolId)) return;
+    try {
+      const subjects = reportService.getSubjectPerformance(schoolId, examId, req.user);
+      return sendJson(res, 200, { subjects });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  // Fallback 404 for unmatched API routes
+  return sendJson(res, 404, { error: `Endpoint not found: ${pathname}` });
+}
+
+module.exports = { handleApiRequest };

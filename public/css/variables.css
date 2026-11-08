@@ -1,0 +1,64 @@
+/**
+ * MR LOGIC SCHOOL SYSTEM - Design System Variables & Tokens
+ */
+:root {
+  /* Brand Colors */
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-500: #4f46e5;
+  --primary-600: #4338ca;
+  --primary-700: #3730a3;
+  --primary-900: #1e1b4b;
+
+  /* Accent Emerald (Tanzania National / Academic Success Accent) */
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --emerald-700: #047857;
+
+  /* Neutral Shades */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  /* Status Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0284c7;
+
+  /* NECTA Division Colors */
+  --div-1-color: #059669; /* Emerald - Division I */
+  --div-2-color: #2563eb; /* Blue - Division II */
+  --div-3-color: #d97706; /* Amber - Division III */
+  --div-4-color: #ea580c; /* Orange - Division IV */
+  --div-0-color: #dc2626; /* Red - Division 0 */
+
+  /* Spacing & Layout */
+  --header-height: 64px;
+  --sidebar-width: 260px;
+  --mobile-bottom-nav-height: 60px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.25s ease-in-out;
+}

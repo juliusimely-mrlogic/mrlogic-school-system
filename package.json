@@ -1,0 +1,28 @@
+{
+  "name": "mr-logic-school-system",
+  "version": "1.0.0",
+  "description": "Professional, modern, responsive, multi-school School Management System and Examination Management System for Tanzania Secondary Schools",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/test_system.js"
+  },
+  "keywords": [
+    "school-management-system",
+    "examination-system",
+    "necta",
+    "tanzania",
+    "multi-school",
+    "sms",
+    "secondary-schools"
+  ],
+  "author": "MR LOGIC SCHOOL SYSTEM",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

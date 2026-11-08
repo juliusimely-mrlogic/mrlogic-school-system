@@ -1,0 +1,314 @@
+/**
+ * MR LOGIC SCHOOL SYSTEM - Dashboard & Examination UI Styles
+ */
+
+/* 1. School Header Banner */
+.school-hero-banner {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  color: #ffffff;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.school-hero-banner::after {
+  content: "";
+  position: absolute;
+  right: -50px;
+  bottom: -50px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.school-emblem {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--primary-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.hero-title-area h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hero-motto {
+  font-size: 0.85rem;
+  color: var(--emerald-300);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.hero-meta-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.hero-meta-pill {
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 2. Metric KPI Cards Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--slate-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+}
+
+.kpi-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.icon-blue { background: #eff6ff; color: #2563eb; }
+.icon-emerald { background: #ecfdf5; color: #059669; }
+.icon-amber { background: #fffbeb; color: #d97706; }
+.icon-purple { background: #faf5ff; color: #9333ea; }
+
+.kpi-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  margin: 10px 0 4px 0;
+  line-height: 1;
+}
+
+.kpi-footer {
+  font-size: 0.75rem;
+  color: var(--slate-500);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 3. Dashboard Analytics Split Rows */
+.analytics-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 992px) {
+  .analytics-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 4. NECTA Division Distribution Widget */
+.division-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.division-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.div-label-col {
+  width: 90px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.div-progress-track {
+  flex: 1;
+  height: 18px;
+  background: var(--slate-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.div-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease-out;
+}
+
+.fill-div-1 { background: var(--div-1-color); }
+.fill-div-2 { background: var(--div-2-color); }
+.fill-div-3 { background: var(--div-3-color); }
+.fill-div-4 { background: var(--div-4-color); }
+.fill-div-0 { background: var(--div-0-color); }
+
+.div-stat-col {
+  width: 80px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--slate-700);
+}
+
+/* 5. Subject Performance Ranking Bars */
+.subject-rank-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.subject-rank-item:last-child {
+  border-bottom: none;
+}
+
+.sub-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sub-code-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--slate-100);
+  color: var(--slate-700);
+}
+
+.sub-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slate-900);
+}
+
+.sub-stat-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pass-rate-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--emerald-700);
+  background: var(--emerald-50);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* 6. Interactive Marks Entry Grid */
+.marks-sheet-container {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--slate-200);
+  overflow: hidden;
+}
+
+.marks-input {
+  width: 75px;
+  padding: 6px 8px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.marks-input:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.grade-badge-cell {
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-align: center;
+  width: 50px;
+}
+
+/* 7. NECTA Broadsheet Table */
+.broadsheet-table th {
+  text-align: center;
+  font-size: 0.78rem;
+  padding: 8px 10px;
+}
+
+.broadsheet-table td {
+  text-align: center;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+}
+
+.broadsheet-table td.text-left {
+  text-align: left;
+}
+
+.broadsheet-subject-head {
+  writing-mode: horizontal-tb;
+  min-width: 65px;
+}
