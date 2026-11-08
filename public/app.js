@@ -1,4 +1,4 @@
-const API_BASE = '/api'; // Hii inafanya kazi kwenye Render
+const API_BASE = '/api'; 
 let token = localStorage.getItem('token');
 let currentSchoolId = null;
 let allClasses = [];
@@ -60,6 +60,7 @@ function toggleSchoolForm() {
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
 }
 
+// HAPA NIMEWEKA KINGA YA MAKOSA
 document.getElementById('school-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
@@ -67,16 +68,26 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         name: document.getElementById('school-name').value,
         region: document.getElementById('school-region').value,
         district: document.getElementById('school-district').value,
-        schoolLevels: ['O_LEVEL', 'A_LEVEL', 'PRIMARY'] // Tutaunda zote kwa jaribio
+        schoolLevels: ['O_LEVEL', 'A_LEVEL', 'PRIMARY']
     };
-    const res = await fetch(`${API_BASE}/schools`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-    });
-    if (res.ok) {
-        alert("Shule imesajiliwa pamoja na masomo yake!");
-        toggleSchoolForm();
-        loadSchools();
+    try {
+        const res = await fetch(`${API_BASE}/schools`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert("Shule imesajiliwa kikamilifu pamoja na masomo na madarasa yake!");
+            document.getElementById('school-form').reset();
+            toggleSchoolForm();
+            loadSchools();
+        } else {
+            // Hapa ndio utaona kosa kama msimbo umetumika au database imegoma
+            alert("KOSA: " + (data.error || 'Imeshindwa kusajili shule.'));
+        }
+    } catch (err) {
+        alert("Hitilafu ya Mtandao: " + err.message);
     }
 });
 
@@ -86,7 +97,7 @@ document.getElementById('school-selector').addEventListener('change', async (e) 
     if (currentSchoolId) {
         document.getElementById('analytics-section').style.display = 'block';
         await loadClasses();
-        await loadSubjects(); // Hii ita-load dropdowns na table ya masomo
+        await loadSubjects(); 
         await loadStudents();
         await loadTeachers();
         await loadFees();
@@ -107,185 +118,110 @@ function updateStats() {
     document.getElementById('stat-fees').innerText = 'Tsh ' + total.toLocaleString();
 }
 
-// LOAD CLASSES
+// LOAD DATA FUNCTIONS
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allClasses = data.classes || [];
-    
-    // Dropdowns
     const options = '<option value="">-- Chagua Darasa --</option>' + allClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     ['student-class', 'att-class', 'exam-class', 'assign-class'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
-
-    // Table
     const tbody = document.getElementById('classes-table-body');
-    if (tbody) {
-        tbody.innerHTML = allClasses.map((c, i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td></tr>`).join('') || '<tr><td colspan="3">Hakuna madarasa.</td></tr>';
-    }
+    if (tbody) tbody.innerHTML = allClasses.map((c, i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td></tr>`).join('') || '<tr><td colspan="3">Hakuna madarasa.</td></tr>';
 }
 
-// LOAD SUBJECTS
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allSubjects = data.subjects || [];
-
-    // Dropdowns
     const options = '<option value="">-- Chagua Somo --</option>' + allSubjects.map(s => `<option value="${s.id}">${s.name} (${s.level_type})</option>`).join('');
     ['marks-subject', 'assign-subject'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
-
-    // Table
     const tbody = document.getElementById('subjects-table-body');
-    if (tbody) {
-        tbody.innerHTML = allSubjects.map((s, i) => `<tr><td>${i+1}</td><td>${s.code}</td><td>${s.name}</td><td>${s.level_type}</td><td>${s.category}</td></tr>`).join('') || '<tr><td colspan="5">Hakuna masomo.</td></tr>';
-    }
+    if (tbody) tbody.innerHTML = allSubjects.map((s, i) => `<tr><td>${i+1}</td><td>${s.code}</td><td>${s.name}</td><td>${s.level_type}</td><td>${s.category}</td></tr>`).join('') || '<tr><td colspan="5">Hakuna masomo.</td></tr>';
 }
 
-// LOAD STUDENTS
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allStudents = data.students || [];
-    
     const options = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
     ['fee-student', 'marks-student'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
-
     const tbody = document.getElementById('students-table-body');
-    if (tbody) {
-        tbody.innerHTML = allStudents.map((s, i) => {
+    if (tbody) tbody.innerHTML = allStudents.map((s, i) => {
             const cls = allClasses.find(c => c.id === s.class_id)?.name || '-';
             return `<tr><td>${i+1}</td><td>${s.full_name}</td><td>${s.gender}</td><td>${cls}</td><td>${s.parent_phone || '-'}</td></tr>`;
         }).join('') || '<tr><td colspan="5">Hakuna wanafunzi.</td></tr>';
-    }
 }
 
-// LOAD TEACHERS
 async function loadTeachers() {
     const res = await fetch(`${API_BASE}/teachers?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allTeachers = data.teachers || [];
-
-    if(document.getElementById('assign-teacher')) {
-        document.getElementById('assign-teacher').innerHTML = '<option value="">-- Chagua Mwalimu --</option>' + allTeachers.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
-    }
-
+    if(document.getElementById('assign-teacher')) document.getElementById('assign-teacher').innerHTML = '<option value="">-- Chagua Mwalimu --</option>' + allTeachers.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
     const tbody = document.getElementById('teachers-table-body');
-    if (tbody) {
-        tbody.innerHTML = allTeachers.map((t, i) => `<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.phone || '-'}</td><td>${t.gender || '-'}</td></tr>`).join('') || '<tr><td colspan="4">Hakuna walimu.</td></tr>';
-    }
+    if (tbody) tbody.innerHTML = allTeachers.map((t, i) => `<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.phone || '-'}</td><td>${t.gender || '-'}</td></tr>`).join('') || '<tr><td colspan="4">Hakuna walimu.</td></tr>';
 }
 
-// LOAD FEES
 async function loadFees() {
     const res = await fetch(`${API_BASE}/fees/school/${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allFees = data.fees || [];
     const tbody = document.getElementById('fees-table-body');
-    if(tbody) {
-        tbody.innerHTML = allFees.map((f,i) => `<tr><td>${f.full_name}</td><td>Tsh ${f.amount.toLocaleString()}</td><td>${f.term}</td><td><button onclick="printReceipt(${f.id})" class="btn-blue" style="padding:4px 8px;">Chapisha</button></td></tr>`).join('') || '<tr><td colspan="4">Hakuna malipo.</td></tr>';
-    }
+    if(tbody) tbody.innerHTML = allFees.map((f,i) => `<tr><td>${f.full_name}</td><td>Tsh ${f.amount.toLocaleString()}</td><td>${f.term}</td><td><button onclick="printReceipt(${f.id})" class="btn-blue" style="padding:4px 8px;">Chapisha</button></td></tr>`).join('') || '<tr><td colspan="4">Hakuna malipo.</td></tr>';
 }
 
-// LOAD EXAMS
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allExams = data.exams || [];
-    if(document.getElementById('marks-exam')) {
-        document.getElementById('marks-exam').innerHTML = '<option value="">-- Chagua Mtihani --</option>' + allExams.map(e => `<option value="${e.id}">${e.name} (${e.term})</option>`).join('');
-    }
+    if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = '<option value="">-- Chagua Mtihani --</option>' + allExams.map(e => `<option value="${e.id}">${e.name} (${e.term})</option>`).join('');
 }
 
-// LOAD NOTIFICATIONS
 async function loadNotifications() {
     const res = await fetch(`${API_BASE}/notifications?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     const list = document.getElementById('notifications-list');
-    if(list) {
-        list.innerHTML = (data.notifications || []).map(n => `<div style="background:#fff; padding:10px; margin-bottom:10px; border-left:4px solid #3498db;"><strong>${n.title}</strong><p>${n.message}</p></div>`).join('') || '<p>Hakuna taarifa.</p>';
-    }
+    if(list) list.innerHTML = (data.notifications || []).map(n => `<div style="background:#fff; padding:10px; margin-bottom:10px; border-left:4px solid #3498db;"><strong>${n.title}</strong><p>${n.message}</p></div>`).join('') || '<p>Hakuna taarifa.</p>';
 }
 
-// FORMS (Kusajili)
+// SUBMIT FORMS
 document.getElementById('student-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = {
-        school_id: currentSchoolId,
-        class_id: document.getElementById('student-class').value,
-        full_name: document.getElementById('student-name').value,
-        gender: document.getElementById('student-gender').value,
-        admission_number: document.getElementById('student-adm').value,
-        parent_phone: document.getElementById('student-parent-phone').value
-    };
-    const res = await fetch(`${API_BASE}/students`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-    });
+    const body = { school_id: currentSchoolId, class_id: document.getElementById('student-class').value, full_name: document.getElementById('student-name').value, gender: document.getElementById('student-gender').value, admission_number: document.getElementById('student-adm').value, parent_phone: document.getElementById('student-parent-phone').value };
+    const res = await fetch(`${API_BASE}/students`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
     if (res.ok) { alert("Mwanafunzi amesajiliwa!"); document.getElementById('student-form').reset(); loadStudents(); updateStats(); }
 });
 
 document.getElementById('teacher-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = {
-        school_id: currentSchoolId,
-        full_name: document.getElementById('teacher-name').value,
-        phone: document.getElementById('teacher-phone').value,
-        gender: document.getElementById('teacher-gender').value
-    };
-    const res = await fetch(`${API_BASE}/teachers`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-    });
+    const body = { school_id: currentSchoolId, full_name: document.getElementById('teacher-name').value, phone: document.getElementById('teacher-phone').value, gender: document.getElementById('teacher-gender').value };
+    const res = await fetch(`${API_BASE}/teachers`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
     if (res.ok) { alert("Mwalimu amesajiliwa!"); document.getElementById('teacher-form').reset(); loadTeachers(); updateStats(); }
 });
 
 document.getElementById('fee-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = {
-        school_id: currentSchoolId,
-        student_id: document.getElementById('fee-student').value,
-        amount: parseFloat(document.getElementById('fee-amount').value),
-        term: document.getElementById('fee-term').value,
-        year: parseInt(document.getElementById('fee-year').value)
-    };
-    const res = await fetch(`${API_BASE}/fees`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-    });
+    const body = { school_id: currentSchoolId, student_id: document.getElementById('fee-student').value, amount: parseFloat(document.getElementById('fee-amount').value), term: document.getElementById('fee-term').value, year: parseInt(document.getElementById('fee-year').value) };
+    const res = await fetch(`${API_BASE}/fees`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
     if (res.ok) { alert("Malipo yamerekodiwa!"); document.getElementById('fee-form').reset(); loadFees(); updateStats(); }
 });
 
 document.getElementById('notification-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = {
-        school_id: currentSchoolId,
-        title: document.getElementById('notif-title').value,
-        message: document.getElementById('notif-message').value
-    };
-    const res = await fetch(`${API_BASE}/notifications`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-    });
+    const body = { school_id: currentSchoolId, title: document.getElementById('notif-title').value, message: document.getElementById('notif-message').value };
+    const res = await fetch(`${API_BASE}/notifications`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
     if (res.ok) { alert("Taarifa imetumwa!"); document.getElementById('notification-form').reset(); loadNotifications(); }
 });
 
 // PRINT RECEIPT & SECTION TOGGLE
 function printReceipt(id) {
     const f = allFees.find(x => x.id === id);
-    document.getElementById('printable-area').innerHTML = `
-        <div style="text-align:center; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:20px;">
-            <h2>RISITI YA MALIPO</h2>
-        </div>
-        <p><strong>Mwanafunzi:</strong> ${f.full_name}</p>
-        <p><strong>Kiasi:</strong> Tsh ${f.amount.toLocaleString()}</p>
-        <p><strong>Muhula:</strong> ${f.term} (${f.year})</p>
-    `;
+    document.getElementById('printable-area').innerHTML = `<div style="text-align:center; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:20px;"><h2>RISITI YA MALIPO</h2></div><p><strong>Mwanafunzi:</strong> ${f.full_name}</p><p><strong>Kiasi:</strong> Tsh ${f.amount.toLocaleString()}</p><p><strong>Muhula:</strong> ${f.term} (${f.year})</p>`;
     document.getElementById('printable-area').style.display = 'block';
     window.print();
     document.getElementById('printable-area').style.display = 'none';

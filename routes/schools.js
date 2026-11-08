@@ -6,21 +6,30 @@ const { ensureLevelSetup } = require('../services/levelSetup');
 
 router.post('/', authenticate, (req, res) => {
   const { code, name, region, district, schoolLevels } = req.body;
+  
   try {
-    const levelsStr = JSON.stringify(schoolLevels || ['O_LEVEL']);
-    
-    db.run(`INSERT INTO schools (code, name, region, district, levels) VALUES (?, ?, ?, ?, ?)`, [code, name, region, district, levelsStr]);
+    // 1. Angalia kama msimbo wa shule umetumika
+    const existing = db.get('SELECT id FROM schools WHERE code = ?', [code]);
+    if (existing) {
+        return res.status(400).json({ error: 'Msimbo huu wa shule (Code) umetumika tayari. Chagua mwingine.' });
+    }
+
+    // 2. Sajili shule (Bila column ya 'levels' kwa kuwa haipo kwenye database yetu mpya)
+    db.run(`INSERT INTO schools (code, name, region, district) VALUES (?, ?, ?, ?)`, [code, name, region, district]);
     const school = db.get('SELECT * FROM schools WHERE code = ?', [code]);
     
     if (!school) return res.status(500).json({ error: 'Database imeshindwa kutengeneza shule' });
 
-    // TUNATUMIA CODE YAKO HAPA KUTENGENEZA MASOMO NA MADARASA
+    // 3. Tengeneza madarasa, masomo, na mchepuo kwa kutumia code yako nzuri
     if (schoolLevels && Array.isArray(schoolLevels)) {
       ensureLevelSetup(school.id, schoolLevels);
     }
 
-    res.status(201).json({ message: 'Shule imesajiliwa', school });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.status(201).json({ message: 'Shule imesajiliwa kikamilifu', school });
+  } catch (err) { 
+    console.error("Kosa la kusajili shule:", err);
+    res.status(500).json({ error: 'Kosa la Database: ' + err.message }); 
+  }
 });
 
 router.get('/', authenticate, (req, res) => {
