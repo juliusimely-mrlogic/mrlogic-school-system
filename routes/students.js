@@ -5,11 +5,9 @@ const authenticate = require('../middlewares/authMiddleware');
 const multer = require('multer');
 const xlsx = require('xlsx');
 
-// Setup multer kwa ajili ya kupokea faili kwenye memory
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// POST: Kusajili mwanafunzi mmoja (kama ilivyokuwa)
 router.post('/', authenticate, async (req, res) => {
   const { school_id, class_id, full_name, gender, admission_number, parent_phone } = req.body;
   if (!school_id || !class_id || !full_name || !admission_number) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
@@ -19,7 +17,6 @@ router.post('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST: Kupakia Wanafunzi kwa Excel (Bulk Upload)
 router.post('/bulk', authenticate, upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Hakuna faili lililopakiwa' });
     
@@ -27,7 +24,6 @@ router.post('/bulk', authenticate, upload.single('file'), async (req, res) => {
     if (!school_id || !class_id) return res.status(400).json({ error: 'Chagua darasa na shule kwanza' });
 
     try {
-        // Soma faili la Excel
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
@@ -38,14 +34,19 @@ router.post('/bulk', authenticate, upload.single('file'), async (req, res) => {
         let insertedCount = 0;
         
         for (const row of data) {
-            // Tunatafuta majina ya vichwa (Headers) tofauti ili kurahisisha mtumiaji
-            const full_name = row['Jina'] || row['Name'] || row['Full Name'] || row['full_name'];
-            const admission_number = row['Namba'] || row['Admission'] || row['Adm'] || row['admission_number'];
-            const gender = row['Jinsia'] || row['Gender'] || row['gender'] || 'M';
-            const parent_phone = row['Simu'] || row['Phone'] || row['Parent Phone'] || row['parent_phone'] || null;
+            // HAPA NDIO TUNAFANYA MABADILIKO: Tunabadilisha vichwa vyote kuwa herufi ndogo
+            // Ili iwe JINA, Jina, au jina, mfumo utavisoma sawa.
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.trim().toLowerCase()] = row[key];
+            });
+
+            const full_name = normalizedRow['jina'] || normalizedRow['name'] || normalizedRow['full name'] || normalizedRow['full_name'];
+            const admission_number = normalizedRow['namba'] || normalizedRow['admission'] || normalizedRow['adm'] || normalizedRow['admission_number'];
+            const gender = normalizedRow['jinsia'] || normalizedRow['gender'] || 'M';
+            const parent_phone = normalizedRow['simu'] || normalizedRow['phone'] || normalizedRow['parent phone'] || normalizedRow['parent_phone'] || null;
 
             if (full_name && admission_number) {
-                // Kagua kama mwanafunzi yupo (kwa kutumia admission_number)
                 const existing = await db.get('SELECT id FROM students WHERE admission_number = ? AND school_id = ?', [admission_number, school_id]);
                 
                 if (!existing) {
@@ -65,7 +66,6 @@ router.post('/bulk', authenticate, upload.single('file'), async (req, res) => {
     }
 });
 
-// GET: Kuvuta wanafunzi
 router.get('/', authenticate, async (req, res) => {
   const { school_id, class_id } = req.query;
   let query = 'SELECT * FROM students WHERE school_id = ?';
@@ -77,7 +77,6 @@ router.get('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// DELETE: Kufuta mwanafunzi
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     await db.run('DELETE FROM students WHERE id = ?', [req.params.id]);
