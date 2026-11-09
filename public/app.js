@@ -3,6 +3,7 @@ let token = localStorage.getItem('token');
 let currentSchoolId = null;
 let allExams = [], allStudents = [], allSubjects = [], allClasses = [], allTeachers = [], currentProcessedData = null;
 let currentUserRole = localStorage.getItem('user_role');
+let allSchools = []; // Hifadhi shule zote hapa
 
 if (token) { showDashboard(); }
 
@@ -41,7 +42,7 @@ function showDashboard() {
         document.getElementById('superadmin-dashboard').style.display = 'block';
         fetchSuperAdminStats();
     } else {
-        document.getElementById('clear-schools-btn').style.display = 'none'; // Ficha kitufe cha kufuta kwa wasio Super Admin
+        document.getElementById('clear-schools-btn').style.display = 'none';
     }
     
     loadSchools();
@@ -76,10 +77,18 @@ async function loadSchools() {
     const res = await fetch(`${API_BASE}/schools`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     if (data.schools) {
+        allSchools = data.schools; // Hifadhi kwenye variable
         const sel = document.getElementById('school-selector');
         sel.innerHTML = '<option value="">-- Chagua Shule --</option>';
         data.schools.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
         
+        // Jaza dropdown ya shule kwenye fomu ya Watumiaji
+        const userSchoolSel = document.getElementById('user-school');
+        if(userSchoolSel) {
+            userSchoolSel.innerHTML = '<option value="">-- Chagua Shule --</option>';
+            data.schools.forEach(s => userSchoolSel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        }
+
         if (currentUserRole !== 'SUPER_ADMIN' && data.schools.length > 0) {
             sel.value = data.schools[0].id;
             sel.dispatchEvent(new Event('change'));
@@ -118,7 +127,7 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_BASE}/schools`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
         const data = await res.json();
         if (res.ok) {
-            alert("Shule imesajiliwa!"); 
+            alert(`Shule imesajiliwa! Madarasa ${data.classesCreated} yametengenezwa.`); 
             document.getElementById('school-form').reset(); 
             toggleSchoolForm(); 
             loadSchools();
@@ -126,7 +135,6 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
 
-// KAZI MPYA: Kufuta Shule Zote
 async function clearAllSchools() {
     if (!confirm("Una uhakika unataka kufuta shule ZOTE? Hii itafuta data zote za majaribio kwenye mfumo.")) return;
     try {
@@ -153,19 +161,10 @@ document.getElementById('school-selector').addEventListener('change', async (e) 
     }
 });
 
-async function loadUsers() {
-    const res = await fetch(`${API_BASE}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-    const data = await res.json();
-    const tbody = document.getElementById('users-table-body');
-    if(tbody) {
-        tbody.innerHTML = data.users.map(u => `<tr><td>${u.full_name}</td><td><strong>${u.username}</strong></td><td>${u.role}</td><td>${u.school_name || 'N/A'}</td></tr>`).join('');
-    }
-}
-
 document.getElementById('user-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
-        school_id: currentSchoolId,
+        school_id: document.getElementById('user-school').value, // Tunachukua shule iliyochaguliwa
         full_name: document.getElementById('user-name').value,
         role: document.getElementById('user-role').value
     };
@@ -176,10 +175,10 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
     if (res.ok) {
         alert(`Mtumiaji amesajiliwa!\nUsername: ${data.user.username}\nPassword: ${data.user.defaultPassword}`);
         document.getElementById('user-form').reset();
-        loadUsers();
     } else { alert("Kosa: " + data.error); }
 });
 
+// (Weka functions zingine zote za loadClasses, loadStudents, n.k. kama zilivyokuwa kwenye Awamu ya 7, hakuna mabadiliko)
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();

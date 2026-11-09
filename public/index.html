@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="/style.css?v=9">
+    <link rel="stylesheet" href="/style.css?v=10">
 </head>
 <body>
-
+    <!-- LOGIN -->
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -21,6 +21,7 @@
         </div>
     </div>
 
+    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -95,12 +96,14 @@
                 <div class="card" onclick="showSection('users')" style="border-left-color: #8e44ad;"><h3>Watumiaji</h3><p>Sajili Wakuu na Walimu</p></div>
             </div>
 
-            <!-- (SEHEMU ZA KAZI ZINABAKI KAMA ZILIVYO KWENYE CODE YAKO YA AWAMU YA 7) -->
             <div id="users-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Watumiaji</h2>
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
                     <h3>Sajili Mtumiaji Mpya (Password ya awali ni 1000)</h3>
                     <form id="user-form" class="form-row">
+                        <select id="user-school" required>
+                            <option value="">-- Chagua Shule --</option>
+                        </select>
                         <input type="text" id="user-name" placeholder="Jina Kamili" required>
                         <select id="user-role" required>
                             <option value="">-- Chagua Cheo --</option><option value="SCHOOL_MANAGER">Mkuu wa Shule</option><option value="ACADEMIC_HEAD">Mtaaluma Mkuu</option><option value="TEACHER">Mwalimu</option>
@@ -111,6 +114,7 @@
                 <div class="table-responsive"><table><thead><tr><th>Jina</th><th>Username</th><th>Cheo</th><th>Shule</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
             </div>
 
+            <!-- (Weka sehemu zingine za Walimu, Wanafunzi, Madarasa, Mitihani, Ada kama zilivyokuwa) -->
             <div id="teachers-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Walimu</h2>
                 <div class="step-box" style="background: #fdedec; border-left-color: #e74c3c;">
@@ -266,6 +270,6 @@
         </main>
     </div>
     <div id="printable-report" style="display: none;"></div>
-    <script src="/app.js?v=9"></script>
+    <script src="/app.js?v=10"></script>
 </body>
 </html>
