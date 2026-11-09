@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=999">
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -21,6 +22,7 @@
         </div>
     </div>
 
+    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -32,6 +34,7 @@
         </header>
         
         <main>
+            <!-- HAPA KITUFE KIPO WAZI -->
             <div class="top-bar">
                 <div>
                     <label><strong>Chagua Shule: </strong></label>
@@ -39,7 +42,9 @@
                         <option value="">-- Chagua Shule --</option>
                     </select>
                 </div>
-                <button onclick="toggleSchoolForm()" class="btn-green" id="add-school-btn">+ Sajili Shule</button>
+                <button onclick="toggleSchoolForm()" style="background-color: #27ae60; color: white; padding: 10px 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer;">
+                    + Sajili Shule
+                </button>
             </div>
 
             <!-- FOMU YA KUSAJILI SHULE -->
@@ -241,6 +246,6 @@
 
     <div id="printable-report" style="display: none;"></div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=999"></script>
 </body>
 </html>

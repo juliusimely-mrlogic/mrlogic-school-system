@@ -6,7 +6,6 @@ let allStudents = [];
 let allSubjects = [];
 let allClasses = [];
 let currentProcessedData = null;
-let currentUserRole = localStorage.getItem('user_role');
 
 if (token) { showDashboard(); }
 
@@ -26,7 +25,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             localStorage.setItem('is_password_changed', data.user.is_password_changed);
             
             token = data.token;
-            currentUserRole = data.user.role;
 
             if (data.user.is_password_changed === 0) {
                 setTimeout(() => {
@@ -46,14 +44,17 @@ function showDashboard() {
     document.getElementById('welcome-msg').innerText = `Karibu, ${localStorage.getItem('user_name')}`;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
-    
     loadSchools();
-    
-    if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'SCHOOL_MANAGER') {
-        if(document.getElementById('menu-users')) document.getElementById('menu-users').style.display = 'block';
-        loadUsers();
+}
+
+// KAZI YA KUFUNGUA FOMU (Nimeongeza console.log kujua kama inabonyezwa)
+function toggleSchoolForm() {
+    console.log("Kitufe cha kusajili shule kimebonyezwa!");
+    const c = document.getElementById('school-form-container');
+    if (c.style.display === 'none') {
+        c.style.display = 'block';
     } else {
-        if(document.getElementById('menu-users')) document.getElementById('menu-users').style.display = 'none';
+        c.style.display = 'none';
     }
 }
 
@@ -86,20 +87,7 @@ async function loadSchools() {
         const sel = document.getElementById('school-selector');
         sel.innerHTML = '<option value="">-- Chagua Shule --</option>';
         data.schools.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
-        
-        if (currentUserRole !== 'SUPER_ADMIN' && data.schools.length > 0) {
-            sel.value = data.schools[0].id;
-            sel.dispatchEvent(new Event('change'));
-            sel.disabled = true; 
-        } else {
-            sel.disabled = false;
-        }
     }
-}
-
-function toggleSchoolForm() {
-    const c = document.getElementById('school-form-container');
-    c.style.display = c.style.display === 'none' ? 'block' : 'none';
 }
 
 document.getElementById('school-form').addEventListener('submit', async (e) => {
@@ -115,7 +103,10 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_BASE}/schools`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
         const data = await res.json();
         if (res.ok) {
-            alert("Shule imesajiliwa!"); document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
+            alert("Shule imesajiliwa!"); 
+            document.getElementById('school-form').reset(); 
+            toggleSchoolForm(); 
+            loadSchools();
         } else { alert("KOSA: " + data.error); }
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
@@ -159,7 +150,7 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
         role: document.getElementById('user-role').value
     };
 
-    if (currentUserRole !== 'SUPER_ADMIN') {
+    if (localStorage.getItem('user_role') !== 'SUPER_ADMIN') {
         body.school_id = null; 
     } else {
         body.school_id = currentSchoolId;
