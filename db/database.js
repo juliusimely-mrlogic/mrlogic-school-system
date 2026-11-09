@@ -37,43 +37,28 @@ async function createTables() {
 module.exports = {
   query: (text, params) => pool.query(text, params),
   run: async (sql, params = []) => {
-    try {
-      let formattedSql = sql;
-      let count = 1;
-      formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
-      if (formattedSql.trim().toUpperCase().startsWith('INSERT') && !formattedSql.toUpperCase().includes('RETURNING')) {
-          formattedSql += ' RETURNING id';
-      }
-      const res = await pool.query(formattedSql, params); 
-      return { changes: res.rowCount, lastInsertRowid: res.rows[0]?.id || null }; 
-    } catch (e) {
-      console.error("DB Run Error:", e.message);
-      return { changes: 0, lastInsertRowid: null };
+    let formattedSql = sql;
+    let count = 1;
+    formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
+    if (formattedSql.trim().toUpperCase().startsWith('INSERT') && !formattedSql.toUpperCase().includes('RETURNING')) {
+        formattedSql += ' RETURNING id';
     }
+    const res = await pool.query(formattedSql, params); 
+    return { changes: res.rowCount, lastInsertRowid: res.rows[0]?.id || null }; 
   },
   get: async (sql, params = []) => {
-    try {
-      let formattedSql = sql;
-      let count = 1;
-      formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
-      const res = await pool.query(formattedSql, params); 
-      return res.rows[0] || undefined; 
-    } catch (e) {
-      console.error("DB Get Error:", e.message);
-      return undefined;
-    }
+    let formattedSql = sql;
+    let count = 1;
+    formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
+    const res = await pool.query(formattedSql, params); 
+    return res.rows[0] || undefined; 
   },
   all: async (sql, params = []) => {
-    try {
-      let formattedSql = sql;
-      let count = 1;
-      formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
-      const res = await pool.query(formattedSql, params); 
-      return res.rows || []; // KINGA: Rudisha array tupu kama hakuna data
-    } catch (e) {
-      console.error("DB All Error:", e.message);
-      return []; // KINGA: Hii inazuia kosa la 'rows is not iterable'
-    }
+    let formattedSql = sql;
+    let count = 1;
+    formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
+    const res = await pool.query(formattedSql, params); 
+    return res.rows || []; 
   },
   createTables 
 };

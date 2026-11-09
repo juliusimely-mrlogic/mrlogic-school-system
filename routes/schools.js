@@ -30,13 +30,19 @@ router.post('/', authenticate, async (req, res) => {
     }
     
     if (schoolLevels && Array.isArray(schoolLevels)) {
-      await ensureLevelSetup(school.id, schoolLevels);
+      try {
+        console.log("Inatengeneza madarasa kwa shule ID:", school.id);
+        await ensureLevelSetup(school.id, schoolLevels);
+      } catch (levelError) {
+        console.error("Kosa la kutengeneza madarasa:", levelError);
+        // TUNARUDISHA KOSA KWA MTUMIAJI BILA KUFUTA SHULE
+        return res.status(500).json({ error: 'Shule imesajiliwa, lakini kuna kosa la kutengeneza madarasa: ' + levelError.message });
+      }
     }
-    res.status(201).json({ message: 'Shule imesajiliwa', school });
+    
+    res.status(201).json({ message: 'Shule imesajiliwa kikamilifu', school });
   } catch (err) { 
     console.error("Kosa la kusajili:", err);
-    // Kama shule ilikwama kwenye levelSetup, tunaifuta ili mtumiaji asikwame
-    try { await db.run('DELETE FROM schools WHERE code = ?', [code]); } catch(e) {}
     res.status(500).json({ error: 'Kosa la Server: ' + err.message }); 
   }
 });
