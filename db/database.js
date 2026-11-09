@@ -8,19 +8,15 @@ const dbInstance = new Database(dbPath);
 dbInstance.pragma('foreign_keys = ON');
 
 dbInstance.exec(`
-  CREATE TABLE IF NOT EXISTS schools (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE, name TEXT, region TEXT, district TEXT, ward TEXT, exam_center_no TEXT, headmaster_name TEXT, ownership TEXT, language TEXT);
+  CREATE TABLE IF NOT EXISTS schools (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE, name TEXT, region TEXT, district TEXT, 
+    ward TEXT, exam_center_no TEXT, headmaster_name TEXT, ownership TEXT, language TEXT, 
+    levels TEXT, is_active INTEGER DEFAULT 1, subscription_expires DATETIME
+  );
   
-  -- USERS TABLE (Tumeongeza is_password_changed)
   CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, 
-    school_id INTEGER, 
-    full_name TEXT, 
-    email TEXT, 
-    username TEXT UNIQUE, 
-    password_hash TEXT, 
-    salt TEXT, 
-    role TEXT, 
-    is_password_changed INTEGER DEFAULT 0, 
+    id INTEGER PRIMARY KEY AUTOINCREMENT, school_id INTEGER, full_name TEXT, email TEXT, 
+    username TEXT UNIQUE, password_hash TEXT, salt TEXT, role TEXT, is_password_changed INTEGER DEFAULT 0, 
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
   );
 
@@ -38,20 +34,17 @@ dbInstance.exec(`
   CREATE TABLE IF NOT EXISTS teachers (id INTEGER PRIMARY KEY AUTOINCREMENT, school_id INTEGER, full_name TEXT, phone TEXT, gender TEXT, FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE);
   CREATE TABLE IF NOT EXISTS teacher_assignments (id INTEGER PRIMARY KEY AUTOINCREMENT, school_id INTEGER, teacher_id INTEGER, class_id INTEGER, subject_id INTEGER, FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE, FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE, FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE, FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE);
   CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, school_id INTEGER, title TEXT, message TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE);
+  
+  -- MPYA: System Payments (Malipo ya Shule kwa Mfumo)
+  CREATE TABLE IF NOT EXISTS system_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, school_id INTEGER, amount REAL, date_paid DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+  );
 `);
 
 module.exports = {
-  run: (sql, params = []) => {
-    try { return dbInstance.prepare(sql).run(params); } 
-    catch (e) { console.error("DB Run Error:", e.message); return { changes: 0, lastInsertRowid: null }; }
-  },
-  get: (sql, params = []) => {
-    try { return dbInstance.prepare(sql).get(params); } 
-    catch (e) { console.error("DB Get Error:", e.message); return undefined; }
-  },
-  all: (sql, params = []) => {
-    try { return dbInstance.prepare(sql).all(params); } 
-    catch (e) { console.error("DB All Error:", e.message); return []; }
-  },
+  run: (sql, params = []) => { try { return dbInstance.prepare(sql).run(params); } catch (e) { console.error("DB Run Error:", e.message); return { changes: 0, lastInsertRowid: null }; } },
+  get: (sql, params = []) => { try { return dbInstance.prepare(sql).get(params); } catch (e) { console.error("DB Get Error:", e.message); return undefined; } },
+  all: (sql, params = []) => { try { return dbInstance.prepare(sql).all(params); } catch (e) { console.error("DB All Error:", e.message); return []; } },
   exec: (sql) => dbInstance.exec(sql)
 };
