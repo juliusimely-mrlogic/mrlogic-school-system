@@ -367,20 +367,6 @@ function toggleSchoolForm() {
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
 }
 
-async function clearAllSchools() {
-    if (!confirm("Una uhakika unataka kufuta shule ZOTE? Hii itafuta data zote za majaribio kwenye mfumo.")) return;
-    try {
-        const res = await fetch(`${API_BASE}/schools/clear-all`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-            alert("Shule zote zimefutwa kikamilifu! Sasa unaweza kuanza upya.");
-            loadSchools();
-        } else {
-            const data = await res.json();
-            alert("Kosa: " + data.error);
-        }
-    } catch (err) { alert("Kosa la mtandao"); }
-}
-
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
     if (currentSchoolId) {
@@ -489,15 +475,17 @@ async function printReportCard() {
     const exam = currentProcessedData.exam;
     
     const currentSchool = allSchoolsData.find(s => s.id == currentSchoolId);
-    const signatureImg = currentSchool && currentSchool.headmaster_signature ? `<img src="${currentSchool.headmaster_signature}" style="height: 60px; max-width: 150px; object-fit: contain;">` : `<p style="margin-top: 40px;">.......................</p>`;
-    const stampImg = currentSchool && currentSchool.school_stamp ? `<img src="${currentSchool.school_stamp}" style="height: 80px; max-width: 150px; object-fit: contain;">` : ``;
+    
+    // Tumeongeza class="signature-img" na class="stamp-img" hapa
+    const signatureImg = currentSchool && currentSchool.headmaster_signature ? `<img src="${currentSchool.headmaster_signature}" class="signature-img" style="height: 60px; max-width: 150px; object-fit: contain;">` : `<p style="margin-top: 40px;">.......................</p>`;
+    const stampImg = currentSchool && currentSchool.school_stamp ? `<img src="${currentSchool.school_stamp}" class="stamp-img" style="height: 80px; max-width: 150px; object-fit: contain;">` : ``;
 
     const schoolName = currentSchool ? currentSchool.name : "JINA LA SHULE";
     
     let subjectRows = studentResult.subjects.map(s => `<tr><td style="border: 1px solid #000; padding: 5px;">${s.subject_name}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.marks}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.grade}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.points}</td></tr>`).join('');
     
     document.getElementById('printable-report').innerHTML = `
-        <div style="padding: 40px; font-family: 'Times New Roman';">
+        <div style="padding: 20px; font-family: 'Times New Roman'; page-break-inside: avoid;">
             <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 <h1 style="margin: 0; text-transform: uppercase;">${schoolName}</h1>
                 <h3 style="margin: 5px 0;">RIPOTI YA MATOKEO YA MWANAFUNZI</h3>
