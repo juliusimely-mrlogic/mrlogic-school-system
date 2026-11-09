@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (token) { showDashboard(); }
 
-    // 2. KUFUNGUA KADI (Event Delegation - Njia Salama)
+    // 2. KUFUNGUA KADI
     const menuCards = document.getElementById('menu-cards');
     if (menuCards) {
         menuCards.addEventListener('click', (e) => {
@@ -55,7 +55,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. FOMU ZOTE ZA KAZI
+    // 3. KUBADILISHA SHULE KWENYE FOMU YA MTUMIAJI (MABORESHO)
+    const userSchoolSelect = document.getElementById('user-school');
+    if(userSchoolSelect) {
+        userSchoolSelect.addEventListener('change', async (e) => {
+            const selectedSchool = e.target.value;
+            if (!selectedSchool) return;
+            
+            try {
+                // Vuta walimu wa shule hii mahususi
+                const res = await fetch(`${API_BASE}/teachers?school_id=${selectedSchool}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                const teachers = data.teachers || [];
+                const options = '<option value="">-- Chagua Mwalimu --</option>' + teachers.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
+                
+                if(document.getElementById('user-teacher')) document.getElementById('user-teacher').innerHTML = options;
+            } catch (err) { console.error("Kosa la kupata walimu", err); }
+        });
+    }
+
+    // 4. KUBADILISHA CHEO (KUONYESHA/KUFICHA MWALIMU)
+    const userRoleSelect = document.getElementById('user-role');
+    if(userRoleSelect) {
+        userRoleSelect.addEventListener('change', (e) => {
+            const teacherSelect = document.getElementById('user-teacher');
+            if(teacherSelect) {
+                if(e.target.value === 'TEACHER') {
+                    teacherSelect.style.display = 'block';
+                    teacherSelect.required = true; // Weka lazima
+                } else {
+                    teacherSelect.style.display = 'none';
+                    teacherSelect.required = false;
+                    teacherSelect.value = ''; // Safisha
+                }
+            }
+        });
+    }
+
+    // 5. FOMU ZOTE ZA KAZI
     const bulkForm = document.getElementById('bulk-upload-form');
     if (bulkForm) {
         bulkForm.addEventListener('submit', async (e) => {
@@ -169,26 +206,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const userRoleSelect = document.getElementById('user-role');
-    if(userRoleSelect) {
-        userRoleSelect.addEventListener('change', (e) => {
-            const teacherSelect = document.getElementById('user-teacher');
-            if(teacherSelect) {
-                if(e.target.value === 'TEACHER') teacherSelect.style.display = 'block';
-                else teacherSelect.style.display = 'none';
-            }
-        });
-    }
-
     const userForm = document.getElementById('user-form');
     if (userForm) {
         userForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const role = document.getElementById('user-role').value;
+            const teacher_id = document.getElementById('user-teacher').value;
+            
+            if (role === 'TEACHER' && !teacher_id) {
+                return alert("Tafadhali chagua mwalimu husika kwenye orodha.");
+            }
+
             const body = {
                 school_id: document.getElementById('user-school').value,
                 full_name: document.getElementById('user-name').value,
-                role: document.getElementById('user-role').value,
-                teacher_id: document.getElementById('user-teacher').value || null
+                role: role,
+                teacher_id: teacher_id || null
             };
             if (currentUserRole !== 'SUPER_ADMIN') body.school_id = null; 
 
@@ -342,7 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Hii function itapatikana popote kwenye HTML
 window.showSection = function(id) {
     const sections = ['students', 'teachers', 'classes', 'attendance', 'exams', 'fees', 'notifications', 'users'];
     sections.forEach(s => { 
