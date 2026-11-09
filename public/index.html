@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <!-- LOGIN -->
     <div id="login-screen" class="screen active" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -19,6 +21,7 @@
         </div>
     </div>
 
+    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -37,14 +40,82 @@
                 <button onclick="toggleSchoolForm()" class="btn-green" style="padding: 8px 15px; margin-left: 10px; border:none; color:white; cursor:pointer;">+ Sajili Shule</button>
             </div>
 
+            <!-- FOMU YA KUSAJILI SHULE (IMERUDISHWA) -->
+            <div id="school-form-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 10px; color: #1e3c72;">Sajili Shule Mpya</h3>
+                <form id="school-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input type="text" id="school-name" placeholder="Jina la Shule *" required style="padding:8px;">
+                    <input type="text" id="school-code" placeholder="Msimbo wa Shule (Code) *" required style="padding:8px;">
+                    <input type="text" id="school-region" placeholder="Mkoa" style="padding:8px;">
+                    <input type="text" id="school-district" placeholder="Halmashauri / Wilaya" style="padding:8px;">
+                    <input type="text" id="school-ward" placeholder="Kata" style="padding:8px;">
+                    <input type="text" id="school-exam-no" placeholder="Namba ya Mtihani" style="padding:8px;">
+                    <input type="text" id="school-headmaster" placeholder="Jina la Mkuu wa Shule" style="padding:8px;">
+                    <select id="school-ownership" style="padding:8px;">
+                        <option value="">-- Umiliki --</option>
+                        <option value="Serikali">Serikali</option>
+                        <option value="Binafsi">Binafsi</option>
+                        <option value="Dini">Dini</option>
+                    </select>
+                    <select id="school-language" style="padding:8px;">
+                        <option value="">-- Lugha --</option>
+                        <option value="Kiswahili">Kiswahili</option>
+                        <option value="English">English</option>
+                    </select>
+                    <div style="grid-column: span 2; display: flex; gap: 10px;">
+                        <button type="submit" class="btn-blue" style="flex: 1; padding: 10px;">Hifadhi Shule</button>
+                        <button type="button" class="btn-red" onclick="toggleSchoolForm()" style="flex: 1; padding: 10px;">Ghairi</button>
+                    </div>
+                </form>
+            </div>
+
             <div class="cards">
                 <div class="card" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
                 <div class="card" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
                 <div class="card" onclick="showSection('exams')" style="border-color: #e67e22;"><h3>Mitihani</h3><p>Ingiza na chakata matokeo</p></div>
             </div>
 
+            <!-- SEHEMU YA WANAFUNZI (Kwa ajili ya kusajili) -->
+            <div id="students-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h2>Wanafunzi</h2>
+                <form id="student-form" class="form-row">
+                    <input type="text" id="student-name" placeholder="Jina Kamili" required>
+                    <select id="student-gender" required><option value="M">Me (M)</option><option value="F">Ke (F)</option></select>
+                    <input type="text" id="student-adm" placeholder="Namba ya Usajili (Adm)" required>
+                    <input type="text" id="student-parent-phone" placeholder="Simu ya Mzazi">
+                    <select id="student-class" required><option value="">-- Chagua Darasa --</option></select>
+                    <button type="submit" class="btn-blue">Sajili Mwanafunzi</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Namba</th><th>Jina</th><th>Jinsia</th><th>Darasa</th><th>Mzazi</th><th>Kitendo</th></tr></thead>
+                        <tbody id="students-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEHEMU YA MADARASA (Kwa ajili ya kuongeza) -->
+            <div id="classes-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h2>Madarasa</h2>
+                <form id="class-form" class="form-row">
+                    <input type="text" id="class-name" placeholder="Jina la Darasa (Mf: Form One)" required>
+                    <select id="class-level" required>
+                        <option value="O_LEVEL">O-Level</option>
+                        <option value="A_LEVEL">A-Level</option>
+                        <option value="PRIMARY">Primary</option>
+                    </select>
+                    <button type="submit" class="btn-blue">Ongeza Darasa</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Namba</th><th>Jina la Darasa</th><th>Ngazi</th><th>Kitendo</th></tr></thead>
+                        <tbody id="classes-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- SEHEMU YA MITIHANI NA BROADSHEET -->
-            <div id="exams-section" class="section-container" style="display: none;">
+            <div id="exams-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
                 <h2>Mitihani & Matokeo</h2>
                 
                 <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
@@ -67,7 +138,7 @@
                     </div>
                 </div>
 
-                <!-- ENEO LA BROADSHEET (Linaonekana hapa na kwenye Print) -->
+                <!-- ENEO LA BROADSHEET -->
                 <div id="broadsheet-container" style="display: none;">
                     <div class="broadsheet-wrapper" id="printable-area">
                         <h2 class="broadsheet-title" id="broadsheet-title">MATOKEO YA MTIHANI</h2>
@@ -90,7 +161,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
 
         </main>
