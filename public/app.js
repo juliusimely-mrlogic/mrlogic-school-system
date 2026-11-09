@@ -26,6 +26,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     } catch (err) { document.getElementById('login-error').innerText = 'Server haipatikani.'; }
 });
 
+// 2. DASHBOARD & KUVUTA SHULE
 document.getElementById('logout-btn').addEventListener('click', () => { localStorage.clear(); location.reload(); });
 
 function showDashboard() {
@@ -35,7 +36,6 @@ function showDashboard() {
     loadSchools();
 }
 
-// 2. SHULE
 async function loadSchools() {
     const res = await fetch(`${API_BASE}/schools`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -46,6 +46,19 @@ async function loadSchools() {
     }
 }
 
+// 3. MABADILIKO YA SHULE (HAPA NDIO TUNAVUTA KILA KITU)
+document.getElementById('school-selector').addEventListener('change', async (e) => {
+    currentSchoolId = e.target.value;
+    if (currentSchoolId) {
+        // Fanya kazi hizi kwa mpigo ili dropdown zote zijae
+        await loadClasses();
+        await loadStudents();
+        await loadSubjects();
+        await loadExams();
+    }
+});
+
+// 4. KUSAJILI SHULE (Bila mabadiliko)
 function toggleSchoolForm() {
     const c = document.getElementById('school-form-container');
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
@@ -54,56 +67,39 @@ function toggleSchoolForm() {
 document.getElementById('school-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
-        name: document.getElementById('school-name').value,
-        code: document.getElementById('school-code').value,
-        region: document.getElementById('school-region').value,
-        district: document.getElementById('school-district').value,
-        ward: document.getElementById('school-ward').value,
-        exam_center_no: document.getElementById('school-exam-no').value,
-        headmaster_name: document.getElementById('school-headmaster').value,
-        ownership: document.getElementById('school-ownership').value,
-        language: document.getElementById('school-language').value,
-        schoolLevels: ['O_LEVEL', 'A_LEVEL', 'PRIMARY']
+        name: document.getElementById('school-name').value, code: document.getElementById('school-code').value,
+        region: document.getElementById('school-region').value, district: document.getElementById('school-district').value,
+        ward: document.getElementById('school-ward').value, exam_center_no: document.getElementById('school-exam-no').value,
+        headmaster_name: document.getElementById('school-headmaster').value, ownership: document.getElementById('school-ownership').value,
+        language: document.getElementById('school-language').value, schoolLevels: ['O_LEVEL', 'A_LEVEL', 'PRIMARY']
     };
     try {
-        const res = await fetch(`${API_BASE}/schools`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(body)
-        });
+        const res = await fetch(`${API_BASE}/schools`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
         const data = await res.json();
         if (res.ok) {
-            alert("Shule imesajiliwa kikamilifu!");
-            document.getElementById('school-form').reset();
-            toggleSchoolForm();
-            loadSchools();
+            alert("Shule imesajiliwa! Sasa chagua shule hiyo kwenye dropdown ili kuona madarasa na masomo yake.");
+            document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
         } else { alert("KOSA: " + data.error); }
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
 
-document.getElementById('school-selector').addEventListener('change', async (e) => {
-    currentSchoolId = e.target.value;
-    if (currentSchoolId) {
-        await loadClasses();
-        await loadStudents();
-        await loadSubjects();
-        await loadExams();
-    }
-});
-
-// 3. MADARASA
+// 5. KUVUTA MADARASA (Inajaza student-class na exam-class)
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allClasses = data.classes || [];
+    
+    // Jaza dropdowns zote zinazohitaji darasa
     const options = '<option value="">-- Chagua Darasa --</option>' + allClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     ['student-class', 'exam-class'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
     
+    // Onyesha kwenye jedwali
     const tbody = document.getElementById('classes-table-body');
     if (tbody) {
         tbody.innerHTML = allClasses.map((c, i) => `
             <tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td>
             <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td></tr>
-        `).join('') || '<tr><td colspan="4">Hakuna madarasa.</td></tr>';
+        `).join('') || '<tr><td colspan="4">Hakuna madarasa. Tafadhali ongeza darasa kwanza.</td></tr>';
     }
 }
 
@@ -112,7 +108,7 @@ document.getElementById('class-form').addEventListener('submit', async (e) => {
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
     const body = { school_id: currentSchoolId, name: document.getElementById('class-name').value, level_type: document.getElementById('class-level').value };
     const res = await fetch(`${API_BASE}/classes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-    if (res.ok) { alert("Darasa limesajiliwa!"); document.getElementById('class-form').reset(); loadClasses(); }
+    if (res.ok) { alert("Darasa limesajiliwa! Sasa unaweza kuongeza mwanafunzi."); document.getElementById('class-form').reset(); loadClasses(); }
 });
 
 async function deleteClass(id) {
@@ -121,13 +117,15 @@ async function deleteClass(id) {
     loadClasses();
 }
 
-// 4. WANAFUNZI
+// 6. KUVUTA WANAFUNZI (Inajaza marks-student)
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allStudents = data.students || [];
-    const options = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
-    if(document.getElementById('marks-student')) document.getElementById('marks-student').innerHTML = options;
+    
+    if(document.getElementById('marks-student')) {
+        document.getElementById('marks-student').innerHTML = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+    }
     
     const tbody = document.getElementById('students-table-body');
     if (tbody) {
@@ -153,7 +151,7 @@ async function deleteStudent(id) {
     loadStudents();
 }
 
-// 5. MASOMO
+// 7. KUVUTA MASOMO (Inajaza marks-subject)
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -163,17 +161,18 @@ async function loadSubjects() {
     }
 }
 
-// 6. MITIHANI NA BROADSHEET (Logic ya Kutengeneza Imerudishwa)
+// 8. KUVUTA NA KUTENGENEZA MITIHANI
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allExams = data.exams || [];
+    
     const options = '<option value="">-- Chagua Mtihani --</option>' + allExams.map(e => `<option value="${e.id}">${e.name} (${e.term})</option>`).join('');
     if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = options;
     if(document.getElementById('process-exam-select')) document.getElementById('process-exam-select').innerHTML = options;
 }
 
-// HAPA NDIO CODE YA KUTENGENEZA MTIHANI ILIPOKUWEPO
+// HAPA NDIO KUTENGENEZA MTIHANI
 document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
@@ -185,20 +184,20 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
 
     try {
         const res = await fetch(`${API_BASE}/exams`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ school_id: currentSchoolId, class_id, name, term, year })
         });
         if (res.ok) {
-            alert("Mtihani umetengenezwa!");
+            alert("Mtihani umetengenezwa! Sasa chagua mtihani kwenye dropdown ya kuweka alama.");
             document.getElementById('create-exam-form').reset();
-            await loadExams();
+            await loadExams(); // Sasisha dropdowns
         } else {
             const err = await res.json(); alert("Kosa: " + err.error);
         }
     } catch (err) { alert("Hitilafu ya mtandao"); }
 });
 
+// 9. KUWEKA ALAMA & BROADSHEET
 document.getElementById('add-marks-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = { exam_id: document.getElementById('marks-exam').value, student_id: document.getElementById('marks-student').value, subject_id: document.getElementById('marks-subject').value, marks: parseFloat(document.getElementById('marks-score').value) };
@@ -224,7 +223,7 @@ async function loadBroadsheet() {
     } catch (err) { alert("Kosa la kuvuta matokeo."); }
 }
 
-// 7. SHOW SECTION
+// 10. KUBADILISHA SEHEMU
 function showSection(id) {
     ['students', 'classes', 'exams'].forEach(s => {
         const el = document.getElementById(`${s}-section`);
