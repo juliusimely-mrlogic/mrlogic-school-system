@@ -127,15 +127,12 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
     if (currentSchoolId) {
-        document.getElementById('menu-cards').style.display = 'grid'; 
         await loadClasses(); 
         await loadStudents(); 
         await loadSubjects(); 
         await loadExams(); 
         await loadTeachers(); 
         await loadNotifications();
-    } else {
-        document.getElementById('menu-cards').style.display = 'none'; 
     }
 });
 

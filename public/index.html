@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <!-- Alama ya / inahakikisha faili linatafutwa kwenye mzizi -->
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -22,6 +22,7 @@
         </div>
     </div>
 
+    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -33,6 +34,7 @@
         </header>
         
         <main>
+            <!-- SUPER ADMIN DASHBOARD -->
             <div id="superadmin-dashboard" style="display: none; margin-bottom: 30px;">
                 <h2 style="color: #1e3c72; margin-bottom: 15px;">Takwimu za Mfumo Mzima</h2>
                 <div class="stats-grid">
@@ -53,6 +55,7 @@
                 <button onclick="toggleSchoolForm()" class="btn-green" id="add-school-btn">+ Sajili Shule</button>
             </div>
 
+            <!-- FOMU YA KUSAJILI SHULE -->
             <div id="school-form-container" style="display: none;">
                 <h3>Sajili Shule Mpya</h3>
                 <form id="school-form" class="form-grid">
@@ -82,7 +85,8 @@
                 </form>
             </div>
 
-            <div class="cards" id="menu-cards" style="display: none;">
+            <!-- KADI ZA MENU (Zimeondolewa display:none ili zionekane wazi) -->
+            <div class="cards" id="menu-cards">
                 <div class="card" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
                 <div class="card" onclick="showSection('teachers')" style="border-left-color: #e74c3c;"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
                 <div class="card" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
@@ -93,6 +97,7 @@
                 <div class="card" onclick="showSection('users')" style="border-left-color: #8e44ad;"><h3>Watumiaji</h3><p>Sajili Wakuu na Walimu</p></div>
             </div>
 
+            <!-- SEHEMU ZA KAZI (Zinabaki display:none hadi mtumiaji abonyeze kadi) -->
             <div id="users-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Watumiaji</h2>
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
@@ -263,7 +268,6 @@
         </main>
     </div>
     <div id="printable-report" style="display: none;"></div>
-    <!-- Alama ya / inahakikisha faili linatafutwa kwenye mzizi -->
     <script src="/app.js"></script>
 </body>
 </html>
