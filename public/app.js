@@ -5,6 +5,7 @@ let allExams = [];
 let allStudents = [];
 let allSubjects = [];
 let allClasses = [];
+let currentProcessedData = null; // Kwa ajili ya kuhifadhi matokeo
 
 if (token) { showDashboard(); }
 
@@ -65,8 +66,7 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_BASE}/schools`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
         const data = await res.json();
         if (res.ok) {
-            alert("Shule imesajiliwa! Sasa chagua shule hiyo kwenye dropdown ili kuona madarasa na masomo yake.");
-            document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
+            alert("Shule imesajiliwa!"); document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
         } else { alert("KOSA: " + data.error); }
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
@@ -95,7 +95,7 @@ async function loadClasses() {
         tbody.innerHTML = allClasses.map((c, i) => `
             <tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td>
             <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px; border:none; color:white; border-radius:3px;">Futa</button></td></tr>
-        `).join('') || '<tr><td colspan="4">Hakuna madarasa. Tafadhali ongeza darasa.</td></tr>';
+        `).join('') || '<tr><td colspan="4">Hakuna madarasa.</td></tr>';
     }
 }
 
@@ -118,7 +118,10 @@ async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allStudents = data.students || [];
-    if(document.getElementById('marks-student')) document.getElementById('marks-student').innerHTML = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+    
+    const stdOptions = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+    if(document.getElementById('marks-student')) document.getElementById('marks-student').innerHTML = stdOptions;
+    if(document.getElementById('report-student-select')) document.getElementById('report-student-select').innerHTML = stdOptions;
     
     const tbody = document.getElementById('students-table-body');
     if (tbody) {
@@ -161,31 +164,23 @@ async function loadExams() {
     
     if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = options;
     if(document.getElementById('process-exam-select')) document.getElementById('process-exam-select').innerHTML = options;
+    if(document.getElementById('report-exam-select')) document.getElementById('report-exam-select').innerHTML = options;
 }
 
 document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
-
     const class_id = document.getElementById('exam-class').value;
-    const name = document.getElementById('exam-name').value;
-    const term = document.getElementById('exam-term').value;
-    const year = parseInt(document.getElementById('exam-year').value);
-
     if(!class_id) return alert("Chagua darasa kwanza!");
 
     try {
         const res = await fetch(`${API_BASE}/exams`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ school_id: currentSchoolId, class_id, name, term, year })
+            body: JSON.stringify({ school_id: currentSchoolId, class_id, name: document.getElementById('exam-name').value, term: document.getElementById('exam-term').value, year: parseInt(document.getElementById('exam-year').value) })
         });
         if (res.ok) {
-            alert("Mtihani umetengenezwa! Sasa unaweza kuweka alama.");
-            document.getElementById('create-exam-form').reset();
-            await loadExams();
-        } else {
-            const err = await res.json(); alert("Kosa: " + err.error);
-        }
+            alert("Mtihani umetengenezwa!"); document.getElementById('create-exam-form').reset(); await loadExams();
+        } else { const err = await res.json(); alert("Kosa: " + err.error); }
     } catch (err) { alert("Hitilafu ya mtandao"); }
 });
 
@@ -204,6 +199,7 @@ async function loadBroadsheet() {
         const data = await res.json();
         if (!res.ok) return alert(data.error);
 
+        currentProcessedData = data; // Hifadhi data kwa ajili ya ripoti
         document.getElementById('broadsheet-container').style.display = 'block';
         document.getElementById('analytics-container').style.display = 'block';
         
@@ -223,10 +219,10 @@ async function loadBroadsheet() {
             tbody.innerHTML += `<tr><td><strong>${r.rank}</strong></td><td>${r.admission_number}</td><td class="name-col">${r.full_name}</td><td>${r.gender}</td><td>${r.totalMarks}</td><td><strong>${r.aggregatePoints}</strong></td><td>${r.gpa}</td><td><strong>${r.division}</strong></td></tr>`;
         });
 
+        // Analytics logic (Top 20, etc.) remains the same
         const results = data.results;
         document.getElementById('top-20-list').innerHTML = results.slice(0, 20).map(r => `<li>${r.full_name} - Pointi: ${r.aggregatePoints}, GPA: ${r.gpa}</li>`).join('') || '<li>Hakuna data.</li>';
         document.getElementById('bottom-20-list').innerHTML = [...results].reverse().slice(0, 20).map(r => `<li>${r.full_name} - Pointi: ${r.aggregatePoints}, GPA: ${r.gpa}</li>`).join('') || '<li>Hakuna data.</li>';
-        
         const fStudents = results.filter(r => r.subjects.filter(s => s.grade === 'F').length >= 3);
         document.getElementById('f-list').innerHTML = fStudents.map(r => `<li>${r.full_name} (Ana F: ${r.subjects.filter(s => s.grade === 'F').length})</li>`).join('') || '<li>Hakuna mwanafunzi mwenye F 3+.</li>';
 
@@ -255,14 +251,107 @@ async function publishResults() {
     try {
         const res = await fetch(`${API_BASE}/exams/${examId}/publish`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
-        if (res.ok) {
-            alert(data.message);
-            loadBroadsheet(); 
-        } else { alert("Kosa: " + data.error); }
+        if (res.ok) { alert(data.message); loadBroadsheet(); } 
+        else { alert("Kosa: " + data.error); }
     } catch (err) { alert("Hitilafu ya mtandao"); }
 }
 
-// 8. UCHAMBUZI WA HALMASHAURI
+// 8. CHAPISHA RIPOTI YA MWANAFUNZI (REPORT CARD)
+async function printReportCard() {
+    const examId = document.getElementById('report-exam-select').value;
+    const studentId = document.getElementById('report-student-select').value;
+
+    if (!examId || !studentId) return alert("Tafadhali chagua mtihani na mwanafunzi kwanza!");
+
+    try {
+        // Kama data haijavutwa, ivute kwanza
+        if (!currentProcessedData || currentProcessedData.exam.id != examId) {
+            const res = await fetch(`${API_BASE}/exams/processed/${examId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            currentProcessedData = await res.json();
+        }
+
+        const studentResult = currentProcessedData.results.find(r => r.id == studentId);
+        const exam = currentProcessedData.exam;
+        const schoolName = document.getElementById('school-selector').options[document.getElementById('school-selector').selectedIndex].text;
+
+        if (!studentResult) return alert("Matokeo ya mwanafunzi huyu hayapo kwenye mtihani huu.");
+
+        // Tengeneza HTML ya Ripoti
+        let subjectRows = studentResult.subjects.map(s => `
+            <tr>
+                <td style="border: 1px solid #000; padding: 5px;">${s.subject_name}</td>
+                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.marks}</td>
+                <td style="border: 1px solid #000; padding: 5px; text-align: center; font-weight: bold;">${s.grade}</td>
+                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.points}</td>
+            </tr>
+        `).join('');
+
+        const reportHTML = `
+            <div style="padding: 40px; font-family: 'Times New Roman', Times, serif;">
+                <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h1 style="margin: 0; text-transform: uppercase;">${schoolName}</h1>
+                    <h3 style="margin: 5px 0;">RIPOTI YA MATOKEO YA MWANAFUNZI</h3>
+                    <p style="margin: 0;">Mtihani: ${exam.name} (${exam.term} ${exam.year})</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 16px;">
+                    <div>
+                        <p style="margin: 5px 0;"><strong>Jina la Mwanafunzi:</strong> ${studentResult.full_name}</p>
+                        <p style="margin: 5px 0;"><strong>Namba ya Usajili:</strong> ${studentResult.admission_number}</p>
+                    </div>
+                    <div>
+                        <p style="margin: 5px 0;"><strong>Jinsia:</strong> ${studentResult.gender}</p>
+                        <p style="margin: 5px 0;"><strong>Nafasi (Rank):</strong> ${studentResult.rank} kati ya ${currentProcessedData.results.length}</p>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background-color: #e0e0e0;">
+                            <th style="border: 1px solid #000; padding: 8px; text-align: left;">Somo (Subject)</th>
+                            <th style="border: 1px solid #000; padding: 8px;">Alama (Marks)</th>
+                            <th style="border: 1px solid #000; padding: 8px;">Daraja (Grade)</th>
+                            <th style="border: 1px solid #000; padding: 8px;">Pointi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${subjectRows}
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: space-between; border: 2px solid #000; padding: 15px; font-size: 18px; font-weight: bold; margin-bottom: 50px;">
+                    <div>Jumla ya Alama: ${studentResult.totalMarks}</div>
+                    <div>Pointi: ${studentResult.aggregatePoints}</div>
+                    <div>Wastani (GPA): ${studentResult.gpa}</div>
+                    <div>Divisheni: ${studentResult.division}</div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+                    <div>
+                        <p>Sahihi ya Mwalimu wa Darasa:</p>
+                        <p style="margin-top: 40px;">...................................................</p>
+                    </div>
+                    <div>
+                        <p>Sahihi ya Mkuu wa Shule:</p>
+                        <p style="margin-top: 40px;">...................................................</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Weka kwenye eneo la print na uchapishe
+        const printArea = document.getElementById('printable-report');
+        printArea.innerHTML = reportHTML;
+        
+        // Fanya print
+        window.print();
+
+    } catch (err) {
+        alert("Hitilafu wakati wa kutengeneza ripoti: " + err.message);
+    }
+}
+
+// 9. UCHAMBUZI WA HALMASHAURI
 async function loadDistrictAnalytics() {
     const district = document.getElementById('district-name').value;
     if (!district) return alert("Weka jina la Halmashauri!");
@@ -282,7 +371,7 @@ async function loadDistrictAnalytics() {
     } catch (err) { alert("Kosa la kuvuta uchambuzi."); }
 }
 
-// 9. SHOW SECTION
+// 10. SHOW SECTION
 function showSection(id) {
     ['students', 'classes', 'exams'].forEach(s => {
         const el = document.getElementById(`${s}-section`);

@@ -26,45 +26,38 @@ table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 14p
 th, td { text-align: left; padding: 10px; border: 1px solid #ddd; }
 th { background-color: #f2f2f2; }
 
-/* =========================================
-   BROADSHEET STYLES (Rangi za Bluu na Njano)
-   ========================================= */
-.broadsheet-wrapper {
-    background-color: #e0f7fa; /* Light Blue outer background */
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 20px;
-    border: 2px solid #0288d1;
-}
-
-.broadsheet-title {
-    text-align: center;
-    color: #01579b;
-    margin-bottom: 15px;
-}
-
+/* BROADSHEET STYLES (Rangi za Bluu na Njano) */
+.broadsheet-wrapper { background-color: #e0f7fa; padding: 20px; border-radius: 8px; margin-top: 20px; border: 2px solid #0288d1; }
+.broadsheet-title { text-align: center; color: #01579b; margin-bottom: 15px; }
 .broadsheet-table { background: white; }
-.broadsheet-table th {
-    background-color: #b3e5fc; /* Light Blue headers */
-    color: #01579b;
-    font-weight: bold;
-    text-align: center;
-    border: 1px solid #0288d1;
-}
-.broadsheet-table td {
-    background-color: #fff9c4; /* Light Yellow body */
-    border: 1px solid #fbc02d;
-    text-align: center;
-}
+.broadsheet-table th { background-color: #b3e5fc; color: #01579b; font-weight: bold; text-align: center; border: 1px solid #0288d1; }
+.broadsheet-table td { background-color: #fff9c4; border: 1px solid #fbc02d; text-align: center; }
 .broadsheet-table td.name-col { text-align: left; font-weight: bold; }
 
-/* Print Settings */
-#printable-area { display: none; }
+/* PRINT STYLES */
+#printable-report { display: none; }
+
 @media print {
+    /* Ficha kila kitu kwenye ukurasa */
     body * { visibility: hidden; }
-    #printable-area, #printable-area * { visibility: visible; }
-    #printable-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 10px; background: white; }
-    .broadsheet-wrapper { background: white; border: none; }
-    .broadsheet-table th { background-color: #b3e5fc !important; -webkit-print-color-adjust: exact; }
-    .broadsheet-table td { background-color: #fff9c4 !important; -webkit-print-color-adjust: exact; }
+    
+    /* Onyesha tu eneo la ripoti */
+    #printable-report, #printable-report * { visibility: visible; }
+    
+    /* Weka ripoti juu kabisa */
+    #printable-report { 
+        display: block !important; 
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 100%; 
+        background: white; 
+    }
+
+    /* Ruhusu Broadsheet ichapishwe pia kama inahitajika */
+    #printable-broadsheet, #printable-broadsheet * { visibility: visible; }
+    #printable-broadsheet {
+        display: block !important;
+        position: absolute; left: 0; top: 0; width: 100%; background: white;
+    }
 }
