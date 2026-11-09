@@ -40,6 +40,8 @@ function showDashboard() {
     if (currentUserRole === 'SUPER_ADMIN') {
         document.getElementById('superadmin-dashboard').style.display = 'block';
         fetchSuperAdminStats();
+    } else {
+        document.getElementById('clear-schools-btn').style.display = 'none'; // Ficha kitufe cha kufuta kwa wasio Super Admin
     }
     
     loadSchools();
@@ -123,6 +125,21 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         } else { alert("KOSA: " + data.error); }
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
+
+// KAZI MPYA: Kufuta Shule Zote
+async function clearAllSchools() {
+    if (!confirm("Una uhakika unataka kufuta shule ZOTE? Hii itafuta data zote za majaribio kwenye mfumo.")) return;
+    try {
+        const res = await fetch(`${API_BASE}/schools/clear-all`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+            alert("Shule zote zimefutwa kikamilifu! Sasa unaweza kuanza upya.");
+            loadSchools();
+        } else {
+            const data = await res.json();
+            alert("Kosa: " + data.error);
+        }
+    } catch (err) { alert("Kosa la mtandao"); }
+}
 
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
