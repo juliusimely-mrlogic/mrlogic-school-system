@@ -90,12 +90,12 @@ th { background-color: #f2f2f2; }
         background: white !important;
     }
 
-    /* Futa vivuli vya picha za sahihi na muhuri */
+    /* Futa vivuli (Sahihi na Muhuri) - Tumeondoa mix-blend-mode ili zisionekane vibaya */
     .signature-img, .stamp-img {
-        mix-blend-mode: multiply !important; /* Hii inafuta background nyeupe */
         background: transparent !important;
         box-shadow: none !important;
         border: none !important;
+        display: inline-block;
     }
 
     /* Weka ukubwa wa karatasi kuwa A4 */

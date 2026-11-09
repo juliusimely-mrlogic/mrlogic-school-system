@@ -465,6 +465,15 @@ async function printReportCard() {
     const examId = document.getElementById('report-exam-select').value;
     const studentId = document.getElementById('report-student-select').value;
     if (!examId || !studentId) return alert("Chagua mtihani na mwanafunzi!");
+
+    // Tunavuta upya taarifa za shule hapa ili kuhakikisha picha zilizopakiwa zinapatikana
+    let freshSchoolData = null;
+    try {
+        const resSchool = await fetch(`${API_BASE}/schools`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataSchool = await resSchool.json();
+        freshSchoolData = dataSchool.schools.find(s => s.id == currentSchoolId);
+    } catch(e) { console.error("Kosa la kupata shule", e); }
+
     if (!currentProcessedData || currentProcessedData.exam.id != examId) {
         const res = await fetch(`${API_BASE}/exams/processed/${examId}`, { headers: { 'Authorization': `Bearer ${token}` } });
         currentProcessedData = await res.json();
@@ -473,13 +482,10 @@ async function printReportCard() {
     if (!studentResult) return alert("Hakuna matokeo kwa mwanafunzi huyu.");
     const exam = currentProcessedData.exam;
     
-    const currentSchool = allSchoolsData.find(s => s.id == currentSchoolId);
-    
-    // Tumeongeza class="signature-img" na class="stamp-img" hapa
-    const signatureImg = currentSchool && currentSchool.headmaster_signature ? `<img src="${currentSchool.headmaster_signature}" class="signature-img" style="height: 60px; max-width: 150px; object-fit: contain;">` : `<p style="margin-top: 40px;">.......................</p>`;
-    const stampImg = currentSchool && currentSchool.school_stamp ? `<img src="${currentSchool.school_stamp}" class="stamp-img" style="height: 80px; max-width: 150px; object-fit: contain;">` : ``;
+    const signatureImg = freshSchoolData && freshSchoolData.headmaster_signature ? `<img src="${freshSchoolData.headmaster_signature}" class="signature-img" style="height: 60px; max-width: 150px; object-fit: contain;">` : `<p style="margin-top: 40px;">.......................</p>`;
+    const stampImg = freshSchoolData && freshSchoolData.school_stamp ? `<img src="${freshSchoolData.school_stamp}" class="stamp-img" style="height: 80px; max-width: 150px; object-fit: contain;">` : ``;
 
-    const schoolName = currentSchool ? currentSchool.name : "JINA LA SHULE";
+    const schoolName = freshSchoolData ? freshSchoolData.name : "JINA LA SHULE";
     
     let subjectRows = studentResult.subjects.map(s => `<tr><td style="border: 1px solid #000; padding: 5px;">${s.subject_name}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.marks}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.grade}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.points}</td></tr>`).join('');
     
