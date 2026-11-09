@@ -47,13 +47,6 @@ function showDashboard() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
     
-    // Ulinzi wa Vitufe
-    if (currentUserRole !== 'SUPER_ADMIN') {
-        if(document.getElementById('add-school-btn')) document.getElementById('add-school-btn').style.display = 'none';
-    } else {
-        if(document.getElementById('add-school-btn')) document.getElementById('add-school-btn').style.display = 'block';
-    }
-
     loadSchools();
     
     if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'SCHOOL_MANAGER') {
