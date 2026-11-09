@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="/style.css?v=19">
+    <link rel="stylesheet" href="/style.css?v=20">
 </head>
 <body>
-
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -45,13 +44,11 @@
             <div class="top-bar">
                 <div>
                     <label><strong>Chagua Shule: </strong></label>
-                    <select id="school-selector">
-                        <option value="">-- Chagua Shule --</option>
-                    </select>
+                    <select id="school-selector"><option value="">-- Chagua Shule --</option></select>
                 </div>
                 <div id="admin-school-actions">
                     <button onclick="toggleSchoolForm()" class="btn-green" id="add-school-btn">+ Sajili Shule</button>
-                    <button onclick="clearAllSchools()" class="btn-red" style="margin-left: 10px;" id="clear-schools-btn">Futa Shule Zote (Majaribio)</button>
+                    <button onclick="clearAllSchools()" class="btn-red" style="margin-left: 10px;" id="clear-schools-btn">Futa Shule Zote</button>
                 </div>
             </div>
 
@@ -84,27 +81,20 @@
                 </form>
             </div>
 
-            <!-- KADI ZA MENU ZENYE ID -->
             <div class="cards" id="menu-cards">
-                <div class="card" id="card-students" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
-                <div class="card" id="card-teachers" onclick="showSection('teachers')" style="border-left-color: #e74c3c;"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
-                <div class="card" id="card-classes" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
-                <div class="card" id="card-attendance" onclick="showSection('attendance')" style="border-left-color: #f39c12;"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
-                <div class="card" id="card-exams" onclick="showSection('exams')" style="border-left-color: #e67e22;"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
-                
-                <!-- Kadi inayofichwa kwa Mwalimu -->
+                <div class="card" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
+                <div class="card" onclick="showSection('teachers')" style="border-left-color: #e74c3c;"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
+                <div class="card" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
+                <div class="card" onclick="showSection('attendance')" style="border-left-color: #f39c12;"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+                <div class="card" onclick="showSection('exams')" style="border-left-color: #e67e22;"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
                 <div class="card" id="card-fees" onclick="showSection('fees')" style="border-left-color: #27ae60;"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>
-                
-                <div class="card" id="card-notifications" onclick="showSection('notifications')" style="border-left-color: #3498db;"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
-                
-                <!-- Kadi inayofichwa kwa Mwalimu -->
+                <div class="card" onclick="showSection('notifications')" style="border-left-color: #3498db;"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
                 <div class="card" id="card-users" onclick="showSection('users')" style="border-left-color: #8e44ad;"><h3>Watumiaji</h3><p>Sajili Wakuu na Walimu</p></div>
             </div>
 
-            <!-- SEHEMU ZA KAZI (Zinabaki kama zilivyo) -->
             <div id="students-section" class="section-container" style="display: none;">
                 <h2>Wanafunzi</h2>
-                <div class="step-box" style="background: #f9f9f9; border-left-color: #2a5298;">
+                <div class="step-box" style="background: #f9f9f9; border-left-color: #2a5298;" id="add-student-container">
                     <h3>Sajili Mwanafunzi Mmoja</h3>
                     <form id="student-form" class="form-row">
                         <input type="text" id="student-name" placeholder="Jina Kamili" required>
@@ -115,9 +105,8 @@
                         <button type="submit" class="btn-blue">Sajili Mwanafunzi</button>
                     </form>
                 </div>
-                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;">
-                    <h3>Pakia Wanafunzi Kupitia Excel (Bulk Upload)</h3>
-                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Vichwa: <strong>JINA, JINSIA, NAMBA, SIMU</strong>.</p>
+                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;" id="bulk-upload-container">
+                    <h3>Pakia Wanafunzi Kupitia Excel</h3>
                     <form id="bulk-upload-form" class="form-row">
                         <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" required style="padding: 8px; border: 1px solid #ccc; border-radius: 5px;">
                         <select id="bulk-class" required><option value="">-- Chagua Darasa --</option></select>
@@ -135,7 +124,36 @@
             <div id="attendance-section" class="section-container" style="display: none;"><h2>Mahudhurio</h2></div>
             <div id="exams-section" class="section-container" style="display: none;"><h2>Mitihani</h2></div>
             <div id="notifications-section" class="section-container" style="display: none;"><h2>Taarifa</h2></div>
-            <div id="users-section" class="section-container" style="display: none;"><h2>Watumiaji</h2></div>
+
+            <div id="users-section" class="section-container" style="display: none;">
+                <h2>Usimamizi wa Watumiaji</h2>
+                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
+                    <h3>Sajili Mtumiaji Mpya (Password ya awali ni 1000)</h3>
+                    <form id="user-form" class="form-row">
+                        <select id="user-school" required><option value="">-- Chagua Shule --</option></select>
+                        <input type="text" id="user-name" placeholder="Jina Kamili" required>
+                        <select id="user-role" required>
+                            <option value="">-- Chagua Cheo --</option>
+                            <option value="SCHOOL_MANAGER">Mkuu wa Shule</option>
+                            <option value="ACADEMIC_HEAD">Mtaaluma Mkuu</option>
+                            <option value="TEACHER">Mwalimu</option>
+                        </select>
+                        <select id="user-teacher" style="display: none;"><option value="">-- Chagua Mwalimu --</option></select>
+                        <button type="submit" class="btn-blue" style="background: #8e44ad;">Sajili Mtumiaji</button>
+                    </form>
+                </div>
+                <div class="table-responsive"><table><thead><tr><th>Jina</th><th>Username</th><th>Cheo</th><th>Shule</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
+
+                <h2 style="margin-top: 40px; color: #e67e22;">Mipangilio ya Shule (Sahihi & Muhuri)</h2>
+                <div class="step-box" style="background: #fdf2e9; border-left-color: #e67e22;">
+                    <form id="school-assets-form" class="form-row">
+                        <div><label style="display:block; font-size:12px;">Sahihi ya Mkuu:</label><input type="file" id="signature-file" accept="image/*"></div>
+                        <div><label style="display:block; font-size:12px;">Muhuri wa Shule:</label><input type="file" id="stamp-file" accept="image/*"></div>
+                        <button type="submit" class="btn-orange" style="margin-top: 18px;">Hifadhi Picha</button>
+                    </form>
+                    <div id="assets-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+            </div>
 
             <div id="fees-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Ada</h2>
@@ -169,7 +187,7 @@
                     </form>
                 </div>
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;">
-                    <h3>4. Malipo ya Simu (M-Pesa / Tigo / Airtel)</h3>
+                    <h3>4. Malipo ya Simu</h3>
                     <form id="simulate-mobile-payment-form" class="form-row">
                         <select id="mobile-student" required><option value="">-- Chagua Mwanafunzi --</option></select>
                         <input type="number" id="mobile-amount" placeholder="Kiasi (Tsh)" required>
@@ -186,6 +204,6 @@
         </main>
     </div>
     <div id="printable-report" style="display: none;"></div>
-    <script src="/app.js?v=19"></script>
+    <script src="/app.js?v=20"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ const db = require('../db/database');
 const authenticate = require('../middlewares/authMiddleware');
 
 router.post('/', authenticate, async (req, res) => {
+  if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Mwalimu hawezi kuongeza darasa.' });
   const { school_id, name, level_type } = req.body;
   if (!school_id || !name || !level_type) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
   try {
@@ -15,12 +16,23 @@ router.post('/', authenticate, async (req, res) => {
 
 router.get('/', authenticate, async (req, res) => {
   try {
-    const classes = await db.all('SELECT * FROM classes WHERE school_id = ?', [req.query.school_id]);
+    let classes;
+    if (req.user.role === 'TEACHER' && req.user.teacher_id) {
+        // Mwalimu anaona madarasa aliyopangiwa tu
+        classes = await db.all(`
+            SELECT DISTINCT c.* FROM classes c
+            JOIN teacher_assignments ta ON c.id = ta.class_id
+            WHERE ta.teacher_id = ?
+        `, [req.user.teacher_id]);
+    } else {
+        classes = await db.all('SELECT * FROM classes WHERE school_id = ?', [req.query.school_id]);
+    }
     res.json({ classes });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.delete('/:id', authenticate, async (req, res) => {
+  if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Mwalimu hawezi kufuta darasa.' });
   try {
     await db.run('DELETE FROM classes WHERE id = ?', [req.params.id]);
     res.json({ message: 'Darasa limefutwa' });

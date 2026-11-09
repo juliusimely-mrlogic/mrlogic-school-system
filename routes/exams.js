@@ -5,6 +5,7 @@ const authenticate = require('../middlewares/authMiddleware');
 const { processStudentResults } = require('../services/gradingService');
 
 router.post('/', authenticate, async (req, res) => {
+  if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Mwalimu hawezi kutengeneza mtihani.' });
   const { school_id, class_id, name, term, year } = req.body;
   if (!school_id || !class_id || !name) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
   try {
@@ -15,12 +16,20 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 router.get('/', authenticate, async (req, res) => {
-  const { class_id, school_id } = req.query;
+  const { school_id, class_id } = req.query;
   try {
     let exams;
-    if (school_id) exams = await db.all('SELECT * FROM exams WHERE school_id = ?', [school_id]);
-    else if (class_id) exams = await db.all('SELECT * FROM exams WHERE class_id = ?', [class_id]);
-    else exams = await db.all('SELECT * FROM exams');
+    if (req.user.role === 'TEACHER' && req.user.teacher_id) {
+        exams = await db.all(`
+            SELECT DISTINCT e.* FROM exams e
+            JOIN teacher_assignments ta ON e.class_id = ta.class_id
+            WHERE ta.teacher_id = ?
+        `, [req.user.teacher_id]);
+    } else {
+        if (school_id) exams = await db.all('SELECT * FROM exams WHERE school_id = ?', [school_id]);
+        else if (class_id) exams = await db.all('SELECT * FROM exams WHERE class_id = ?', [class_id]);
+        else exams = await db.all('SELECT * FROM exams');
+    }
     res.json({ exams });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -35,6 +44,7 @@ router.post('/results', authenticate, async (req, res) => {
 });
 
 router.put('/:id/publish', authenticate, async (req, res) => {
+  if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Mwalimu hawezi kuthibitisha matokeo.' });
   if (req.user.role !== 'ACADEMIC_HEAD' && req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa.' });
   try {
     await db.run(`UPDATE exams SET is_published = 1 WHERE id = ?`, [req.params.id]);

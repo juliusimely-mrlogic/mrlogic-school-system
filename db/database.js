@@ -10,7 +10,7 @@ async function createTables() {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS schools (id SERIAL PRIMARY KEY, code VARCHAR(50) UNIQUE, name VARCHAR(255), region VARCHAR(100), district VARCHAR(100), ward VARCHAR(100), exam_center_no VARCHAR(100), headmaster_name VARCHAR(255), ownership VARCHAR(50), language VARCHAR(50), levels TEXT, is_active INTEGER DEFAULT 1, subscription_expires TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, full_name VARCHAR(255), email VARCHAR(255), username VARCHAR(100) UNIQUE, password_hash TEXT, salt TEXT, role VARCHAR(50), is_password_changed INTEGER DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, teacher_id INTEGER, full_name VARCHAR(255), email VARCHAR(255), username VARCHAR(100) UNIQUE, password_hash TEXT, salt TEXT, role VARCHAR(50), is_password_changed INTEGER DEFAULT 0);
       CREATE TABLE IF NOT EXISTS classes (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, form_level INTEGER, name VARCHAR(100), numeric_order INTEGER, level_type VARCHAR(50));
       CREATE TABLE IF NOT EXISTS streams (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, class_id INTEGER REFERENCES classes(id) ON DELETE CASCADE, name VARCHAR(100));
       CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, code VARCHAR(50), name VARCHAR(255), is_core INTEGER DEFAULT 1, is_active INTEGER DEFAULT 1, level_type VARCHAR(50), category VARCHAR(50), a_level_role VARCHAR(50));
@@ -28,7 +28,7 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS system_payments (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, amount REAL, date_paid TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
 
-    // Ongeza safu mpya za picha kama hazipo (PostgreSQL syntax)
+    // Ongeza safu mpya za picha kama hazipo
     await pool.query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS headmaster_signature TEXT;`);
     await pool.query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS school_stamp TEXT;`);
     
