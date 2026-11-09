@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="style.css?v=8">
+    <!-- Alama ya / inahakikisha faili linatafutwa kwenye mzizi -->
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-    <!-- LOGIN -->
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -22,7 +22,6 @@
         </div>
     </div>
 
-    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -34,7 +33,6 @@
         </header>
         
         <main>
-            <!-- SUPER ADMIN DASHBOARD (Inaonekana kwa Super Admin tu) -->
             <div id="superadmin-dashboard" style="display: none; margin-bottom: 30px;">
                 <h2 style="color: #1e3c72; margin-bottom: 15px;">Takwimu za Mfumo Mzima</h2>
                 <div class="stats-grid">
@@ -55,7 +53,6 @@
                 <button onclick="toggleSchoolForm()" class="btn-green" id="add-school-btn">+ Sajili Shule</button>
             </div>
 
-            <!-- FOMU YA KUSAJILI SHULE -->
             <div id="school-form-container" style="display: none;">
                 <h3>Sajili Shule Mpya</h3>
                 <form id="school-form" class="form-grid">
@@ -96,7 +93,6 @@
                 <div class="card" onclick="showSection('users')" style="border-left-color: #8e44ad;"><h3>Watumiaji</h3><p>Sajili Wakuu na Walimu</p></div>
             </div>
 
-            <!-- ================= SEHEMU ZOTE ZA KAZI ================= -->
             <div id="users-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Watumiaji</h2>
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
@@ -104,10 +100,7 @@
                     <form id="user-form" class="form-row">
                         <input type="text" id="user-name" placeholder="Jina Kamili" required>
                         <select id="user-role" required>
-                            <option value="">-- Chagua Cheo --</option>
-                            <option value="SCHOOL_MANAGER">Mkuu wa Shule</option>
-                            <option value="ACADEMIC_HEAD">Mtaaluma Mkuu</option>
-                            <option value="TEACHER">Mwalimu</option>
+                            <option value="">-- Chagua Cheo --</option><option value="SCHOOL_MANAGER">Mkuu wa Shule</option><option value="ACADEMIC_HEAD">Mtaaluma Mkuu</option><option value="TEACHER">Mwalimu</option>
                         </select>
                         <button type="submit" class="btn-blue" style="background: #8e44ad;">Sajili Mtumiaji</button>
                     </form>
@@ -270,6 +263,7 @@
         </main>
     </div>
     <div id="printable-report" style="display: none;"></div>
-    <script src="app.js?v=8"></script>
+    <!-- Alama ya / inahakikisha faili linatafutwa kwenye mzizi -->
+    <script src="/app.js"></script>
 </body>
 </html>

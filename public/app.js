@@ -6,7 +6,6 @@ let currentUserRole = localStorage.getItem('user_role');
 
 if (token) { showDashboard(); }
 
-// 1. LOGIN
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
@@ -33,7 +32,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 document.getElementById('logout-btn').addEventListener('click', () => { localStorage.clear(); location.reload(); });
 
-// 2. DASHBOARD
 function showDashboard() {
     document.getElementById('welcome-msg').innerText = `Karibu, ${localStorage.getItem('user_name')}`;
     document.getElementById('login-screen').style.display = 'none';
@@ -72,7 +70,6 @@ function promptChangePassword() {
     });
 }
 
-// 3. SHULE NA LEVELS
 async function loadSchools() {
     const res = await fetch(`${API_BASE}/schools`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -98,11 +95,8 @@ function toggleSchoolForm() {
 
 document.getElementById('school-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // Kukusanya levels zilizochaguliwa
     const schoolLevels = [];
     document.querySelectorAll('.school-level:checked').forEach(cb => schoolLevels.push(cb.value));
-    
     if(schoolLevels.length === 0) return alert("Tafadhali chagua angalau ngazi moja ya shule (Msingi, O-Level, au A-Level).");
 
     const body = {
@@ -133,7 +127,7 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
     if (currentSchoolId) {
-        document.getElementById('menu-cards').style.display = 'grid'; // Onyesha kadi za menu
+        document.getElementById('menu-cards').style.display = 'grid'; 
         await loadClasses(); 
         await loadStudents(); 
         await loadSubjects(); 
@@ -141,11 +135,10 @@ document.getElementById('school-selector').addEventListener('change', async (e) 
         await loadTeachers(); 
         await loadNotifications();
     } else {
-        document.getElementById('menu-cards').style.display = 'none'; // Ficha kadi za menu
+        document.getElementById('menu-cards').style.display = 'none'; 
     }
 });
 
-// 4. USIMAMIZI WA WATUMIAJI (USERS)
 async function loadUsers() {
     const res = await fetch(`${API_BASE}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -173,7 +166,6 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
     } else { alert("Kosa: " + data.error); }
 });
 
-// 5. MADARASA
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -197,7 +189,6 @@ async function deleteClass(id) {
     loadClasses();
 }
 
-// 6. WANAFUNZI
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -221,7 +212,6 @@ async function deleteStudent(id) {
     loadStudents();
 }
 
-// 7. MASOMO
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -230,7 +220,6 @@ async function loadSubjects() {
     ['marks-subject', 'assign-subject'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
 }
 
-// 8. WALIMU NA MGAWANYO
 async function loadTeachers() {
     const res = await fetch(`${API_BASE}/teachers?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -260,7 +249,6 @@ document.getElementById('assignment-form').addEventListener('submit', async (e) 
     if (res.ok) { alert("Mgawanyo umefanikiwa!"); loadTeachers(); }
 });
 
-// 9. MITIHANI
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -337,7 +325,6 @@ async function printReportCard() {
     window.print();
 }
 
-// 10. ADA
 document.getElementById('fee-structure-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = { school_id: currentSchoolId, class_id: document.getElementById('struct-class').value, term: document.getElementById('struct-term').value, year: parseInt(document.getElementById('struct-year').value), amount: parseFloat(document.getElementById('struct-amount').value) };
@@ -363,7 +350,6 @@ document.getElementById('fee-form').addEventListener('submit', async (e) => {
     if (res.ok) { alert("Malipo yamerekodiwa!"); document.getElementById('fee-form').reset(); }
 });
 
-// 11. TAARIFA NA MAHUDHURIO
 document.getElementById('notification-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = { school_id: currentSchoolId, title: document.getElementById('notif-title').value, message: document.getElementById('notif-message').value };
@@ -398,7 +384,6 @@ async function loadAttendance() {
     document.getElementById('attendance-form').style.display = 'block';
 }
 
-// 12. KUBADILISHA SEHEMU
 function showSection(id) {
     ['students', 'teachers', 'classes', 'attendance', 'exams', 'fees', 'notifications', 'users'].forEach(s => { if(document.getElementById(`${s}-section`)) document.getElementById(`${s}-section`).style.display = 'none'; });
     if(document.getElementById(`${id}-section`)) document.getElementById(`${id}-section`).style.display = 'block';
