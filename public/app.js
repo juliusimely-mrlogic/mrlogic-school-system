@@ -8,7 +8,7 @@ let allClasses = [];
 
 if (token) { showDashboard(); }
 
-// 1. LOGIN
+// 1. LOGIN & DASHBOARD
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
@@ -26,7 +26,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     } catch (err) { document.getElementById('login-error').innerText = 'Server haipatikani.'; }
 });
 
-// 2. DASHBOARD & KUVUTA SHULE
 document.getElementById('logout-btn').addEventListener('click', () => { localStorage.clear(); location.reload(); });
 
 function showDashboard() {
@@ -46,11 +45,10 @@ async function loadSchools() {
     }
 }
 
-// 3. MABADILIKO YA SHULE (HAPA NDIO TUNAVUTA KILA KITU)
+// 2. MABADILIKO YA SHULE
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
     if (currentSchoolId) {
-        // Fanya kazi hizi kwa mpigo ili dropdown zote zijae
         await loadClasses();
         await loadStudents();
         await loadSubjects();
@@ -58,7 +56,7 @@ document.getElementById('school-selector').addEventListener('change', async (e) 
     }
 });
 
-// 4. KUSAJILI SHULE (Bila mabadiliko)
+// 3. KUSAJILI SHULE NA MADARASA
 function toggleSchoolForm() {
     const c = document.getElementById('school-form-container');
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
@@ -77,29 +75,24 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_BASE}/schools`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
         const data = await res.json();
         if (res.ok) {
-            alert("Shule imesajiliwa! Sasa chagua shule hiyo kwenye dropdown ili kuona madarasa na masomo yake.");
-            document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
+            alert("Shule imesajiliwa!"); document.getElementById('school-form').reset(); toggleSchoolForm(); loadSchools();
         } else { alert("KOSA: " + data.error); }
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
 
-// 5. KUVUTA MADARASA (Inajaza student-class na exam-class)
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allClasses = data.classes || [];
-    
-    // Jaza dropdowns zote zinazohitaji darasa
     const options = '<option value="">-- Chagua Darasa --</option>' + allClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     ['student-class', 'exam-class'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
     
-    // Onyesha kwenye jedwali
     const tbody = document.getElementById('classes-table-body');
     if (tbody) {
         tbody.innerHTML = allClasses.map((c, i) => `
             <tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td>
             <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td></tr>
-        `).join('') || '<tr><td colspan="4">Hakuna madarasa. Tafadhali ongeza darasa kwanza.</td></tr>';
+        `).join('') || '<tr><td colspan="4">Hakuna madarasa.</td></tr>';
     }
 }
 
@@ -108,7 +101,7 @@ document.getElementById('class-form').addEventListener('submit', async (e) => {
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
     const body = { school_id: currentSchoolId, name: document.getElementById('class-name').value, level_type: document.getElementById('class-level').value };
     const res = await fetch(`${API_BASE}/classes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-    if (res.ok) { alert("Darasa limesajiliwa! Sasa unaweza kuongeza mwanafunzi."); document.getElementById('class-form').reset(); loadClasses(); }
+    if (res.ok) { alert("Darasa limesajiliwa!"); document.getElementById('class-form').reset(); loadClasses(); }
 });
 
 async function deleteClass(id) {
@@ -117,15 +110,12 @@ async function deleteClass(id) {
     loadClasses();
 }
 
-// 6. KUVUTA WANAFUNZI (Inajaza marks-student)
+// 4. KUVUTA WANAFUNZI NA MASOMO
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allStudents = data.students || [];
-    
-    if(document.getElementById('marks-student')) {
-        document.getElementById('marks-student').innerHTML = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
-    }
+    if(document.getElementById('marks-student')) document.getElementById('marks-student').innerHTML = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
     
     const tbody = document.getElementById('students-table-body');
     if (tbody) {
@@ -151,53 +141,31 @@ async function deleteStudent(id) {
     loadStudents();
 }
 
-// 7. KUVUTA MASOMO (Inajaza marks-subject)
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allSubjects = data.subjects || [];
-    if(document.getElementById('marks-subject')) {
-        document.getElementById('marks-subject').innerHTML = '<option value="">-- Chagua Somo --</option>' + allSubjects.map(s => `<option value="${s.id}">${s.name} (${s.level_type})</option>`).join('');
-    }
+    if(document.getElementById('marks-subject')) document.getElementById('marks-subject').innerHTML = '<option value="">-- Chagua Somo --</option>' + allSubjects.map(s => `<option value="${s.id}">${s.name} (${s.level_type})</option>`).join('');
 }
 
-// 8. KUVUTA NA KUTENGENEZA MITIHANI
+// 5. MITIHANI NA UCHAMBUZI (ANALYTICS)
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allExams = data.exams || [];
-    
     const options = '<option value="">-- Chagua Mtihani --</option>' + allExams.map(e => `<option value="${e.id}">${e.name} (${e.term})</option>`).join('');
     if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = options;
     if(document.getElementById('process-exam-select')) document.getElementById('process-exam-select').innerHTML = options;
 }
 
-// HAPA NDIO KUTENGENEZA MTIHANI
 document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
-
-    const class_id = document.getElementById('exam-class').value;
-    const name = document.getElementById('exam-name').value;
-    const term = document.getElementById('exam-term').value;
-    const year = parseInt(document.getElementById('exam-year').value);
-
-    try {
-        const res = await fetch(`${API_BASE}/exams`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ school_id: currentSchoolId, class_id, name, term, year })
-        });
-        if (res.ok) {
-            alert("Mtihani umetengenezwa! Sasa chagua mtihani kwenye dropdown ya kuweka alama.");
-            document.getElementById('create-exam-form').reset();
-            await loadExams(); // Sasisha dropdowns
-        } else {
-            const err = await res.json(); alert("Kosa: " + err.error);
-        }
-    } catch (err) { alert("Hitilafu ya mtandao"); }
+    const body = { school_id: currentSchoolId, class_id: document.getElementById('exam-class').value, name: document.getElementById('exam-name').value, term: document.getElementById('exam-term').value, year: parseInt(document.getElementById('exam-year').value) };
+    const res = await fetch(`${API_BASE}/exams`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+    if (res.ok) { alert("Mtihani umetengenezwa!"); document.getElementById('create-exam-form').reset(); await loadExams(); }
 });
 
-// 9. KUWEKA ALAMA & BROADSHEET
 document.getElementById('add-marks-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = { exam_id: document.getElementById('marks-exam').value, student_id: document.getElementById('marks-student').value, subject_id: document.getElementById('marks-subject').value, marks: parseFloat(document.getElementById('marks-score').value) };
@@ -205,6 +173,7 @@ document.getElementById('add-marks-form').addEventListener('submit', async (e) =
     if (res.ok) { alert("Alama zimehifadhiwa!"); document.getElementById('add-marks-form').reset(); }
 });
 
+// HAPA NDIO LOGIC YA BROADSHEET NA ANALYTICS
 async function loadBroadsheet() {
     const examId = document.getElementById('process-exam-select').value;
     if (!examId) return alert("Chagua mtihani kwanza!");
@@ -213,17 +182,68 @@ async function loadBroadsheet() {
         const data = await res.json();
         if (!res.ok) return alert(data.error);
 
+        // Onyesha Maeneo
         document.getElementById('broadsheet-container').style.display = 'block';
+        document.getElementById('analytics-container').style.display = 'block';
         document.getElementById('broadsheet-title').innerText = `MATOKEO: ${data.exam.name.toUpperCase()} - ${data.exam.term.toUpperCase()}`;
+
+        // 1. Jaza Broadsheet
         const tbody = document.getElementById('broadsheet-body');
         tbody.innerHTML = '';
         data.results.forEach(r => {
             tbody.innerHTML += `<tr><td><strong>${r.rank}</strong></td><td>${r.admission_number}</td><td class="name-col">${r.full_name}</td><td>${r.gender}</td><td>${r.totalMarks}</td><td><strong>${r.aggregatePoints}</strong></td><td>${r.gpa}</td><td><strong>${r.division}</strong></td></tr>`;
         });
-    } catch (err) { alert("Kosa la kuvuta matokeo."); }
+
+        // 2. Jaza Uchambuzi (Analytics)
+        const results = data.results;
+        
+        // Top 20 (Wanafunzi wanaongoza kwa rank)
+        const top20 = results.slice(0, 20);
+        document.getElementById('top-20-list').innerHTML = top20.map(r => `<li>${r.full_name} - Pointi: ${r.aggregatePoints}, GPA: ${r.gpa}</li>`).join('') || '<li>Hakuna data.</li>';
+
+        // Bottom 20 (Wanafunzi wa mwisho)
+        const bottom20 = [...results].reverse().slice(0, 20);
+        document.getElementById('bottom-20-list').innerHTML = bottom20.map(r => `<li>${r.full_name} - Pointi: ${r.aggregatePoints}, GPA: ${r.gpa}</li>`).join('') || '<li>Hakuna data.</li>';
+
+        // Wanafunzi wenye F 3 au zaidi
+        const fStudents = results.filter(r => {
+            const fCount = r.subjects.filter(s => s.grade === 'F').length;
+            return fCount >= 3;
+        });
+        document.getElementById('f-list').innerHTML = fStudents.map(r => `<li>${r.full_name} (Ana F: ${r.subjects.filter(s => s.grade === 'F').length})</li>`).join('') || '<li>Hakuna mwanafunzi mwenye F 3+.</li>';
+
+        // Wanafunzi Bora kwa Makundi (Tunachukua aliyepata pointi chini zaidi kwenye somo husika)
+        const getTopStudentByCategory = (category) => {
+            let bestStudent = null;
+            let bestPoints = 999;
+            
+            results.forEach(student => {
+                // Tafuta masomo ya mwanafunzi huyu yenye category hii
+                const categorySubjects = student.subjects.filter(s => {
+                    const subInfo = allSubjects.find(sub => sub.name === s.subject_name);
+                    return subInfo && subInfo.category === category;
+                });
+                
+                if (categorySubjects.length > 0) {
+                    // Chukua pointi zake bora kwenye hiyo category
+                    const minPoints = Math.min(...categorySubjects.map(s => s.points));
+                    if (minPoints < bestPoints) {
+                        bestPoints = minPoints;
+                        bestStudent = student.full_name;
+                    }
+                }
+            });
+            return bestStudent ? `${bestStudent} (Pointi: ${bestPoints})` : 'Hakuna data';
+        };
+
+        document.getElementById('top-science').innerText = getTopStudentByCategory('SCIENCE');
+        document.getElementById('top-business').innerText = getTopStudentByCategory('BUSINESS');
+        document.getElementById('top-arts').innerText = getTopStudentByCategory('ARTS');
+
+    } catch (err) { alert("Kosa la kuvuta matokeo: " + err.message); }
 }
 
-// 10. KUBADILISHA SEHEMU
+// 6. SHOW SECTION
 function showSection(id) {
     ['students', 'classes', 'exams'].forEach(s => {
         const el = document.getElementById(`${s}-section`);
