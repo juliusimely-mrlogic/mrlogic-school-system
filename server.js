@@ -7,8 +7,10 @@ const db = require('./db/database');
 const { hashPassword } = require('./services/authService');
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// HAPA NDIO TUNAONGEZA LIMIT KUBWA (10MB) ILI KUPOKEA PICHA
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -49,7 +51,7 @@ async function startServer() {
     loadRoute('/api/auth', './routes/auth');
     loadRoute('/api/schools', './routes/schools');
     loadRoute('/api/academics', './routes/academics');
-    loadRoute('/api/users', './routes/users'); // HAPA NDIPO
+    loadRoute('/api/users', './routes/users');
     loadRoute('/api/classes', './routes/classes');
     loadRoute('/api/students', './routes/students');
     loadRoute('/api/attendance', './routes/attendance');
