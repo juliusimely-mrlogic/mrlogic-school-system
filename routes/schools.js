@@ -10,23 +10,27 @@ router.post('/', authenticate, async (req, res) => {
   if (!name || !code || code.trim() === '') return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
 
   try {
-    const existing = await db.get('SELECT id, code FROM schools WHERE code = ?', [code]);
+    const existing = await db.get('SELECT id FROM schools WHERE code = ?', [code]);
     if (existing) {
-      // Tunaonyesha msimbo halisi unaosumbua
-      return res.status(400).json({ error: `Msimbo umetumika (${existing.code}). Badilisha msimbo huu au tumia kitufe cha "Futa Shule Zote".` });
+      return res.status(400).json({ error: `Msimbo umetumika. Badilisha msimbo au tumia kitufe cha "Futa Shule Zote".` });
     }
 
     const levelsStr = JSON.stringify(schoolLevels || []);
-    const result = await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
+    
+    // Tumesahau kutumia result.lastInsertRowid, tunatafuta kwa code moja kwa moja
+    await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
       [code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levelsStr]);
     
-    const school = await db.get('SELECT * FROM schools WHERE id = ?', [result.lastInsertRowid]);
+    const school = await db.get('SELECT * FROM schools WHERE code = ?', [code]);
     
     if (schoolLevels && Array.isArray(schoolLevels)) {
       await ensureLevelSetup(school.id, schoolLevels);
     }
     res.status(201).json({ message: 'Shule imesajiliwa', school });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    console.error("Kosa la kusajili:", err);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 router.get('/', authenticate, async (req, res) => {
@@ -36,7 +40,6 @@ router.get('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// KITUFE KIPYA CHA KUFUTA SHULE ZOTE (Kwa ajili ya kusafisha database wakati wa majaribio)
 router.delete('/clear-all', authenticate, async (req, res) => {
     if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa.' });
     try {
