@@ -1,13 +1,11 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Tunatumia DATABASE_URL iliyopo kwenye faili la .env
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render.com') ? { rejectUnauthorized: false } : false
 });
 
-// Kazi ya kutengeneza tables (PostgreSQL Syntax)
 async function createTables() {
   try {
     await pool.query(`
@@ -16,13 +14,11 @@ async function createTables() {
         ward VARCHAR(100), exam_center_no VARCHAR(100), headmaster_name VARCHAR(255), ownership VARCHAR(50), language VARCHAR(50), 
         levels TEXT, is_active INTEGER DEFAULT 1, subscription_expires TIMESTAMP
       );
-      
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, 
         full_name VARCHAR(255), email VARCHAR(255), username VARCHAR(100) UNIQUE, 
         password_hash TEXT, salt TEXT, role VARCHAR(50), is_password_changed INTEGER DEFAULT 0
       );
-
       CREATE TABLE IF NOT EXISTS classes (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, form_level INTEGER, name VARCHAR(100), numeric_order INTEGER, level_type VARCHAR(50));
       CREATE TABLE IF NOT EXISTS streams (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, class_id INTEGER REFERENCES classes(id) ON DELETE CASCADE, name VARCHAR(100));
       CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, code VARCHAR(50), name VARCHAR(255), is_core INTEGER DEFAULT 1, is_active INTEGER DEFAULT 1, level_type VARCHAR(50), category VARCHAR(50), a_level_role VARCHAR(50));
@@ -42,24 +38,19 @@ async function createTables() {
     console.log("✅ Majedwali yote ya PostgreSQL yametengenezwa kikamilifu.");
   } catch (err) {
     console.error("❌ Kosa la kutengeneza majedwali:", err.message);
+    throw err; // Tunatupa kosa ili server isiendelee ikiwa database haijatengenezwa
   }
 }
 
-createTables();
-
 // Tunatengeneza 'Wrapper' ili code zako za zamani ziendelee kufanya kazi, lakini kwa PostgreSQL
-// Kumbuka: Katika PostgreSQL, majibu yanachukua muda (Asynchronous). Tumerahisisha kwa kuweka hivi:
 module.exports = {
   query: (text, params) => pool.query(text, params),
   
-  // Kazi hizi zinarudisha 'Promises' (Lazima uweke 'await' kwenye API zako)
   run: async (sql, params = []) => {
     try { 
-      // Kubadilisha '?' kuwa '$1, $2...' kwa ajili ya PostgreSQL
       let formattedSql = sql;
       let count = 1;
       formattedSql = formattedSql.replace(/\?/g, () => `$${count++}`);
-      
       const res = await pool.query(formattedSql, params); 
       return { changes: res.rowCount, lastInsertRowid: res.rows[0]?.id }; 
     } catch (e) { 
@@ -87,5 +78,7 @@ module.exports = {
     } catch (e) { 
       console.error("DB All Error:", e.message); return []; 
     }
-  }
+  },
+  // Tunaweka hii ili server.js iweze kusubiri majedwali yote yakitengenezwa
+  createTables 
 };
