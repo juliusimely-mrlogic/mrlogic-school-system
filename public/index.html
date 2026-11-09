@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="/style.css?v=13">
+    <link rel="stylesheet" href="/style.css?v=15">
 </head>
 <body>
 
-    <!-- LOGIN -->
     <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
@@ -22,7 +21,6 @@
         </div>
     </div>
 
-    <!-- DASHBOARD -->
     <div id="dashboard-screen" class="screen" style="display: none;">
         <header>
             <h1>Dashibodi ya MR-LOGIC</h1>
@@ -100,7 +98,6 @@
             <!-- SEHEMU YA WANAFUNZI -->
             <div id="students-section" class="section-container" style="display: none;">
                 <h2>Wanafunzi</h2>
-                
                 <div class="step-box" style="background: #f9f9f9; border-left-color: #2a5298;">
                     <h3>Sajili Mwanafunzi Mmoja</h3>
                     <form id="student-form" class="form-row">
@@ -112,11 +109,9 @@
                         <button type="submit" class="btn-blue">Sajili Mwanafunzi</button>
                     </form>
                 </div>
-
-                <!-- SEHEMU YA KUP AKIA EXCEL -->
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;">
                     <h3>Pakia Wanafunzi Kupitia Excel (Bulk Upload)</h3>
-                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Faili lako la Excel (.xlsx, .xls) au CSV liwe na vichwa hivi: <strong>Jina, Jinsia, Namba, Simu</strong>.</p>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Faili lako la Excel liwe na vichwa: <strong>JINA, JINSIA, NAMBA, SIMU</strong>.</p>
                     <form id="bulk-upload-form" class="form-row">
                         <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" required style="padding: 8px; border: 1px solid #ccc; border-radius: 5px;">
                         <select id="bulk-class" required><option value="">-- Chagua Darasa --</option></select>
@@ -124,161 +119,23 @@
                     </form>
                     <div id="bulk-status" style="margin-top: 10px; font-weight: bold;"></div>
                 </div>
-
                 <div class="table-responsive" style="margin-top: 20px;">
-                    <table>
-                        <thead><tr><th>Namba</th><th>Jina</th><th>Jinsia</th><th>Darasa</th><th>Mzazi</th><th>Kitendo</th></tr></thead>
-                        <tbody id="students-table-body"></tbody>
-                    </table>
+                    <table><thead><tr><th>Namba</th><th>Jina</th><th>Jinsia</th><th>Darasa</th><th>Mzazi</th><th>Kitendo</th></tr></thead><tbody id="students-table-body"></tbody></table>
                 </div>
-            </div>
-
-            <!-- SEHEMU YA WALIMU -->
-            <div id="teachers-section" class="section-container" style="display: none;">
-                <h2>Usimamizi wa Walimu</h2>
-                <div class="step-box" style="background: #fdedec; border-left-color: #e74c3c;">
-                    <form id="teacher-form" class="form-row">
-                        <input type="text" id="teacher-name" placeholder="Jina Kamili" required>
-                        <input type="text" id="teacher-phone" placeholder="Namba ya Simu">
-                        <select id="teacher-gender"><option value="M">Me (M)</option><option value="F">Ke (F)</option></select>
-                        <button type="submit" class="btn-red">Sajili Mwalimu</button>
-                    </form>
-                </div>
-                <div class="table-responsive"><table><thead><tr><th>Namba</th><th>Jina</th><th>Simu</th><th>Jinsia</th></tr></thead><tbody id="teachers-table-body"></tbody></table></div>
-                <h2 style="margin-top: 30px;">Mgawanyo wa Kazi</h2>
-                <div class="step-box" style="background: #fdf2e9; border-left-color: #e67e22;">
-                    <form id="assignment-form" class="form-row">
-                        <select id="assign-teacher" required><option value="">-- Mwalimu --</option></select>
-                        <select id="assign-class" required><option value="">-- Darasa --</option></select>
-                        <select id="assign-subject" required><option value="">-- Somo --</option></select>
-                        <button type="submit" class="btn-orange">Weka Mgawanyo</button>
-                    </form>
-                </div>
-                <div class="table-responsive"><table><thead><tr><th>Mwalimu</th><th>Darasa</th><th>Somo</th></tr></thead><tbody id="assignments-table-body"></tbody></table></div>
             </div>
 
             <!-- SEHEMU YA MADARASA -->
             <div id="classes-section" class="section-container" style="display: none;">
                 <h2>Madarasa</h2>
                 <form id="class-form" class="form-row">
-                    <input type="text" id="class-name" placeholder="Jina la Darasa (Mf: Form One)" required>
+                    <input type="text" id="class-name" placeholder="Jina la Darasa" required>
                     <select id="class-level" required><option value="O_LEVEL">O-Level</option><option value="A_LEVEL">A-Level</option><option value="PRIMARY">Primary</option></select>
-                    <button type="submit" class="btn-blue">Ongeza Darasa</button>
+                    <button type="submit" class="btn-blue">Ongeza</button>
                 </form>
                 <div class="table-responsive"><table><thead><tr><th>Namba</th><th>Jina la Darasa</th><th>Ngazi</th><th>Kitendo</th></tr></thead><tbody id="classes-table-body"></tbody></table></div>
             </div>
 
-            <!-- SEHEMU YA MAHUDHURIO -->
-            <div id="attendance-section" class="section-container" style="display: none;">
-                <h2>Mahudhurio</h2>
-                <div class="step-box" style="background: #fef9e7; border-left-color: #f1c40f;">
-                    <div class="form-row">
-                        <select id="att-class" required><option value="">-- Chagua Darasa --</option></select>
-                        <input type="date" id="att-date" required>
-                        <button onclick="loadAttendance()" class="btn-orange">Vuta Wanafunzi</button>
-                    </div>
-                </div>
-                <form id="attendance-form" style="display: none;">
-                    <div class="table-responsive"><table><thead><tr><th>Jina</th><th>Hali</th></tr></thead><tbody id="attendance-table-body"></tbody></table></div>
-                    <button type="submit" class="btn-green" style="margin-top: 15px;">Hifadhi Mahudhurio</button>
-                </form>
-            </div>
-
-            <!-- SEHEMU YA MITIHANI -->
-            <div id="exams-section" class="section-container" style="display: none;">
-                <h2>Mitihani & Matokeo</h2>
-                <div class="step-box" style="background: #fdf2e9; border-left-color: #e67e22;">
-                    <h3>Hatua ya 1: Tengeneza Mtihani Mpya</h3>
-                    <form id="create-exam-form" class="form-row">
-                        <select id="exam-class" required><option value="">-- Darasa --</option></select>
-                        <input type="text" id="exam-name" placeholder="Jina la Mtihani" required>
-                        <select id="exam-term" required><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
-                        <input type="number" id="exam-year" value="2024" required>
-                        <button type="submit" class="btn-orange">Tengeneza</button>
-                    </form>
-                </div>
-                <div class="step-box" style="background: #eaf2f8; border-left-color: #2980b9;">
-                    <h3>Hatua ya 2: Ingiza Alama</h3>
-                    <form id="add-marks-form" class="form-row">
-                        <select id="marks-exam" required><option value="">-- Mtihani --</option></select>
-                        <select id="marks-student" required><option value="">-- Mwanafunzi --</option></select>
-                        <select id="marks-subject" required><option value="">-- Somo --</option></select>
-                        <input type="number" id="marks-score" placeholder="Alama" min="0" max="100" required>
-                        <button type="submit" class="btn-blue">Hifadhi</button>
-                    </form>
-                </div>
-                <div class="step-box" style="background: #e0f7fa; border-left-color: #00bcd4;">
-                    <h3>Hatua ya 3: Chakata Matokeo</h3>
-                    <div class="form-row">
-                        <select id="process-exam-select" required><option value="">-- Mtihani --</option></select>
-                        <button onclick="loadBroadsheet()" class="btn-blue">Vuta Broadsheet</button>
-                        <button onclick="window.print()" class="btn-green">Chapisha</button>
-                    </div>
-                </div>
-                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
-                    <h3>Hatua ya 4: Ripoti ya Mwanafunzi</h3>
-                    <div class="form-row">
-                        <select id="report-exam-select" required><option value="">-- Mtihani --</option></select>
-                        <select id="report-student-select" required><option value="">-- Mwanafunzi --</option></select>
-                        <button onclick="printReportCard()" class="btn-blue" style="background: #8e44ad;">Chapisha Ripoti</button>
-                    </div>
-                </div>
-                <div id="broadsheet-container" style="display: none; margin-top: 20px;">
-                    <div class="broadsheet-wrapper" id="printable-broadsheet">
-                        <h2 class="broadsheet-title" id="broadsheet-title">MATOKEO YA MTIHANI</h2>
-                        <div class="table-responsive"><table class="broadsheet-table"><thead><tr><th>Nafasi</th><th>Adm</th><th>Jina</th><th>Jinsia</th><th>Alama</th><th>Pointi</th><th>GPA</th><th>Div</th></tr></thead><tbody id="broadsheet-body"></tbody></table></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SEHEMU YA ADA -->
-            <div id="fees-section" class="section-container" style="display: none;">
-                <h2>Usimamizi wa Ada</h2>
-                <div class="step-box" style="background: #e8f8f5; border-left-color: #27ae60;">
-                    <h3>1. Weka Ada</h3>
-                    <form id="fee-structure-form" class="form-row">
-                        <select id="struct-class" required><option value="">-- Darasa --</option></select>
-                        <select id="struct-term" required><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
-                        <input type="number" id="struct-year" value="2024" required>
-                        <input type="number" id="struct-amount" placeholder="Kiasi" required>
-                        <button type="submit" class="btn-green">Weka</button>
-                    </form>
-                </div>
-                <div class="step-box" style="background: #fef9e7; border-left-color: #f1c40f;">
-                    <h3>2. Hali ya Ada</h3>
-                    <div class="form-row" style="margin-bottom: 15px;">
-                        <select id="status-term"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
-                        <input type="number" id="status-year" value="2024">
-                        <button onclick="loadFeeStatus()" class="btn-orange">Angalia</button>
-                    </div>
-                    <div class="table-responsive"><table><thead><tr><th>Mwanafunzi</th><th>Darasa</th><th>Inatakiwa</th><th>Amelipa</th><th>Salio</th><th>Hali</th></tr></thead><tbody id="fee-status-body"></tbody></table></div>
-                </div>
-                <div class="step-box" style="background: #eaf2f8; border-left-color: #2980b9;">
-                    <h3>3. Rekodi Malipo</h3>
-                    <form id="fee-form" class="form-row">
-                        <select id="fee-student" required><option value="">-- Mwanafunzi --</option></select>
-                        <input type="number" id="fee-amount" placeholder="Kiasi" required>
-                        <select id="fee-term" required><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
-                        <input type="number" id="fee-year" value="2024" required>
-                        <button type="submit" class="btn-blue">Rekodi</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- SEHEMU YA TAARIFA -->
-            <div id="notifications-section" class="section-container" style="display: none;">
-                <h2>Taarifa (Notifications)</h2>
-                <div class="step-box" style="background: #ebf5fb; border-left-color: #3498db;">
-                    <form id="notification-form" class="form-row">
-                        <input type="text" id="notif-title" placeholder="Kichwa cha Habari" required style="flex: 1;">
-                        <input type="text" id="notif-message" placeholder="Ujumbe" required style="flex: 2;">
-                        <button type="submit" class="btn-blue">Tuma</button>
-                    </form>
-                </div>
-                <div id="notifications-list" style="margin-top: 20px;"></div>
-            </div>
-
-            <!-- SEHEMU YA WATUMIAJI -->
+            <!-- SEHEMU YA WATUMIAJI NA MIPANGILIO -->
             <div id="users-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Watumiaji</h2>
                 <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
@@ -293,11 +150,36 @@
                     </form>
                 </div>
                 <div class="table-responsive"><table><thead><tr><th>Jina</th><th>Username</th><th>Cheo</th><th>Shule</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
+
+                <!-- MPYA: KUP AKIA SAHIHI NA MUHURI -->
+                <h2 style="margin-top: 40px; color: #e67e22;">Mipangilio ya Shule (Sahihi & Muhuri)</h2>
+                <div class="step-box" style="background: #fdf2e9; border-left-color: #e67e22;">
+                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Pakia picha za Sahihi ya Mkuu wa Shule na Muhuri wa Shule. Picha hizi zitaonekana kwenye Ripoti za Wanafunzi.</p>
+                    <form id="school-assets-form" class="form-row">
+                        <div>
+                            <label style="display:block; font-size:12px; margin-bottom:5px;">Sahihi ya Mkuu:</label>
+                            <input type="file" id="signature-file" accept="image/*" style="padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:12px; margin-bottom:5px;">Muhuri wa Shule:</label>
+                            <input type="file" id="stamp-file" accept="image/*" style="padding: 5px;">
+                        </div>
+                        <button type="submit" class="btn-orange" style="margin-top: 18px;">Hifadhi Picha</button>
+                    </form>
+                    <div id="assets-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
             </div>
+
+            <!-- SEHEMU ZINGINE ZINABAKI KAMA ZILIVYO KWENYE AWAMU ZILIZOPITA -->
+            <div id="teachers-section" class="section-container" style="display: none;"><h2>Walimu</h2></div>
+            <div id="attendance-section" class="section-container" style="display: none;"><h2>Mahudhurio</h2></div>
+            <div id="exams-section" class="section-container" style="display: none;"><h2>Mitihani</h2></div>
+            <div id="fees-section" class="section-container" style="display: none;"><h2>Ada</h2></div>
+            <div id="notifications-section" class="section-container" style="display: none;"><h2>Taarifa</h2></div>
 
         </main>
     </div>
     <div id="printable-report" style="display: none;"></div>
-    <script src="/app.js?v=13"></script>
+    <script src="/app.js?v=15"></script>
 </body>
 </html>

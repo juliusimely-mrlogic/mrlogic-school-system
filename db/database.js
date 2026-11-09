@@ -27,6 +27,11 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, title VARCHAR(255), message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS system_payments (id SERIAL PRIMARY KEY, school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE, amount REAL, date_paid TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
+
+    // Ongeza safu mpya za picha kama hazipo (PostgreSQL syntax)
+    await pool.query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS headmaster_signature TEXT;`);
+    await pool.query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS school_stamp TEXT;`);
+    
     console.log("✅ Majedwali yote ya PostgreSQL yametengenezwa kikamilifu.");
   } catch (err) {
     console.error("❌ Kosa la kutengeneza majedwali:", err.message);

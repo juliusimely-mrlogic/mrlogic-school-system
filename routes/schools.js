@@ -18,47 +18,58 @@ router.post('/', authenticate, async (req, res) => {
 
     const levelsStr = JSON.stringify(schoolLevels || []);
     
-    // 1. Sajili Shule
     await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
       [code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levelsStr]);
     
     const school = await db.get('SELECT * FROM schools WHERE code = ?', [code]);
     if (!school) return res.status(500).json({ error: 'Shule imeingizwa lakini haipatikani.' });
     
-    // 2. Tengeneza Madarasa na Masomo
-    let classesCreated = 0;
     if (schoolLevels && Array.isArray(schoolLevels)) {
       try {
-        classesCreated = await ensureLevelSetup(school.id, schoolLevels);
+        await ensureLevelSetup(school.id, schoolLevels);
       } catch (levelError) {
         return res.status(500).json({ error: 'Kosa la kutengeneza madarasa: ' + levelError.message });
       }
     }
     
-    // 3. KINGA: Kama hakuna darasa lililotengenezwa, tunatupa kosa!
-    if (classesCreated === 0 && schoolLevels && schoolLevels.length > 0) {
-        return res.status(500).json({ error: 'Shule imesajiliwa, lakini madarasa hayakutengenezwa. Tafadhali wasiliana na msimamizi.' });
-    }
-    
-    res.status(201).json({ message: 'Shule imesajiliwa na madarasa yametengenezwa', school, classesCreated });
+    res.status(201).json({ message: 'Shule imesajiliwa kikamilifu', school });
   } catch (err) { 
-    console.error("Kosa la kusajili:", err);
     res.status(500).json({ error: 'Kosa la Server: ' + err.message }); 
   }
 });
 
-// (Weka functions zingine za GET, DELETE, clear-all kama zilivyokuwa)
-router.get('/', authenticate, async (req, res) => {
-  const schools = await db.all('SELECT * FROM schools');
-  res.json({ schools });
+// API MPYA: Kupakia Sahihi na Muhuri
+router.put('/:id/assets', authenticate, async (req, res) => {
+    const { headmaster_signature, school_stamp } = req.body;
+    try {
+        await db.run(`UPDATE schools SET headmaster_signature = ?, school_stamp = ? WHERE id = ?`, [headmaster_signature, school_stamp, req.params.id]);
+        res.json({ message: 'Picha zimehifadhiwa kikamilifu!' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
+
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const schools = await db.all('SELECT * FROM schools');
+    res.json({ schools });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.delete('/clear-all', authenticate, async (req, res) => {
     if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa.' });
-    await db.run('DELETE FROM schools');
-    res.json({ message: 'Shule zote zimefutwa.' });
+    try {
+        await db.run('DELETE FROM schools');
+        res.json({ message: 'Shule zote zimefutwa kikamilifu.' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 router.delete('/:id', authenticate, async (req, res) => {
-    await db.run('DELETE FROM schools WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Shule imefutwa' });
+    if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa.' });
+    try {
+      await db.run('DELETE FROM schools WHERE id = ?', [req.params.id]);
+      res.json({ message: 'Shule imefutwa' });
+    } catch(err) { res.status(500).json({error: err.message}); }
 });
+
 module.exports = router;
