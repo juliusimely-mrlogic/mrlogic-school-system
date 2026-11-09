@@ -94,7 +94,7 @@ async function loadClasses() {
     if (tbody) {
         tbody.innerHTML = allClasses.map((c, i) => `
             <tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td>
-            <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td></tr>
+            <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px; border:none; color:white; border-radius:3px;">Futa</button></td></tr>
         `).join('') || '<tr><td colspan="4">Hakuna madarasa. Tafadhali ongeza darasa.</td></tr>';
     }
 }
@@ -125,7 +125,7 @@ async function loadStudents() {
         tbody.innerHTML = allStudents.map((s, i) => {
             const cls = allClasses.find(c => c.id === s.class_id)?.name || '-';
             return `<tr><td>${i+1}</td><td>${s.full_name}</td><td>${s.gender}</td><td>${cls}</td><td>${s.parent_phone || '-'}</td>
-            <td><button onclick="deleteStudent(${s.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td></tr>`;
+            <td><button onclick="deleteStudent(${s.id})" class="btn-red" style="padding: 4px 8px; font-size:12px; border:none; color:white; border-radius:3px;">Futa</button></td></tr>`;
         }).join('') || '<tr><td colspan="6">Hakuna wanafunzi.</td></tr>';
     }
 }
