@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MR-LOGIC School System</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Nimeongeza ?v=2 ili kulazimisha browser kupakia CSS mpya -->
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
     <!-- LOGIN -->
-    <div id="login-screen" class="screen active" style="display: flex;">
+    <div id="login-screen" class="screen" style="display: flex;">
         <div class="login-box">
             <h2>MR-LOGIC</h2>
             <p style="margin-bottom: 20px; color: #666;">Mfumo wa Usimamizi wa Shule</p>
@@ -18,7 +19,7 @@
                 <input type="password" id="password" placeholder="Password" required>
                 <button type="submit" id="login-btn">Ingia Mfumoni</button>
             </form>
-            <div id="login-error" class="error-msg" style="color:red; margin-top:10px;"></div>
+            <div id="login-error" class="error-msg"></div>
         </div>
     </div>
 
@@ -28,58 +29,58 @@
             <h1>Dashibodi ya MR-LOGIC</h1>
             <div class="header-user">
                 <span id="welcome-msg">Karibu!</span>
-                <button id="logout-btn" class="btn-red" style="padding: 8px 15px; border:none; color:white; border-radius:5px; cursor:pointer;">Toka</button>
+                <button id="logout-btn" class="btn-red">Toka</button>
             </div>
         </header>
         
         <main>
-            <!-- KICHAGUZI CHA SHULE & KUSAJILI -->
-            <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <!-- KICHAGUZI CHA SHULE -->
+            <div class="top-bar">
                 <div>
                     <label><strong>Chagua Shule: </strong></label>
-                    <select id="school-selector" style="padding: 8px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;">
+                    <select id="school-selector">
                         <option value="">-- Chagua Shule --</option>
                     </select>
                 </div>
-                <button onclick="toggleSchoolForm()" class="btn-green" style="padding: 8px 15px; border:none; color:white; cursor:pointer; border-radius: 5px;">+ Sajili Shule</button>
+                <button onclick="toggleSchoolForm()" class="btn-green">+ Sajili Shule</button>
             </div>
 
             <!-- FOMU YA KUSAJILI SHULE -->
-            <div id="school-form-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div id="school-form-container" style="display: none;">
                 <h3 style="margin-bottom: 15px; color: #1e3c72;">Sajili Shule Mpya</h3>
-                <form id="school-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <input type="text" id="school-name" placeholder="Jina la Shule *" required style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-code" placeholder="Msimbo wa Shule (Code) *" required style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-region" placeholder="Mkoa" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-district" placeholder="Halmashauri / Wilaya" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-ward" placeholder="Kata" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-exam-no" placeholder="Namba ya Mtihani" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <input type="text" id="school-headmaster" placeholder="Jina la Mkuu wa Shule" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
-                    <select id="school-ownership" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
+                <form id="school-form" class="form-grid">
+                    <input type="text" id="school-name" placeholder="Jina la Shule *" required>
+                    <input type="text" id="school-code" placeholder="Msimbo wa Shule (Code) *" required>
+                    <input type="text" id="school-region" placeholder="Mkoa">
+                    <input type="text" id="school-district" placeholder="Halmashauri / Wilaya">
+                    <input type="text" id="school-ward" placeholder="Kata">
+                    <input type="text" id="school-exam-no" placeholder="Namba ya Mtihani">
+                    <input type="text" id="school-headmaster" placeholder="Jina la Mkuu wa Shule">
+                    <select id="school-ownership">
                         <option value="">-- Umiliki --</option>
                         <option value="Serikali">Serikali</option>
                         <option value="Binafsi">Binafsi</option>
                         <option value="Dini">Dini</option>
                     </select>
-                    <select id="school-language" style="padding:10px; border:1px solid #ccc; border-radius:5px;">
+                    <select id="school-language">
                         <option value="">-- Lugha --</option>
                         <option value="Kiswahili">Kiswahili</option>
                         <option value="English">English</option>
                     </select>
-                    <div style="grid-column: span 2; display: flex; gap: 15px; margin-top: 10px;">
-                        <button type="submit" class="btn-blue" style="flex: 1; padding: 12px; border-radius: 5px; border:none; color:white; cursor:pointer; font-weight: bold;">Hifadhi Shule</button>
-                        <button type="button" class="btn-red" onclick="toggleSchoolForm()" style="flex: 1; padding: 12px; border-radius: 5px; border:none; color:white; cursor:pointer; font-weight: bold;">Ghairi</button>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-blue">Hifadhi Shule</button>
+                        <button type="button" class="btn-red" onclick="toggleSchoolForm()">Ghairi</button>
                     </div>
                 </form>
             </div>
 
             <!-- KADI ZA MENU -->
-            <div class="cards" style="margin-bottom: 30px;">
-                <div class="card" onclick="showSection('students')" style="border-left-color: #2a5298;">
+            <div class="cards">
+                <div class="card" onclick="showSection('students')">
                     <h3>Wanafunzi</h3>
                     <p>Simamia wanafunzi</p>
                 </div>
-                <div class="card" onclick="showSection('classes')" style="border-left-color: #2a5298;">
+                <div class="card" onclick="showSection('classes')">
                     <h3>Madarasa</h3>
                     <p>Angalia madarasa</p>
                 </div>
@@ -136,9 +137,9 @@
             <div id="exams-section" class="section-container" style="display: none;">
                 <h2>Mitihani & Matokeo</h2>
                 
-                <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #e67e22;">
+                <div class="step-box" style="background: #fdf2e9; border-left-color: #e67e22;">
                     <h3>Hatua ya 1: Tengeneza Mtihani Mpya</h3>
-                    <form id="create-exam-form" class="form-row" style="margin-top:10px;">
+                    <form id="create-exam-form" class="form-row">
                         <select id="exam-class" required><option value="">-- Chagua Darasa --</option></select>
                         <input type="text" id="exam-name" placeholder="Jina la Mtihani (Mf: Midterm)" required>
                         <select id="exam-term" required>
@@ -150,9 +151,9 @@
                     </form>
                 </div>
 
-                <div style="background: #eaf2f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #2980b9;">
+                <div class="step-box" style="background: #eaf2f8; border-left-color: #2980b9;">
                     <h3>Hatua ya 2: Ingiza Alama</h3>
-                    <form id="add-marks-form" class="form-row" style="margin-top:10px;">
+                    <form id="add-marks-form" class="form-row">
                         <select id="marks-exam" required><option value="">-- Mtihani --</option></select>
                         <select id="marks-student" required><option value="">-- Mwanafunzi --</option></select>
                         <select id="marks-subject" required><option value="">-- Somo --</option></select>
@@ -161,28 +162,28 @@
                     </form>
                 </div>
 
-                <div style="background: #e0f7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #00bcd4;">
+                <div class="step-box" style="background: #e0f7fa; border-left-color: #00bcd4;">
                     <h3>Hatua ya 3: Chakata Matokeo (NECTA Format)</h3>
-                    <div class="form-row" style="margin-top:10px;">
+                    <div class="form-row">
                         <select id="process-exam-select" required><option value="">-- Chagua Mtihani Kuchakata --</option></select>
                         <button onclick="loadBroadsheet()" class="btn-blue">Vuta Matokeo (Broadsheet)</button>
                         <button onclick="window.print()" class="btn-green">Chapisha Broadsheet</button>
                     </div>
                 </div>
 
-                <div style="background: #f4ecf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #8e44ad;">
+                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad;">
                     <h3>Hatua ya 4: Chapisha Ripoti ya Mwanafunzi (Report Card)</h3>
-                    <div class="form-row" style="margin-top:10px;">
+                    <div class="form-row">
                         <select id="report-exam-select" required><option value="">-- Chagua Mtihani --</option></select>
                         <select id="report-student-select" required><option value="">-- Chagua Mwanafunzi --</option></select>
                         <button onclick="printReportCard()" class="btn-blue" style="background: #8e44ad;">Chapisha Ripoti</button>
                     </div>
                 </div>
 
-                <div id="publish-container" style="display: none; background: #fcf3cf; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #f1c40f;">
+                <div id="publish-container" class="step-box" style="display: none; background: #fcf3cf; border-left-color: #f1c40f;">
                     <h3>Uthibitisho (Publish)</h3>
                     <p style="margin-bottom: 10px;">Matokeo haya bado hayajathibitishwa. Mtaaluma Mkuu anahitaji kuyathibitisha ili yaweze kuonekana rasmi.</p>
-                    <button onclick="publishResults()" class="btn-orange" style="padding: 10px 20px;">Thibitisha Matokeo (Publish)</button>
+                    <button onclick="publishResults()" class="btn-orange">Thibitisha Matokeo (Publish)</button>
                 </div>
 
                 <!-- ENEO LA BROADSHEET -->
@@ -215,25 +216,25 @@
                 <!-- SEHEMU YA ANALYTICS -->
                 <div id="analytics-container" style="display: none; margin-top: 30px; border-top: 3px solid #3498db; padding-top: 20px;">
                     <h2 style="color: #1e3c72; margin-bottom: 15px;">Uchambuzi wa Matokeo (Analytics)</h2>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div style="background: #e8f8f5; padding: 15px; border-radius: 8px; border-left: 5px solid #2ecc71;">
-                            <h3 style="color: #27ae60;">Wanafunzi 20 Bora (Top 20)</h3>
-                            <ol id="top-20-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                    <div class="analytics-grid">
+                        <div class="analytics-card" style="background: #e8f8f5; border-left-color: #2ecc71;">
+                            <h3 style="color: #27ae60;">Wanafunzi 20 Bora</h3>
+                            <ol id="top-20-list"></ol>
                         </div>
-                        <div style="background: #fdedec; padding: 15px; border-radius: 8px; border-left: 5px solid #e74c3c;">
-                            <h3 style="color: #c0392b;">Wanafunzi 20 Dhaifu (Bottom 20)</h3>
-                            <ol id="bottom-20-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                        <div class="analytics-card" style="background: #fdedec; border-left-color: #e74c3c;">
+                            <h3 style="color: #c0392b;">Wanafunzi 20 Dhaifu</h3>
+                            <ol id="bottom-20-list"></ol>
                         </div>
-                        <div style="background: #fef9e7; padding: 15px; border-radius: 8px; border-left: 5px solid #f1c40f;">
-                            <h3 style="color: #f39c12;">Wanafunzi wenye 'F' 3 au zaidi</h3>
-                            <ul id="f-list" style="margin-top: 10px; padding-left: 20px;"></ul>
+                        <div class="analytics-card" style="background: #fef9e7; border-left-color: #f1c40f;">
+                            <h3 style="color: #f39c12;">Wanafunzi wenye 'F' 3+</h3>
+                            <ul id="f-list"></ul>
                         </div>
-                        <div style="background: #ebf5fb; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db;">
-                            <h3 style="color: #2980b9;">Wanafunzi Bora kwa Makundi ya Masomo</h3>
-                            <div style="margin-top: 10px;">
-                                <p><strong>Sayansi (Science):</strong> <span id="top-science"></span></p>
-                                <p><strong>Biashara (Business):</strong> <span id="top-business"></span></p>
-                                <p><strong>Sanaa (Arts):</strong> <span id="top-arts"></span></p>
+                        <div class="analytics-card" style="background: #ebf5fb; border-left-color: #3498db;">
+                            <h3 style="color: #2980b9;">Bora kwa Makundi</h3>
+                            <div>
+                                <p><strong>Sayansi:</strong> <span id="top-science"></span></p>
+                                <p><strong>Biashara:</strong> <span id="top-business"></span></p>
+                                <p><strong>Sanaa:</strong> <span id="top-arts"></span></p>
                             </div>
                         </div>
                     </div>
@@ -248,13 +249,13 @@
                     </div>
                     
                     <div id="district-results" style="display: none; margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 300px; background: #e8f8f5; padding: 15px; border-radius: 8px;">
+                        <div class="analytics-card" style="flex: 1; min-width: 300px; background: #e8f8f5; border-left-color: #2ecc71;">
                             <h3 style="color: #27ae60;">Shule 10 Bora</h3>
-                            <ol id="top-schools-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                            <ol id="top-schools-list"></ol>
                         </div>
-                        <div style="flex: 1; min-width: 300px; background: #fdedec; padding: 15px; border-radius: 8px;">
+                        <div class="analytics-card" style="flex: 1; min-width: 300px; background: #fdedec; border-left-color: #e74c3c;">
                             <h3 style="color: #c0392b;">Shule 5 Dhaifu</h3>
-                            <ol id="bottom-schools-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                            <ol id="bottom-schools-list"></ol>
                         </div>
                     </div>
                 </div>
@@ -264,9 +265,9 @@
             <div id="fees-section" class="section-container" style="display: none;">
                 <h2>Usimamizi wa Ada</h2>
                 
-                <div style="background: #e8f8f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
+                <div class="step-box" style="background: #e8f8f5; border-left-color: #27ae60;">
                     <h3>1. Weka Ada Inayotakiwa kwa Darasa</h3>
-                    <form id="fee-structure-form" class="form-row" style="margin-top:10px;">
+                    <form id="fee-structure-form" class="form-row">
                         <select id="struct-class" required><option value="">-- Chagua Darasa --</option></select>
                         <select id="struct-term" required>
                             <option value="Term 1">Term 1</option>
@@ -278,9 +279,9 @@
                     </form>
                 </div>
 
-                <div style="background: #fef9e7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #f1c40f;">
+                <div class="step-box" style="background: #fef9e7; border-left-color: #f1c40f;">
                     <h3>2. Hali ya Ada za Wanafunzi</h3>
-                    <div class="form-row" style="margin-top:10px; margin-bottom: 15px;">
+                    <div class="form-row" style="margin-bottom: 15px;">
                         <select id="status-term">
                             <option value="Term 1">Term 1</option>
                             <option value="Term 2">Term 2</option>
@@ -306,9 +307,9 @@
                     </div>
                 </div>
 
-                <div style="background: #eaf2f8; padding: 15px; border-radius: 8px; border-left: 5px solid #2980b9;">
+                <div class="step-box" style="background: #eaf2f8; border-left-color: #2980b9;">
                     <h3>3. Rekodi Malipo Mapya</h3>
-                    <form id="fee-form" class="form-row" style="margin-top:10px;">
+                    <form id="fee-form" class="form-row">
                         <select id="fee-student" required><option value="">-- Mwanafunzi --</option></select>
                         <input type="number" id="fee-amount" placeholder="Kiasi" required>
                         <select id="fee-term" required>

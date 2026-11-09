@@ -370,7 +370,7 @@ async function loadDistrictAnalytics() {
     } catch (err) { alert("Kosa la kuvuta uchambuzi."); }
 }
 
-// 10. USIMAMIZI WA ADA (FEES MANAGEMENT)
+// 10. USIMAMIZI WA ADA
 document.getElementById('fee-structure-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentSchoolId) return alert("Chagua shule kwanza!");
@@ -453,7 +453,6 @@ document.getElementById('fee-form').addEventListener('submit', async (e) => {
         if (res.ok) {
             alert("Malipo yamerekodiwa kikamilifu!");
             document.getElementById('fee-form').reset();
-            // Sasisha hali ya ada ikiwa imefunguliwa
             if(document.getElementById('fee-status-body').children.length > 0) {
                 loadFeeStatus();
             }
