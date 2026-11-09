@@ -6,7 +6,6 @@ let currentUserRole = localStorage.getItem('user_role');
 let allSchoolsData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    
     // 1. LOGIN
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -485,7 +484,7 @@ async function printReportCard() {
     let subjectRows = studentResult.subjects.map(s => `<tr><td style="border: 1px solid #000; padding: 5px;">${s.subject_name}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.marks}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.grade}</td><td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.points}</td></tr>`).join('');
     
     document.getElementById('printable-report').innerHTML = `
-        <div style="padding: 20px; font-family: 'Times New Roman'; page-break-inside: avoid;">
+        <div style="padding: 20px; font-family: 'Times New Roman'; page-break-inside: avoid; width: 100%; max-width: 210mm; margin: 0 auto; background: white;">
             <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
                 <h1 style="margin: 0; text-transform: uppercase;">${schoolName}</h1>
                 <h3 style="margin: 5px 0;">RIPOTI YA MATOKEO YA MWANAFUNZI</h3>
