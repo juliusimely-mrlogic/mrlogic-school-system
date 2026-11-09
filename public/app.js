@@ -44,7 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (token) { showDashboard(); }
 
-    // 2. FOMU ZOTE ZA KAZI
+    // 2. KUFUNGUA KADI (Event Delegation - Njia Salama)
+    const menuCards = document.getElementById('menu-cards');
+    if (menuCards) {
+        menuCards.addEventListener('click', (e) => {
+            const card = e.target.closest('.card');
+            if (card && card.dataset.section) {
+                showSection(card.dataset.section);
+            }
+        });
+    }
+
+    // 3. FOMU ZOTE ZA KAZI
     const bulkForm = document.getElementById('bulk-upload-form');
     if (bulkForm) {
         bulkForm.addEventListener('submit', async (e) => {
@@ -158,13 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Kufunga fomu ya mtumiaji na kuchagua mwalimu
     const userRoleSelect = document.getElementById('user-role');
     if(userRoleSelect) {
         userRoleSelect.addEventListener('change', (e) => {
             const teacherSelect = document.getElementById('user-teacher');
-            if(e.target.value === 'TEACHER') teacherSelect.style.display = 'block';
-            else teacherSelect.style.display = 'none';
+            if(teacherSelect) {
+                if(e.target.value === 'TEACHER') teacherSelect.style.display = 'block';
+                else teacherSelect.style.display = 'none';
+            }
         });
     }
 
@@ -330,7 +342,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function showSection(id) {
+// Hii function itapatikana popote kwenye HTML
+window.showSection = function(id) {
     const sections = ['students', 'teachers', 'classes', 'attendance', 'exams', 'fees', 'notifications', 'users'];
     sections.forEach(s => { 
         const el = document.getElementById(`${s}-section`);
@@ -341,37 +354,40 @@ function showSection(id) {
     if(target) target.style.display = 'block';
     
     if(!currentSchoolId && id !== 'users') alert("Tafadhali chagua shule juu kwanza!");
-}
+};
 
 function applyRBAC() {
+    const show = (id) => { const el = document.getElementById(id); if(el) el.style.display = 'block'; };
+    const hide = (id) => { const el = document.getElementById(id); if(el) el.style.display = 'none'; };
+    
     if (currentUserRole === 'SUPER_ADMIN') {
-        document.getElementById('superadmin-dashboard').style.display = 'block';
-        document.getElementById('admin-school-actions').style.display = 'block';
-        document.getElementById('card-fees').style.display = 'block';
-        document.getElementById('card-users').style.display = 'block';
-        document.getElementById('add-student-container').style.display = 'block';
-        document.getElementById('bulk-upload-container').style.display = 'block';
-        document.getElementById('add-class-container').style.display = 'block';
-        document.getElementById('add-exam-container').style.display = 'block';
+        show('superadmin-dashboard');
+        show('admin-school-actions');
+        show('card-fees');
+        show('card-users');
+        show('add-student-container');
+        show('bulk-upload-container');
+        show('add-class-container');
+        show('add-exam-container');
         fetchSuperAdminStats();
     } 
     else if (currentUserRole === 'SCHOOL_MANAGER' || currentUserRole === 'ACADEMIC_HEAD') {
-        document.getElementById('admin-school-actions').style.display = 'none'; 
-        document.getElementById('card-fees').style.display = 'block'; 
-        document.getElementById('card-users').style.display = 'block'; 
-        document.getElementById('add-student-container').style.display = 'block';
-        document.getElementById('bulk-upload-container').style.display = 'block';
-        document.getElementById('add-class-container').style.display = 'block';
-        document.getElementById('add-exam-container').style.display = 'block';
+        hide('admin-school-actions'); 
+        show('card-fees'); 
+        show('card-users'); 
+        show('add-student-container');
+        show('bulk-upload-container');
+        show('add-class-container');
+        show('add-exam-container');
     } 
     else if (currentUserRole === 'TEACHER') {
-        document.getElementById('admin-school-actions').style.display = 'none'; 
-        document.getElementById('card-fees').style.display = 'none'; 
-        document.getElementById('card-users').style.display = 'none'; 
-        document.getElementById('add-student-container').style.display = 'none'; 
-        document.getElementById('bulk-upload-container').style.display = 'none'; 
-        document.getElementById('add-class-container').style.display = 'none';
-        document.getElementById('add-exam-container').style.display = 'none';
+        hide('admin-school-actions'); 
+        hide('card-fees'); 
+        hide('card-users'); 
+        hide('add-student-container'); 
+        hide('bulk-upload-container'); 
+        hide('add-class-container');
+        hide('add-exam-container');
     }
 }
 
@@ -509,9 +525,7 @@ async function loadTeachers() {
     allTeachers = data.teachers || [];
     const options = '<option value="">-- Chagua Mwalimu --</option>' + allTeachers.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
     
-    // Dropdown ya Mgawanyo
     if(document.getElementById('assign-teacher')) document.getElementById('assign-teacher').innerHTML = options;
-    // Dropdown ya Watumiaji
     if(document.getElementById('user-teacher')) document.getElementById('user-teacher').innerHTML = options;
 
     const tbody = document.getElementById('teachers-table-body');
