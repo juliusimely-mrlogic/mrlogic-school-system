@@ -9,7 +9,6 @@ router.post('/', authenticate, async (req, res) => {
   
   if (!name || !code) return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
   
-  // MUHIMU: Tunasafisha nafasi zote zisizohitajika kwenye msimbo
   code = code.trim(); 
   name = name.trim();
 
@@ -24,7 +23,6 @@ router.post('/', authenticate, async (req, res) => {
     await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
       [code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levelsStr]);
     
-    // Tunatafuta shule kwa kutumia hicho hicho kimsimbo kilichosafishwa
     const school = await db.get('SELECT * FROM schools WHERE code = ?', [code]);
     
     if (!school) {
@@ -37,7 +35,8 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json({ message: 'Shule imesajiliwa', school });
   } catch (err) { 
     console.error("Kosa la kusajili:", err);
-    // Hapa tunamwambia mtumiaji kosa halisi lililotokea badala ya ku-crash
+    // Kama shule ilikwama kwenye levelSetup, tunaifuta ili mtumiaji asikwame
+    try { await db.run('DELETE FROM schools WHERE code = ?', [code]); } catch(e) {}
     res.status(500).json({ error: 'Kosa la Server: ' + err.message }); 
   }
 });
