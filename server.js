@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const config = require('./config');
-const db = require('./db/database'); // Hii sasa ina createTables
+const db = require('./db/database');
 const { hashPassword } = require('./services/authService');
 
 const app = express();
@@ -19,10 +19,8 @@ app.use((req, res, next) => {
 });
 
 async function startServer() {
-    // 1. Subiri majedwali yote yatengenezwe kwanza
     await db.createTables();
 
-    // 2. Sasa kagua na unda Super Admin
     try {
         const admin = await db.get('SELECT * FROM users WHERE username = "superadmin"');
         if (!admin) {
@@ -38,7 +36,6 @@ async function startServer() {
         console.error('❌ KOSA LA KUTENGENEZA ADMIN:', error.message);
     }
 
-    // 3. Sasa unaweza kuunganisha API na kuanzisha server
     function loadRoute(routePath, moduleName) {
       try {
         const router = require(moduleName);
@@ -52,7 +49,7 @@ async function startServer() {
     loadRoute('/api/auth', './routes/auth');
     loadRoute('/api/schools', './routes/schools');
     loadRoute('/api/academics', './routes/academics');
-    loadRoute('/api/users', './routes/users'); 
+    loadRoute('/api/users', './routes/users'); // HAPA NDIPO
     loadRoute('/api/classes', './routes/classes');
     loadRoute('/api/students', './routes/students');
     loadRoute('/api/attendance', './routes/attendance');
@@ -79,4 +76,4 @@ async function startServer() {
     });
 }
 
-startServer(); // Tunaanzisha mfumo
+startServer();

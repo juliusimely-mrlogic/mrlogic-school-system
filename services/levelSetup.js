@@ -52,7 +52,6 @@ const COMBINATION_DEFS = [
 
 const COMBINATIONS = COMBINATION_DEFS.map(([code, keys]) => ({ code, name: keys.map(k => SUBJECTS[k].name).join(', '), subjects: keys.map(k => `A-${k}`) }));
 
-// HII NDIO FUNCTION ILIYOKOSEKANA
 function toLevelList(levels) { 
     return Array.isArray(levels) ? levels : String(levels || 'O_LEVEL').split(','); 
 }
