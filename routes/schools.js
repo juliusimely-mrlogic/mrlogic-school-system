@@ -5,23 +5,31 @@ const authenticate = require('../middlewares/authMiddleware');
 const { ensureLevelSetup } = require('../services/levelSetup');
 
 router.post('/', authenticate, async (req, res) => {
-  const { name, code, region, district, ward, exam_center_no, headmaster_name, ownership, language, schoolLevels } = req.body;
+  let { name, code, region, district, ward, exam_center_no, headmaster_name, ownership, language, schoolLevels } = req.body;
   
-  if (!name || !code || code.trim() === '') return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
+  if (!name || !code) return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
+  
+  // MUHIMU: Tunasafisha nafasi zote zisizohitajika kwenye msimbo
+  code = code.trim(); 
+  name = name.trim();
 
   try {
     const existing = await db.get('SELECT id FROM schools WHERE code = ?', [code]);
     if (existing) {
-      return res.status(400).json({ error: `Msimbo umetumika. Badilisha msimbo au tumia kitufe cha "Futa Shule Zote".` });
+      return res.status(400).json({ error: `Msimbo (${code}) umetumika. Badilisha msimbo au tumia kitufe cha "Futa Shule Zote".` });
     }
 
     const levelsStr = JSON.stringify(schoolLevels || []);
     
-    // Tumesahau kutumia result.lastInsertRowid, tunatafuta kwa code moja kwa moja
     await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
       [code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levelsStr]);
     
+    // Tunatafuta shule kwa kutumia hicho hicho kimsimbo kilichosafishwa
     const school = await db.get('SELECT * FROM schools WHERE code = ?', [code]);
+    
+    if (!school) {
+      return res.status(500).json({ error: 'Shule imeingizwa lakini haipatikani. Jaribu tena.' });
+    }
     
     if (schoolLevels && Array.isArray(schoolLevels)) {
       await ensureLevelSetup(school.id, schoolLevels);
@@ -29,7 +37,8 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json({ message: 'Shule imesajiliwa', school });
   } catch (err) { 
     console.error("Kosa la kusajili:", err);
-    res.status(500).json({ error: err.message }); 
+    // Hapa tunamwambia mtumiaji kosa halisi lililotokea badala ya ku-crash
+    res.status(500).json({ error: 'Kosa la Server: ' + err.message }); 
   }
 });
 
