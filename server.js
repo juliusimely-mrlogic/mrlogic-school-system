@@ -18,24 +18,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// === MFUMO WA KULAZIMISHA SUPER ADMIN ===
-console.log('Inakagua kama Super Admin yupo...');
+// Auto create admin if not exists
 try {
-    // Futa kama alikuwepo ili kuanza upya
-    db.run('DELETE FROM users WHERE username = ?', ['superadmin']);
-    
-    // Tengeneza mpya
-    const a = hashPassword('Mrlogic7500@');
-    db.run(
-      `INSERT INTO users (school_id, full_name, email, username, password_hash, salt, role)
-       VALUES (NULL, 'Super Admin', 'admin@mrlogic.tz', 'superadmin', ?, ?, 'SUPER_ADMIN')`,
-      [a.hash, a.salt]
-    );
-    console.log('✅ Super Admin amewekwa tayari! (Username: superadmin, Password: Mrlogic7500@)');
-} catch (error) {
-    console.error('❌ KOSA LA KUTENGENEZA ADMIN:', error.message);
-}
-// =======================================
+    if (!db.get('SELECT id FROM users WHERE username = "superadmin"')) {
+        const a = hashPassword('Mrlogic7500@');
+        db.run(`INSERT INTO users (school_id, full_name, email, username, password_hash, salt, role) VALUES (NULL, 'Super Admin', 'admin@mrlogic.tz', 'superadmin', ?, ?, 'SUPER_ADMIN')`, [a.hash, a.salt]);
+    }
+} catch(e) {}
 
 function loadRoute(routePath, moduleName) {
   try {

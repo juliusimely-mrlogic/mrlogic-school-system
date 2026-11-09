@@ -149,7 +149,6 @@ async function loadTeachers() {
     const tbody = document.getElementById('teachers-table-body');
     if (tbody) tbody.innerHTML = allTeachers.map((t, i) => `<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.phone || '-'}</td><td>${t.gender || '-'}</td></tr>`).join('') || '<tr><td colspan="4">Hakuna walimu.</td></tr>';
     
-    // Load assignments
     const resA = await fetch(`${API_BASE}/teachers/assignments?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const dataA = await resA.json();
     const tbodyA = document.getElementById('assignments-table-body');
