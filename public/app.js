@@ -8,7 +8,7 @@ let allClasses = [];
 
 if (token) { showDashboard(); }
 
-// 1. LOGIN & DASHBOARD
+// 1. LOGIN
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
@@ -51,7 +51,6 @@ function toggleSchoolForm() {
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
 }
 
-// HAPA NDIO LOGIC YA KUSAJILI SHULE ILIPOKUWEPO
 document.getElementById('school-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
@@ -81,7 +80,6 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
     } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
 
-// 3. MABADILIKO YA SHULE
 document.getElementById('school-selector').addEventListener('change', async (e) => {
     currentSchoolId = e.target.value;
     if (currentSchoolId) {
@@ -92,13 +90,13 @@ document.getElementById('school-selector').addEventListener('change', async (e) 
     }
 });
 
-// 4. CLASSES (Madarasa)
+// 3. MADARASA
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
     allClasses = data.classes || [];
     const options = '<option value="">-- Chagua Darasa --</option>' + allClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    ['student-class', 'assign-class'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
+    ['student-class', 'exam-class'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
     
     const tbody = document.getElementById('classes-table-body');
     if (tbody) {
@@ -123,7 +121,7 @@ async function deleteClass(id) {
     loadClasses();
 }
 
-// 5. STUDENTS (Wanafunzi)
+// 4. WANAFUNZI
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -155,7 +153,7 @@ async function deleteStudent(id) {
     loadStudents();
 }
 
-// 6. SUBJECTS
+// 5. MASOMO
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -165,7 +163,7 @@ async function loadSubjects() {
     }
 }
 
-// 7. EXAMS & BROADSHEET
+// 6. MITIHANI NA BROADSHEET (Logic ya Kutengeneza Imerudishwa)
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -174,6 +172,32 @@ async function loadExams() {
     if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = options;
     if(document.getElementById('process-exam-select')) document.getElementById('process-exam-select').innerHTML = options;
 }
+
+// HAPA NDIO CODE YA KUTENGENEZA MTIHANI ILIPOKUWEPO
+document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentSchoolId) return alert("Chagua shule kwanza!");
+
+    const class_id = document.getElementById('exam-class').value;
+    const name = document.getElementById('exam-name').value;
+    const term = document.getElementById('exam-term').value;
+    const year = parseInt(document.getElementById('exam-year').value);
+
+    try {
+        const res = await fetch(`${API_BASE}/exams`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ school_id: currentSchoolId, class_id, name, term, year })
+        });
+        if (res.ok) {
+            alert("Mtihani umetengenezwa!");
+            document.getElementById('create-exam-form').reset();
+            await loadExams();
+        } else {
+            const err = await res.json(); alert("Kosa: " + err.error);
+        }
+    } catch (err) { alert("Hitilafu ya mtandao"); }
+});
 
 document.getElementById('add-marks-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -200,7 +224,7 @@ async function loadBroadsheet() {
     } catch (err) { alert("Kosa la kuvuta matokeo."); }
 }
 
-// 8. SHOW SECTION
+// 7. SHOW SECTION
 function showSection(id) {
     ['students', 'classes', 'exams'].forEach(s => {
         const el = document.getElementById(`${s}-section`);

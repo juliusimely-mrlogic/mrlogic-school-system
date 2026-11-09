@@ -40,7 +40,7 @@
                 <button onclick="toggleSchoolForm()" class="btn-green" style="padding: 8px 15px; margin-left: 10px; border:none; color:white; cursor:pointer;">+ Sajili Shule</button>
             </div>
 
-            <!-- FOMU YA KUSAJILI SHULE (IMERUDISHWA) -->
+            <!-- FOMU YA KUSAJILI SHULE -->
             <div id="school-form-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                 <h3 style="margin-bottom: 10px; color: #1e3c72;">Sajili Shule Mpya</h3>
                 <form id="school-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -75,7 +75,7 @@
                 <div class="card" onclick="showSection('exams')" style="border-color: #e67e22;"><h3>Mitihani</h3><p>Ingiza na chakata matokeo</p></div>
             </div>
 
-            <!-- SEHEMU YA WANAFUNZI (Kwa ajili ya kusajili) -->
+            <!-- SEHEMU YA WANAFUNZI -->
             <div id="students-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
                 <h2>Wanafunzi</h2>
                 <form id="student-form" class="form-row">
@@ -94,7 +94,7 @@
                 </div>
             </div>
 
-            <!-- SEHEMU YA MADARASA (Kwa ajili ya kuongeza) -->
+            <!-- SEHEMU YA MADARASA -->
             <div id="classes-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
                 <h2>Madarasa</h2>
                 <form id="class-form" class="form-row">
@@ -118,8 +118,26 @@
             <div id="exams-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
                 <h2>Mitihani & Matokeo</h2>
                 
+                <!-- FOMU YA KUTENGENEZA MTIHANI (IMERUDISHWA) -->
                 <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>Ingiza Alama</h3>
+                    <h3>1. Tengeneza Mtihani Mpya</h3>
+                    <form id="create-exam-form" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                        <select id="exam-class" required style="padding: 8px;">
+                            <option value="">-- Chagua Darasa --</option>
+                        </select>
+                        <input type="text" id="exam-name" placeholder="Jina la Mtihani (Mf: Midterm)" required style="padding: 8px;">
+                        <select id="exam-term" required style="padding: 8px;">
+                            <option value="Term 1">Term 1</option>
+                            <option value="Term 2">Term 2</option>
+                        </select>
+                        <input type="number" id="exam-year" value="2024" required style="padding: 8px;">
+                        <button type="submit" class="btn-orange">Tengeneza Mtihani</button>
+                    </form>
+                </div>
+
+                <!-- INGIZA ALAMA -->
+                <div style="background: #eaf2f8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3>2. Ingiza Alama</h3>
                     <form id="add-marks-form" class="form-row">
                         <select id="marks-exam" required><option value="">-- Mtihani --</option></select>
                         <select id="marks-student" required><option value="">-- Mwanafunzi --</option></select>
@@ -129,8 +147,9 @@
                     </form>
                 </div>
 
+                <!-- BROADSHEET -->
                 <div style="background: #e0f7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>Chakata Matokeo (NECTA Format)</h3>
+                    <h3>3. Chakata Matokeo (NECTA Format)</h3>
                     <div class="form-row">
                         <select id="process-exam-select" required><option value="">-- Chagua Mtihani Kuchakata --</option></select>
                         <button onclick="loadBroadsheet()" class="btn-blue">Vuta Matokeo (Broadsheet)</button>
