@@ -1,9 +1,159 @@
-<!-- (Weka code yote ya mwanzo hapa kama ilivyokuwa kwenye Awamu 3) -->
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MR-LOGIC School System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-                <!-- BROADSHEET NA ANALYTICS -->
-                <div style="background: #e0f7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>3. Chakata Matokeo (NECTA Format)</h3>
-                    <div class="form-row">
+    <!-- LOGIN -->
+    <div id="login-screen" class="screen active" style="display: flex;">
+        <div class="login-box">
+            <h2>MR-LOGIC</h2>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit" id="login-btn">Ingia Mfumoni</button>
+            </form>
+            <div id="login-error" class="error-msg" style="color:red;"></div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-screen" class="screen" style="display: none;">
+        <header>
+            <h1>Dashibodi ya MR-LOGIC</h1>
+            <div class="header-user">
+                <span id="welcome-msg">Karibu!</span>
+                <button id="logout-btn" class="btn-red">Toka</button>
+            </div>
+        </header>
+        
+        <main>
+            <!-- KICHAGUZI CHA SHULE -->
+            <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px;">
+                <label><strong>Chagua Shule: </strong></label>
+                <select id="school-selector" style="padding: 8px; font-size: 16px;">
+                    <option value="">-- Chagua Shule --</option>
+                </select>
+                <button onclick="toggleSchoolForm()" class="btn-green" style="padding: 8px 15px; margin-left: 10px; border:none; color:white; cursor:pointer;">+ Sajili Shule</button>
+            </div>
+
+            <!-- FOMU YA KUSAJILI SHULE -->
+            <div id="school-form-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 10px; color: #1e3c72;">Sajili Shule Mpya</h3>
+                <form id="school-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input type="text" id="school-name" placeholder="Jina la Shule *" required style="padding:8px;">
+                    <input type="text" id="school-code" placeholder="Msimbo wa Shule (Code) *" required style="padding:8px;">
+                    <input type="text" id="school-region" placeholder="Mkoa" style="padding:8px;">
+                    <input type="text" id="school-district" placeholder="Halmashauri / Wilaya" style="padding:8px;">
+                    <input type="text" id="school-ward" placeholder="Kata" style="padding:8px;">
+                    <input type="text" id="school-exam-no" placeholder="Namba ya Mtihani" style="padding:8px;">
+                    <input type="text" id="school-headmaster" placeholder="Jina la Mkuu wa Shule" style="padding:8px;">
+                    <select id="school-ownership" style="padding:8px;">
+                        <option value="">-- Umiliki --</option>
+                        <option value="Serikali">Serikali</option>
+                        <option value="Binafsi">Binafsi</option>
+                        <option value="Dini">Dini</option>
+                    </select>
+                    <select id="school-language" style="padding:8px;">
+                        <option value="">-- Lugha --</option>
+                        <option value="Kiswahili">Kiswahili</option>
+                        <option value="English">English</option>
+                    </select>
+                    <div style="grid-column: span 2; display: flex; gap: 10px;">
+                        <button type="submit" class="btn-blue" style="flex: 1; padding: 10px;">Hifadhi Shule</button>
+                        <button type="button" class="btn-red" onclick="toggleSchoolForm()" style="flex: 1; padding: 10px;">Ghairi</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- KADI ZA MENU -->
+            <div class="cards" style="margin-bottom: 30px;">
+                <div class="card" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
+                <div class="card" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
+                <div class="card" onclick="showSection('exams')" style="border-color: #e67e22;"><h3>Mitihani</h3><p>Ingiza na chakata matokeo</p></div>
+            </div>
+
+            <!-- SEHEMU YA WANAFUNZI -->
+            <div id="students-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h2>Wanafunzi</h2>
+                <form id="student-form" class="form-row">
+                    <input type="text" id="student-name" placeholder="Jina Kamili" required>
+                    <select id="student-gender" required><option value="M">Me (M)</option><option value="F">Ke (F)</option></select>
+                    <input type="text" id="student-adm" placeholder="Namba ya Usajili (Adm)" required>
+                    <input type="text" id="student-parent-phone" placeholder="Simu ya Mzazi">
+                    <select id="student-class" required><option value="">-- Chagua Darasa --</option></select>
+                    <button type="submit" class="btn-blue">Sajili Mwanafunzi</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Namba</th><th>Jina</th><th>Jinsia</th><th>Darasa</th><th>Mzazi</th><th>Kitendo</th></tr></thead>
+                        <tbody id="students-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEHEMU YA MADARASA -->
+            <div id="classes-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h2>Madarasa</h2>
+                <form id="class-form" class="form-row">
+                    <input type="text" id="class-name" placeholder="Jina la Darasa (Mf: Form One)" required>
+                    <select id="class-level" required>
+                        <option value="O_LEVEL">O-Level</option>
+                        <option value="A_LEVEL">A-Level</option>
+                        <option value="PRIMARY">Primary</option>
+                    </select>
+                    <button type="submit" class="btn-blue">Ongeza Darasa</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Namba</th><th>Jina la Darasa</th><th>Ngazi</th><th>Kitendo</th></tr></thead>
+                        <tbody id="classes-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEHEMU YA MITIHANI NA BROADSHEET (Yenye Mpangilio wa Hatua) -->
+            <div id="exams-section" class="section-container" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h2>Mitihani & Matokeo</h2>
+                
+                <!-- HATUA 1: TENGENEZA MTIHANI -->
+                <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #e67e22;">
+                    <h3>Hatua ya 1: Tengeneza Mtihani Mpya</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Lazima utengeneze mtihani hapa kwanza ndio uweze kuuweka alama.</p>
+                    <form id="create-exam-form" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <select id="exam-class" required style="padding: 8px;">
+                            <option value="">-- Chagua Darasa --</option>
+                        </select>
+                        <input type="text" id="exam-name" placeholder="Jina la Mtihani (Mf: Midterm)" required style="padding: 8px;">
+                        <select id="exam-term" required style="padding: 8px;">
+                            <option value="Term 1">Term 1</option>
+                            <option value="Term 2">Term 2</option>
+                        </select>
+                        <input type="number" id="exam-year" value="2024" required style="padding: 8px;">
+                        <button type="submit" class="btn-orange">Tengeneza Mtihani</button>
+                    </form>
+                </div>
+
+                <!-- HATUA 2: INGIZA ALAMA -->
+                <div style="background: #eaf2f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #2980b9;">
+                    <h3>Hatua ya 2: Ingiza Alama</h3>
+                    <form id="add-marks-form" class="form-row">
+                        <select id="marks-exam" required><option value="">-- Mtihani --</option></select>
+                        <select id="marks-student" required><option value="">-- Mwanafunzi --</option></select>
+                        <select id="marks-subject" required><option value="">-- Somo --</option></select>
+                        <input type="number" id="marks-score" placeholder="Alama (0-100)" min="0" max="100" required>
+                        <button type="submit" class="btn-blue">Hifadhi Alama</button>
+                    </form>
+                </div>
+
+                <!-- HATUA 3: CHAKATA NA UTHIBITISHE -->
+                <div style="background: #e0f7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #00bcd4;">
+                    <h3>Hatua ya 3: Chakata Matokeo (NECTA Format)</h3>
+                    <div class="form-row" style="margin-top: 10px;">
                         <select id="process-exam-select" required><option value="">-- Chagua Mtihani Kuchakata --</option></select>
                         <button onclick="loadBroadsheet()" class="btn-blue">Vuta Matokeo (Broadsheet)</button>
                         <button onclick="window.print()" class="btn-green">Chapisha Broadsheet</button>
@@ -12,11 +162,12 @@
 
                 <!-- KITUFE CHA PUBLISH -->
                 <div id="publish-container" style="display: none; background: #fcf3cf; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #f1c40f;">
-                    <h3>4. Uthibitisho wa Matokeo (Publish)</h3>
+                    <h3>Hatua ya 4: Uthibitisho (Publish)</h3>
                     <p style="margin-bottom: 10px;">Matokeo haya bado hayajathibitishwa. Mtaaluma Mkuu anahitaji kuyathibitisha ili yaweze kuonekana rasmi.</p>
                     <button onclick="publishResults()" class="btn-orange" style="padding: 10px 20px;">Thibitisha Matokeo (Publish)</button>
                 </div>
 
+                <!-- ENEO LA BROADSHEET -->
                 <div id="broadsheet-container" style="display: none;">
                     <div style="background: red; color: white; padding: 10px; text-align: center; margin-bottom: 10px; display: none;" id="unpublished-warning">
                         <strong>TAHADHARI:</strong> Matokeo haya bado hayajathibitishwa na Mtaaluma Mkuu!
@@ -43,7 +194,34 @@
                     </div>
                 </div>
 
-                <!-- SEHEMU YA HALMASHAURI (DISTRICT ANALYTICS) -->
+                <!-- SEHEMU YA ANALYTICS -->
+                <div id="analytics-container" style="display: none; margin-top: 30px; border-top: 3px solid #3498db; padding-top: 20px;">
+                    <h2 style="color: #1e3c72; margin-bottom: 15px;">Uchambuzi wa Matokeo (Analytics)</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="background: #e8f8f5; padding: 15px; border-radius: 8px; border-left: 5px solid #2ecc71;">
+                            <h3 style="color: #27ae60;">Wanafunzi 20 Bora (Top 20)</h3>
+                            <ol id="top-20-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                        </div>
+                        <div style="background: #fdedec; padding: 15px; border-radius: 8px; border-left: 5px solid #e74c3c;">
+                            <h3 style="color: #c0392b;">Wanafunzi 20 Dhaifu (Bottom 20)</h3>
+                            <ol id="bottom-20-list" style="margin-top: 10px; padding-left: 20px;"></ol>
+                        </div>
+                        <div style="background: #fef9e7; padding: 15px; border-radius: 8px; border-left: 5px solid #f1c40f;">
+                            <h3 style="color: #f39c12;">Wanafunzi wenye 'F' 3 au zaidi</h3>
+                            <ul id="f-list" style="margin-top: 10px; padding-left: 20px;"></ul>
+                        </div>
+                        <div style="background: #ebf5fb; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db;">
+                            <h3 style="color: #2980b9;">Wanafunzi Bora kwa Makundi ya Masomo</h3>
+                            <div style="margin-top: 10px;">
+                                <p><strong>Sayansi (Science):</strong> <span id="top-science"></span></p>
+                                <p><strong>Biashara (Business):</strong> <span id="top-business"></span></p>
+                                <p><strong>Sanaa (Arts):</strong> <span id="top-arts"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UCHAMBUZI WA HALMASHAURI -->
                 <div style="margin-top: 40px; border-top: 3px solid #8e44ad; padding-top: 20px;">
                     <h2 style="color: #8e44ad; margin-bottom: 15px;">Uchambuzi wa Halmashauri (District Level)</h2>
                     <div class="form-row">
@@ -63,4 +241,9 @@
                     </div>
                 </div>
 
-<!-- (Funga divs za exams-section, main, dashboard-screen, body) -->
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
