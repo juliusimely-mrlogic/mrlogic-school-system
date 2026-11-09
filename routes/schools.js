@@ -5,19 +5,17 @@ const authenticate = require('../middlewares/authMiddleware');
 const { ensureLevelSetup } = require('../services/levelSetup');
 
 router.post('/', authenticate, async (req, res) => {
+  if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa ya kusajili shule.' });
+
   let { name, code, region, district, ward, exam_center_no, headmaster_name, ownership, language, schoolLevels } = req.body;
-  
   if (!name || !code) return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
   code = code.trim(); name = name.trim();
 
   try {
     const existing = await db.get('SELECT id FROM schools WHERE code = ?', [code]);
-    if (existing) {
-      return res.status(400).json({ error: `Msimbo (${code}) umetumika.` });
-    }
+    if (existing) return res.status(400).json({ error: `Msimbo (${code}) umetumika.` });
 
     const levelsStr = JSON.stringify(schoolLevels || []);
-    
     await db.run(`INSERT INTO schools (code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levels, subscription_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL '1 year')`, 
       [code, name, region, district, ward, exam_center_no, headmaster_name, ownership, language, levelsStr]);
     
@@ -31,27 +29,28 @@ router.post('/', authenticate, async (req, res) => {
         return res.status(500).json({ error: 'Kosa la kutengeneza madarasa: ' + levelError.message });
       }
     }
-    
     res.status(201).json({ message: 'Shule imesajiliwa kikamilifu', school });
-  } catch (err) { 
-    res.status(500).json({ error: 'Kosa la Server: ' + err.message }); 
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// API MPYA: Kupakia Sahihi na Muhuri
 router.put('/:id/assets', authenticate, async (req, res) => {
+    if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Hauna ruhusa.' });
     const { headmaster_signature, school_stamp } = req.body;
     try {
         await db.run(`UPDATE schools SET headmaster_signature = ?, school_stamp = ? WHERE id = ?`, [headmaster_signature, school_stamp, req.params.id]);
         res.json({ message: 'Picha zimehifadhiwa kikamilifu!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// RBAC: Mkuu wa shule na wengine wanaona shule yao tu
 router.get('/', authenticate, async (req, res) => {
   try {
-    const schools = await db.all('SELECT * FROM schools');
+    let schools;
+    if (req.user.role === 'SUPER_ADMIN') {
+        schools = await db.all('SELECT * FROM schools');
+    } else {
+        schools = await db.all('SELECT * FROM schools WHERE id = ?', [req.user.school_id]);
+    }
     res.json({ schools });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -60,7 +59,7 @@ router.delete('/clear-all', authenticate, async (req, res) => {
     if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa.' });
     try {
         await db.run('DELETE FROM schools');
-        res.json({ message: 'Shule zote zimefutwa kikamilifu.' });
+        res.json({ message: 'Shule zote zimefutwa.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

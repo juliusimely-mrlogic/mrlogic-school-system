@@ -3,8 +3,13 @@ const router = express.Router();
 const db = require('../db/database');
 const authenticate = require('../middlewares/authMiddleware');
 
-// API ya kawaida ya kurekodi malipo kwa mkono
-router.post('/', authenticate, async (req, res) => {
+// KINGA: Mwalimu hawezi kuona wala kurekodi fedha
+const blockTeacher = (req, res, next) => {
+    if (req.user.role === 'TEACHER') return res.status(403).json({ error: 'Hauna ruhusa ya kuona fedha.' });
+    next();
+};
+
+router.post('/', authenticate, blockTeacher, async (req, res) => {
   const { school_id, student_id, amount, term, year } = req.body;
   if (!school_id || !student_id || !amount || !term || !year) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
   try {
@@ -17,8 +22,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// API ya kuweka Ada
-router.post('/structure', authenticate, async (req, res) => {
+router.post('/structure', authenticate, blockTeacher, async (req, res) => {
   const { school_id, class_id, term, year, amount } = req.body;
   if (!school_id || !class_id || !term || !year || !amount) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
   try {
@@ -28,8 +32,7 @@ router.post('/structure', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// API ya kuona Hali ya Ada
-router.get('/status/:school_id', authenticate, async (req, res) => {
+router.get('/status/:school_id', authenticate, blockTeacher, async (req, res) => {
   const { school_id } = req.params;
   const { term, year } = req.query;
   try {
@@ -54,44 +57,23 @@ router.get('/status/:school_id', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// =====================================================================
-// API MPYA: WEBHOOK YA MOBILE MONEY (M-PESA, TIGO, AIRTEL)
-// Hapa ndipo Azampay/ClickPesa watatuma taarifa mzazi akishalipa
-// =====================================================================
+// Webhook ya Mobile Money (Haizuiliwi na blockTeacher kwa sababu inatoka nje)
 router.post('/webhook', async (req, res) => {
-    // Katika mfumo halisi, hapa unahitaji ku-verify Signature ya kampuni
     const { reference, amount, phone, provider, term, year, school_id } = req.body;
-    
-    if (!reference || !amount || !phone) {
-        return res.status(400).json({ error: 'Taarifa za malipo hazijakamilika' });
-    }
+    if (!reference || !amount || !phone) return res.status(400).json({ error: 'Taarifa za malipo hazijakamilika' });
 
     try {
-        // 1. Tafuta mwanafunzi kwa kutumia Namba ya Usajili (Reference)
         const student = await db.get('SELECT id, full_name FROM students WHERE admission_number = ? AND school_id = ?', [reference, school_id]);
-        
-        if (!student) {
-            return res.status(404).json({ error: 'Mwanafunzi hapatikani kwa reference hiyo' });
-        }
+        if (!student) return res.status(404).json({ error: 'Mwanafunzi hapatikani kwa reference hiyo' });
 
-        // 2. Rekodi malipo kwenye database
         await db.run(
             `INSERT INTO fees (school_id, student_id, amount, term, year, date_paid) VALUES (?, ?, ?, ?, ?, NOW())`, 
             [school_id, student.id, amount, term || 'Term 1', year || new Date().getFullYear()]
         );
-
-        // 3. Tengeneza Taarifa (Notification) kwa ajili ya Mkuu wa Shule
         const message = `Malipo ya ${provider || 'Mobile Money'} yamepokelewa: ${student.full_name} amelipa Tsh ${amount.toLocaleString()} (Namba: ${phone}).`;
         await db.run(`INSERT INTO notifications (school_id, title, message) VALUES (?, ?, ?)`, [school_id, 'Malipo ya Simu', message]);
-
-        console.log(`✅ Malipo ya Simu yamepokelewa: ${reference} - Tsh ${amount}`);
-
-        // 4. Rudisha majibu kwa mtoa huduma (M-Pesa/Tigo) kuwa umepokea
         res.status(200).json({ message: 'Malipo yamepokelewa na kusajiliwa kikamilifu' });
-    } catch (err) {
-        console.error("Kosa la Webhook:", err);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

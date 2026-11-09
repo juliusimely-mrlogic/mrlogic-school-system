@@ -1,97 +1,191 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../db/database');
-const authenticate = require('../middlewares/authMiddleware');
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MR-LOGIC School System</title>
+    <link rel="stylesheet" href="/style.css?v=19">
+</head>
+<body>
 
-// API ya kawaida ya kurekodi malipo kwa mkono
-router.post('/', authenticate, async (req, res) => {
-  const { school_id, student_id, amount, term, year } = req.body;
-  if (!school_id || !student_id || !amount || !term || !year) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
-  try {
-    await db.run(`INSERT INTO fees (school_id, student_id, amount, term, year, date_paid) VALUES (?, ?, ?, ?, ?, NOW())`, [school_id, student_id, amount, term, year]);
-    const student = await db.get('SELECT full_name FROM students WHERE id = ?', [student_id]);
-    if (student) {
-        await db.run(`INSERT INTO notifications (school_id, title, message) VALUES (?, ?, ?)`, [school_id, 'Malipo Mapya', `${student.full_name} amelipa Tsh ${amount.toLocaleString()} (${term} ${year}) kwa mkono.`]);
-    }
-    res.status(201).json({ message: 'Malipo yamerekodiwa' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+    <div id="login-screen" class="screen" style="display: flex;">
+        <div class="login-box">
+            <h2>MR-LOGIC</h2>
+            <p style="margin-bottom: 20px; color: #666;">Mfumo wa Usimamizi wa Shule</p>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit" id="login-btn">Ingia Mfumoni</button>
+            </form>
+            <div id="login-error" class="error-msg"></div>
+        </div>
+    </div>
 
-// API ya kuweka Ada
-router.post('/structure', authenticate, async (req, res) => {
-  const { school_id, class_id, term, year, amount } = req.body;
-  if (!school_id || !class_id || !term || !year || !amount) return res.status(400).json({ error: 'Taarifa hazijakamilika' });
-  try {
-    await db.run(`DELETE FROM fee_structure WHERE school_id = ? AND class_id = ? AND term = ? AND year = ?`, [school_id, class_id, term, year]);
-    await db.run(`INSERT INTO fee_structure (school_id, class_id, term, year, amount) VALUES (?, ?, ?, ?, ?)`, [school_id, class_id, term, year, amount]);
-    res.status(201).json({ message: 'Ada imewekwa kikamilifu' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// API ya kuona Hali ya Ada
-router.get('/status/:school_id', authenticate, async (req, res) => {
-  const { school_id } = req.params;
-  const { term, year } = req.query;
-  try {
-    const students = await db.all(`SELECT s.id, s.full_name, s.admission_number, c.name as class_name, c.id as class_id FROM students s JOIN classes c ON s.class_id = c.id WHERE s.school_id = ?`, [school_id]);
-    const structures = await db.all(`SELECT * FROM fee_structure WHERE school_id = ? AND term = ? AND year = ?`, [school_id, term, year]);
-    const payments = await db.all(`SELECT student_id, SUM(amount) as total_paid FROM fees WHERE school_id = ? AND term = ? AND year = ? GROUP BY student_id`, [school_id, term, year]);
-
-    const statusList = students.map(student => {
-      const struct = structures.find(s => s.class_id === student.class_id);
-      const requiredAmount = struct ? struct.amount : 0;
-      const payment = payments.find(p => p.student_id === student.id);
-      const paidAmount = payment ? payment.total_paid : 0;
-      const balance = requiredAmount - paidAmount;
-      
-      let status = 'HAJALIPA';
-      if (paidAmount >= requiredAmount && requiredAmount > 0) status = 'AMELIPA ZOTE';
-      else if (paidAmount > 0 && paidAmount < requiredAmount) status = 'AMELIPA KIDOGO';
-
-      return { ...student, requiredAmount, paidAmount, balance, status };
-    });
-    res.json({ statusList });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// =====================================================================
-// API MPYA: WEBHOOK YA MOBILE MONEY (M-PESA, TIGO, AIRTEL)
-// Hapa ndipo Azampay/ClickPesa watatuma taarifa mzazi akishalipa
-// =====================================================================
-router.post('/webhook', async (req, res) => {
-    // Katika mfumo halisi, hapa unahitaji ku-verify Signature ya kampuni
-    const { reference, amount, phone, provider, term, year, school_id } = req.body;
-    
-    if (!reference || !amount || !phone) {
-        return res.status(400).json({ error: 'Taarifa za malipo hazijakamilika' });
-    }
-
-    try {
-        // 1. Tafuta mwanafunzi kwa kutumia Namba ya Usajili (Reference)
-        const student = await db.get('SELECT id, full_name FROM students WHERE admission_number = ? AND school_id = ?', [reference, school_id]);
+    <div id="dashboard-screen" class="screen" style="display: none;">
+        <header>
+            <h1>Dashibodi ya MR-LOGIC</h1>
+            <div class="header-user">
+                <span id="welcome-msg">Karibu!</span>
+                <button onclick="promptChangePassword()" class="btn-orange" style="margin-right: 10px;">Badilisha Nywila</button>
+                <button id="logout-btn" class="btn-red">Toka</button>
+            </div>
+        </header>
         
-        if (!student) {
-            return res.status(404).json({ error: 'Mwanafunzi hapatikani kwa reference hiyo' });
-        }
+        <main>
+            <div id="superadmin-dashboard" style="display: none; margin-bottom: 30px;">
+                <h2 style="color: #1e3c72; margin-bottom: 15px;">Takwimu za Mfumo Mzima</h2>
+                <div class="stats-grid">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #2980b9, #2c3e50);"><h3>JUMLA YA SHULE</h3><h2 id="sa-schools">0</h2></div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);"><h3>HALMASHAURI</h3><h2 id="sa-districts">0</h2></div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #27ae60, #2ecc71);"><h3>WANAFUNZI (Wote)</h3><h2 id="sa-students">0</h2></div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #e67e22, #f39c12);"><h3>MALIPO YA ADA</h3><h2 id="sa-fees" style="font-size: 20px;">Tsh 0</h2></div>
+                </div>
+            </div>
 
-        // 2. Rekodi malipo kwenye database
-        await db.run(
-            `INSERT INTO fees (school_id, student_id, amount, term, year, date_paid) VALUES (?, ?, ?, ?, ?, NOW())`, 
-            [school_id, student.id, amount, term || 'Term 1', year || new Date().getFullYear()]
-        );
+            <div class="top-bar">
+                <div>
+                    <label><strong>Chagua Shule: </strong></label>
+                    <select id="school-selector">
+                        <option value="">-- Chagua Shule --</option>
+                    </select>
+                </div>
+                <div id="admin-school-actions">
+                    <button onclick="toggleSchoolForm()" class="btn-green" id="add-school-btn">+ Sajili Shule</button>
+                    <button onclick="clearAllSchools()" class="btn-red" style="margin-left: 10px;" id="clear-schools-btn">Futa Shule Zote (Majaribio)</button>
+                </div>
+            </div>
 
-        // 3. Tengeneza Taarifa (Notification) kwa ajili ya Mkuu wa Shule
-        const message = `Malipo ya ${provider || 'Mobile Money'} yamepokelewa: ${student.full_name} amelipa Tsh ${amount.toLocaleString()} (Namba: ${phone}).`;
-        await db.run(`INSERT INTO notifications (school_id, title, message) VALUES (?, ?, ?)`, [school_id, 'Malipo ya Simu', message]);
+            <div id="school-form-container" style="display: none;">
+                <h3>Sajili Shule Mpya</h3>
+                <form id="school-form" class="form-grid">
+                    <input type="text" id="school-name" placeholder="Jina la Shule *" required>
+                    <input type="text" id="school-code" placeholder="Msimbo wa Shule (Code) *" required>
+                    <input type="text" id="school-region" placeholder="Mkoa">
+                    <input type="text" id="school-district" placeholder="Halmashauri / Wilaya">
+                    <input type="text" id="school-ward" placeholder="Kata">
+                    <input type="text" id="school-exam-no" placeholder="Namba ya Mtihani">
+                    <input type="text" id="school-headmaster" placeholder="Jina la Mkuu wa Shule">
+                    <select id="school-ownership">
+                        <option value="">-- Umiliki --</option><option value="Serikali">Serikali</option><option value="Binafsi">Binafsi</option><option value="Dini">Dini</option>
+                    </select>
+                    <select id="school-language">
+                        <option value="">-- Lugha --</option><option value="Kiswahili">Kiswahili</option><option value="English">English</option>
+                    </select>
+                    <div style="grid-column: span 2; display: flex; gap: 20px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                        <label><strong>Ngazi za Shule:</strong></label>
+                        <label><input type="checkbox" class="school-level" value="PRIMARY"> Msingi</label>
+                        <label><input type="checkbox" class="school-level" value="O_LEVEL"> O-Level</label>
+                        <label><input type="checkbox" class="school-level" value="A_LEVEL"> A-Level</label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-blue">Hifadhi Shule</button>
+                        <button type="button" class="btn-red" onclick="toggleSchoolForm()">Ghairi</button>
+                    </div>
+                </form>
+            </div>
 
-        console.log(`✅ Malipo ya Simu yamepokelewa: ${reference} - Tsh ${amount}`);
+            <!-- KADI ZA MENU ZENYE ID -->
+            <div class="cards" id="menu-cards">
+                <div class="card" id="card-students" onclick="showSection('students')"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
+                <div class="card" id="card-teachers" onclick="showSection('teachers')" style="border-left-color: #e74c3c;"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
+                <div class="card" id="card-classes" onclick="showSection('classes')"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
+                <div class="card" id="card-attendance" onclick="showSection('attendance')" style="border-left-color: #f39c12;"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+                <div class="card" id="card-exams" onclick="showSection('exams')" style="border-left-color: #e67e22;"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
+                
+                <!-- Kadi inayofichwa kwa Mwalimu -->
+                <div class="card" id="card-fees" onclick="showSection('fees')" style="border-left-color: #27ae60;"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>
+                
+                <div class="card" id="card-notifications" onclick="showSection('notifications')" style="border-left-color: #3498db;"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
+                
+                <!-- Kadi inayofichwa kwa Mwalimu -->
+                <div class="card" id="card-users" onclick="showSection('users')" style="border-left-color: #8e44ad;"><h3>Watumiaji</h3><p>Sajili Wakuu na Walimu</p></div>
+            </div>
 
-        // 4. Rudisha majibu kwa mtoa huduma (M-Pesa/Tigo) kuwa umepokea
-        res.status(200).json({ message: 'Malipo yamepokelewa na kusajiliwa kikamilifu' });
-    } catch (err) {
-        console.error("Kosa la Webhook:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
+            <!-- SEHEMU ZA KAZI (Zinabaki kama zilivyo) -->
+            <div id="students-section" class="section-container" style="display: none;">
+                <h2>Wanafunzi</h2>
+                <div class="step-box" style="background: #f9f9f9; border-left-color: #2a5298;">
+                    <h3>Sajili Mwanafunzi Mmoja</h3>
+                    <form id="student-form" class="form-row">
+                        <input type="text" id="student-name" placeholder="Jina Kamili" required>
+                        <select id="student-gender" required><option value="M">Me (M)</option><option value="F">Ke (F)</option></select>
+                        <input type="text" id="student-adm" placeholder="Namba ya Usajili" required>
+                        <input type="text" id="student-parent-phone" placeholder="Simu ya Mzazi">
+                        <select id="student-class" required><option value="">-- Chagua Darasa --</option></select>
+                        <button type="submit" class="btn-blue">Sajili Mwanafunzi</button>
+                    </form>
+                </div>
+                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;">
+                    <h3>Pakia Wanafunzi Kupitia Excel (Bulk Upload)</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Vichwa: <strong>JINA, JINSIA, NAMBA, SIMU</strong>.</p>
+                    <form id="bulk-upload-form" class="form-row">
+                        <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" required style="padding: 8px; border: 1px solid #ccc; border-radius: 5px;">
+                        <select id="bulk-class" required><option value="">-- Chagua Darasa --</option></select>
+                        <button type="submit" class="btn-blue" style="background: #8e44ad;">Pakia Faili</button>
+                    </form>
+                    <div id="bulk-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+                <div class="table-responsive" style="margin-top: 20px;">
+                    <table><thead><tr><th>Namba</th><th>Jina</th><th>Jinsia</th><th>Darasa</th><th>Mzazi</th><th>Kitendo</th></tr></thead><tbody id="students-table-body"></tbody></table>
+                </div>
+            </div>
 
-module.exports = router;
+            <div id="teachers-section" class="section-container" style="display: none;"><h2>Walimu</h2></div>
+            <div id="classes-section" class="section-container" style="display: none;"><h2>Madarasa</h2></div>
+            <div id="attendance-section" class="section-container" style="display: none;"><h2>Mahudhurio</h2></div>
+            <div id="exams-section" class="section-container" style="display: none;"><h2>Mitihani</h2></div>
+            <div id="notifications-section" class="section-container" style="display: none;"><h2>Taarifa</h2></div>
+            <div id="users-section" class="section-container" style="display: none;"><h2>Watumiaji</h2></div>
+
+            <div id="fees-section" class="section-container" style="display: none;">
+                <h2>Usimamizi wa Ada</h2>
+                <div class="step-box" style="background: #e8f8f5; border-left-color: #27ae60;">
+                    <h3>1. Weka Ada</h3>
+                    <form id="fee-structure-form" class="form-row">
+                        <select id="struct-class" required><option value="">-- Darasa --</option></select>
+                        <select id="struct-term" required><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
+                        <input type="number" id="struct-year" value="2024" required>
+                        <input type="number" id="struct-amount" placeholder="Kiasi" required>
+                        <button type="submit" class="btn-green">Weka</button>
+                    </form>
+                </div>
+                <div class="step-box" style="background: #fef9e7; border-left-color: #f1c40f;">
+                    <h3>2. Hali ya Ada</h3>
+                    <div class="form-row" style="margin-bottom: 15px;">
+                        <select id="status-term"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
+                        <input type="number" id="status-year" value="2024">
+                        <button onclick="loadFeeStatus()" class="btn-orange">Angalia Hali</button>
+                    </div>
+                    <div class="table-responsive"><table><thead><tr><th>Mwanafunzi</th><th>Darasa</th><th>Inatakiwa</th><th>Amelipa</th><th>Salio</th><th>Hali</th></tr></thead><tbody id="fee-status-body"></tbody></table></div>
+                </div>
+                <div class="step-box" style="background: #eaf2f8; border-left-color: #2980b9;">
+                    <h3>3. Rekodi Malipo ya Mkono</h3>
+                    <form id="fee-form" class="form-row">
+                        <select id="fee-student" required><option value="">-- Mwanafunzi --</option></select>
+                        <input type="number" id="fee-amount" placeholder="Kiasi" required>
+                        <select id="fee-term" required><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option></select>
+                        <input type="number" id="fee-year" value="2024" required>
+                        <button type="submit" class="btn-blue">Rekodi</button>
+                    </form>
+                </div>
+                <div class="step-box" style="background: #f4ecf7; border-left-color: #8e44ad; margin-top: 20px;">
+                    <h3>4. Malipo ya Simu (M-Pesa / Tigo / Airtel)</h3>
+                    <form id="simulate-mobile-payment-form" class="form-row">
+                        <select id="mobile-student" required><option value="">-- Chagua Mwanafunzi --</option></select>
+                        <input type="number" id="mobile-amount" placeholder="Kiasi (Tsh)" required>
+                        <input type="text" id="mobile-phone" placeholder="Namba ya Simu" required>
+                        <select id="mobile-provider" required>
+                            <option value="M-Pesa">M-Pesa</option><option value="Tigo Pesa">Tigo Pesa</option><option value="Airtel Money">Airtel Money</option>
+                        </select>
+                        <button type="submit" class="btn-blue" style="background: #8e44ad;">Simulate Payment</button>
+                    </form>
+                    <div id="mobile-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <div id="printable-report" style="display: none;"></div>
+    <script src="/app.js?v=19"></script>
+</body>
+</html>
