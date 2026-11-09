@@ -25,6 +25,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         if (res.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user_name', data.user.full_name);
+            localStorage.setItem('user_role', data.user.role); // Hifadhi role
             token = data.token;
             showDashboard();
         } else { document.getElementById('login-error').innerText = data.error; }
@@ -39,7 +40,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 
 // DASHBOARD
 function showDashboard() {
-    document.getElementById('welcome-msg').innerText = `Karibu, ${localStorage.getItem('user_name')}!`;
+    document.getElementById('welcome-msg').innerText = `Karibu, ${localStorage.getItem('user_name')}! (${localStorage.getItem('user_role')})`;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
     loadSchools();
@@ -60,14 +61,19 @@ function toggleSchoolForm() {
     c.style.display = c.style.display === 'none' ? 'block' : 'none';
 }
 
-// HAPA NIMEWEKA KINGA YA MAKOSA
+// KUSAJILI SHULE MPYA (Inasoma zile sehemu zote mpya)
 document.getElementById('school-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
-        code: document.getElementById('school-code').value,
         name: document.getElementById('school-name').value,
+        code: document.getElementById('school-code').value,
         region: document.getElementById('school-region').value,
         district: document.getElementById('school-district').value,
+        ward: document.getElementById('school-ward').value,
+        exam_center_no: document.getElementById('school-exam-no').value,
+        headmaster_name: document.getElementById('school-headmaster').value,
+        ownership: document.getElementById('school-ownership').value,
+        language: document.getElementById('school-language').value,
         schoolLevels: ['O_LEVEL', 'A_LEVEL', 'PRIMARY']
     };
     try {
@@ -78,17 +84,14 @@ document.getElementById('school-form').addEventListener('submit', async (e) => {
         const data = await res.json();
         
         if (res.ok) {
-            alert("Shule imesajiliwa kikamilifu pamoja na masomo na madarasa yake!");
+            alert("Shule imesajiliwa kikamilifu!");
             document.getElementById('school-form').reset();
             toggleSchoolForm();
             loadSchools();
         } else {
-            // Hapa ndio utaona kosa kama msimbo umetumika au database imegoma
             alert("KOSA: " + (data.error || 'Imeshindwa kusajili shule.'));
         }
-    } catch (err) {
-        alert("Hitilafu ya Mtandao: " + err.message);
-    }
+    } catch (err) { alert("Hitilafu ya Mtandao."); }
 });
 
 // KUBADILISHA SHULE
@@ -118,7 +121,7 @@ function updateStats() {
     document.getElementById('stat-fees').innerText = 'Tsh ' + total.toLocaleString();
 }
 
-// LOAD DATA FUNCTIONS
+// LOAD CLASSES (Na Kitufe cha Kufuta)
 async function loadClasses() {
     const res = await fetch(`${API_BASE}/classes?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -127,10 +130,21 @@ async function loadClasses() {
     ['student-class', 'att-class', 'exam-class', 'assign-class'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
+    
     const tbody = document.getElementById('classes-table-body');
-    if (tbody) tbody.innerHTML = allClasses.map((c, i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.level_type}</td></tr>`).join('') || '<tr><td colspan="3">Hakuna madarasa.</td></tr>';
+    if (tbody) {
+        tbody.innerHTML = allClasses.map((c, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td>${c.name}</td>
+                <td>${c.level_type}</td>
+                <td><button onclick="deleteClass(${c.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td>
+            </tr>
+        `).join('') || '<tr><td colspan="4">Hakuna madarasa.</td></tr>';
+    }
 }
 
+// LOAD SUBJECTS (Na Kitufe cha Kufuta)
 async function loadSubjects() {
     const res = await fetch(`${API_BASE}/academics/subjects?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -139,10 +153,19 @@ async function loadSubjects() {
     ['marks-subject', 'assign-subject'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
+    
     const tbody = document.getElementById('subjects-table-body');
-    if (tbody) tbody.innerHTML = allSubjects.map((s, i) => `<tr><td>${i+1}</td><td>${s.code}</td><td>${s.name}</td><td>${s.level_type}</td><td>${s.category}</td></tr>`).join('') || '<tr><td colspan="5">Hakuna masomo.</td></tr>';
+    if (tbody) {
+        tbody.innerHTML = allSubjects.map((s, i) => `
+            <tr>
+                <td>${i+1}</td><td>${s.code}</td><td>${s.name}</td><td>${s.level_type}</td><td>${s.category}</td>
+                <td><button onclick="alert('Kufuta somo litakuja kwenye toleo lijalo')" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td>
+            </tr>
+        `).join('') || '<tr><td colspan="6">Hakuna masomo.</td></tr>';
+    }
 }
 
+// LOAD STUDENTS (Na Kitufe cha Kufuta)
 async function loadStudents() {
     const res = await fetch(`${API_BASE}/students?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -151,13 +174,43 @@ async function loadStudents() {
     ['fee-student', 'marks-student'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).innerHTML = options;
     });
+    
     const tbody = document.getElementById('students-table-body');
-    if (tbody) tbody.innerHTML = allStudents.map((s, i) => {
+    if (tbody) {
+        tbody.innerHTML = allStudents.map((s, i) => {
             const cls = allClasses.find(c => c.id === s.class_id)?.name || '-';
-            return `<tr><td>${i+1}</td><td>${s.full_name}</td><td>${s.gender}</td><td>${cls}</td><td>${s.parent_phone || '-'}</td></tr>`;
-        }).join('') || '<tr><td colspan="5">Hakuna wanafunzi.</td></tr>';
+            return `
+                <tr>
+                    <td>${i+1}</td>
+                    <td>${s.full_name}</td>
+                    <td>${s.gender}</td>
+                    <td>${cls}</td>
+                    <td>${s.parent_phone || '-'}</td>
+                    <td><button onclick="deleteStudent(${s.id})" class="btn-red" style="padding: 4px 8px; font-size:12px;">Futa</button></td>
+                </tr>
+            `;
+        }).join('') || '<tr><td colspan="6">Hakuna wanafunzi.</td></tr>';
+    }
 }
 
+// FUNCTIONS ZA KUFUTA (DELETE)
+async function deleteClass(id) {
+    if (!confirm("Una uhakika unataka kufuta darasa hili? Wanafunzi walio kwenye darasa hili wataondolewa darasa.")) return;
+    try {
+        const res = await fetch(`${API_BASE}/classes/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) { alert("Darasa limefutwa!"); loadClasses(); updateStats(); }
+    } catch (err) { alert("Kosa la mtandao"); }
+}
+
+async function deleteStudent(id) {
+    if (!confirm("Una uhakika unataka kumfuta mwanafunzi huyu?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/students/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) { alert("Mwanafunzi amefutwa!"); loadStudents(); updateStats(); }
+    } catch (err) { alert("Kosa la mtandao"); }
+}
+
+// LOAD TEACHERS
 async function loadTeachers() {
     const res = await fetch(`${API_BASE}/teachers?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -167,6 +220,7 @@ async function loadTeachers() {
     if (tbody) tbody.innerHTML = allTeachers.map((t, i) => `<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.phone || '-'}</td><td>${t.gender || '-'}</td></tr>`).join('') || '<tr><td colspan="4">Hakuna walimu.</td></tr>';
 }
 
+// LOAD FEES
 async function loadFees() {
     const res = await fetch(`${API_BASE}/fees/school/${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -175,6 +229,7 @@ async function loadFees() {
     if(tbody) tbody.innerHTML = allFees.map((f,i) => `<tr><td>${f.full_name}</td><td>Tsh ${f.amount.toLocaleString()}</td><td>${f.term}</td><td><button onclick="printReceipt(${f.id})" class="btn-blue" style="padding:4px 8px;">Chapisha</button></td></tr>`).join('') || '<tr><td colspan="4">Hakuna malipo.</td></tr>';
 }
 
+// LOAD EXAMS
 async function loadExams() {
     const res = await fetch(`${API_BASE}/exams?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -182,6 +237,7 @@ async function loadExams() {
     if(document.getElementById('marks-exam')) document.getElementById('marks-exam').innerHTML = '<option value="">-- Chagua Mtihani --</option>' + allExams.map(e => `<option value="${e.id}">${e.name} (${e.term})</option>`).join('');
 }
 
+// LOAD NOTIFICATIONS
 async function loadNotifications() {
     const res = await fetch(`${API_BASE}/notifications?school_id=${currentSchoolId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await res.json();
@@ -190,6 +246,13 @@ async function loadNotifications() {
 }
 
 // SUBMIT FORMS
+document.getElementById('class-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = { school_id: currentSchoolId, name: document.getElementById('class-name').value, level_type: document.getElementById('class-level').value };
+    const res = await fetch(`${API_BASE}/classes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+    if (res.ok) { alert("Darasa limesajiliwa!"); document.getElementById('class-form').reset(); loadClasses(); updateStats(); }
+});
+
 document.getElementById('student-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = { school_id: currentSchoolId, class_id: document.getElementById('student-class').value, full_name: document.getElementById('student-name').value, gender: document.getElementById('student-gender').value, admission_number: document.getElementById('student-adm').value, parent_phone: document.getElementById('student-parent-phone').value };

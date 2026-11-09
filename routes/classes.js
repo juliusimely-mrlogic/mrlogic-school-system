@@ -15,4 +15,13 @@ router.post('/', authenticate, (req, res) => {
 router.get('/', authenticate, (req, res) => {
   res.json({ classes: db.all('SELECT * FROM classes WHERE school_id = ?', [req.query.school_id]) });
 });
+
+// API MPYA YA KUFUTA DARASA
+router.delete('/:id', authenticate, (req, res) => {
+  try {
+    db.run('DELETE FROM classes WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Darasa limefutwa' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
