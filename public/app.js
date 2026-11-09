@@ -6,6 +6,7 @@ let currentUserRole = localStorage.getItem('user_role');
 let allSchoolsData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    
     // 1. LOGIN
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -271,11 +272,61 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const body = { school_id: currentSchoolId, student_id: document.getElementById('fee-student').value, amount: parseFloat(document.getElementById('fee-amount').value), term: document.getElementById('fee-term').value, year: parseInt(document.getElementById('fee-year').value) };
             const res = await fetch(`${API_BASE}/fees`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-            if (res.ok) { alert("Malipo yamerekodiwa!"); feeForm.reset(); }
+            if (res.ok) { alert("Malipo yamerekodiwa!"); feeForm.reset(); loadFeeStatus(); }
         });
     }
 
-    // 12. TAARIFA FOMU
+    // 12. SIMULATE MOBILE MONEY PAYMENT
+    const mobilePaymentForm = document.getElementById('simulate-mobile-payment-form');
+    if (mobilePaymentForm) {
+        mobilePaymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentSchoolId) return alert("Chagua shule kwanza!");
+            
+            const studentId = document.getElementById('mobile-student').value;
+            const amount = parseFloat(document.getElementById('mobile-amount').value);
+            const phone = document.getElementById('mobile-phone').value;
+            const provider = document.getElementById('mobile-provider').value;
+            
+            const statusDiv = document.getElementById('mobile-status');
+            statusDiv.innerText = "Inatuma ombi la malipo...";
+            statusDiv.style.color = "#e67e22";
+
+            const studentObj = allStudents.find(s => s.id == studentId);
+            const refNumber = studentObj ? studentObj.admission_number : "HAIJULIKANI";
+
+            try {
+                const res = await fetch(`${API_BASE}/fees/webhook`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        reference: refNumber, 
+                        amount: amount, 
+                        phone: phone, 
+                        provider: provider,
+                        school_id: currentSchoolId,
+                        term: 'Term 1', // Kwa urahisi wa simulation
+                        year: 2024
+                    })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    statusDiv.innerText = "Malipo yamepokelewa na kusajiliwa kikamilifu! (Angalia Taarifa na Hali ya Ada)";
+                    statusDiv.style.color = "#27ae60";
+                    mobilePaymentForm.reset();
+                    loadFeeStatus(); // Sasisha jedwali la hali ya ada
+                } else {
+                    statusDiv.innerText = "Kosa: " + data.error;
+                    statusDiv.style.color = "#e74c3c";
+                }
+            } catch (err) {
+                statusDiv.innerText = "Hitilafu ya mtandao.";
+                statusDiv.style.color = "#e74c3c";
+            }
+        });
+    }
+
+    // 13. TAARIFA FOMU
     const notificationForm = document.getElementById('notification-form');
     if (notificationForm) {
         notificationForm.addEventListener('submit', async (e) => {
@@ -286,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 13. MAHUDHURIO FOMU
+    // 14. MAHUDHURIO FOMU
     const attendanceForm = document.getElementById('attendance-form');
     if (attendanceForm) {
         attendanceForm.addEventListener('submit', async (e) => {
@@ -403,7 +454,7 @@ async function loadStudents() {
     const data = await res.json();
     allStudents = data.students || [];
     const options = '<option value="">-- Chagua Mwanafunzi --</option>' + allStudents.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
-    ['marks-student', 'report-student-select', 'fee-student'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
+    ['marks-student', 'report-student-select', 'fee-student', 'mobile-student'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = options; });
     const tbody = document.getElementById('students-table-body');
     if (tbody) tbody.innerHTML = allStudents.map((s, i) => `<tr><td>${i+1}</td><td>${s.full_name}</td><td>${s.gender}</td><td>${allClasses.find(c => c.id === s.class_id)?.name || '-'}</td><td>${s.parent_phone || '-'}</td><td><button onclick="deleteStudent(${s.id})" class="btn-red">Futa</button></td></tr>`).join('') || '<tr><td colspan="6">Hakuna wanafunzi.</td></tr>';
 }
@@ -465,14 +516,12 @@ async function printReportCard() {
     const examId = document.getElementById('report-exam-select').value;
     const studentId = document.getElementById('report-student-select').value;
     if (!examId || !studentId) return alert("Chagua mtihani na mwanafunzi!");
-
-    // Tunavuta upya taarifa za shule hapa ili kuhakikisha picha zilizopakiwa zinapatikana
     let freshSchoolData = null;
     try {
         const resSchool = await fetch(`${API_BASE}/schools`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dataSchool = await resSchool.json();
         freshSchoolData = dataSchool.schools.find(s => s.id == currentSchoolId);
-    } catch(e) { console.error("Kosa la kupata shule", e); }
+    } catch(e) { console.error(e); }
 
     if (!currentProcessedData || currentProcessedData.exam.id != examId) {
         const res = await fetch(`${API_BASE}/exams/processed/${examId}`, { headers: { 'Authorization': `Bearer ${token}` } });
