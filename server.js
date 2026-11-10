@@ -2,18 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const pool = require('./db'); // Hakikisha connection yako ya PostgreSQL ipo
+const pool = require('./db'); // Connection yako ya PostgreSQL
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Middleware ya Usalama (Auth)
+// Middleware ya Usalama
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    
     if (!token) return res.status(401).json({ error: "Hakuna token" });
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
@@ -23,7 +22,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API ya Kupata Takwimu za Dashibodi
+// API ya Takwimu
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -59,26 +58,12 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API ya kuleta shule zote (Super Admin Pekee)
-app.get('/api/schools', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
-    try {
-        const result = await pool.query('SELECT id, name FROM schools ORDER BY name ASC');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: "Imeshindikana kuleta shule" });
-    }
-});
-
-// API ya Kusajili Watumiaji Wapya (Super Admin PEKEE)
+// API ya Kusajili Watumiaji (Super Admin PEKEE)
 app.post('/api/users', authenticateToken, async (req, res) => {
-    // Ulinzi mkali: Mkuu wa shule au Mtaaluma wakijaribu, wanakataliwa hapa.
     if (req.user.role !== 'super_admin') {
-        return res.status(403).json({ error: "Kosa: Ni Super Admin pekee anayeruhusiwa kusajili watumiaji wapya." });
+        return res.status(403).json({ error: "Kosa: Ni Super Admin pekee anayeruhusiwa kusajili watumiaji." });
     }
-    
-    // Code yako ya INSERT INTO users iende hapa...
-    res.json({ message: "Mtumiaji amesajiliwa kikamilifu" });
+    res.json({ message: "Mtumiaji amesajiliwa" });
 });
 
 app.get('*', (req, res) => {

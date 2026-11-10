@@ -1,4 +1,4 @@
-// Chukua taarifa za mtumiaji kutoka localStorage
+// Chukua taarifa za mtumiaji
 const user = JSON.parse(localStorage.getItem('user'));
 const token = localStorage.getItem('token');
 
@@ -6,14 +6,16 @@ if (!token || !user) {
     window.location.href = '/login.html';
 }
 
+// Hii itatuonyesha kwenye Browser Console kuwa mfumo unajua huyu ni nani
+console.log("Mtumiaji aliyelogin:", user.name, "| Role yake:", user.role);
+
 document.getElementById('user-name').innerText = user.name;
 
-// Kazi ya Kuweka Kadi za Menu kulingana na Role (Role-Based Access Control)
 function renderMenu() {
     const menuContainer = document.getElementById('menu-container');
     let html = '';
 
-    // 1. MENU ZA WOTE (Mkuu wa Shule, Mtaaluma, Super Admin)
+    // 1. MENU ZA WOTE
     if (user.role === 'super_admin' || user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
         html += `
             <div class="menu-card border-blue"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
@@ -30,12 +32,16 @@ function renderMenu() {
         html += `<div class="menu-card border-green"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
     }
 
-    // 3. MENU YA WATUMIAJI (Super Admin PEKEE - Imefichwa kwa Mkuu na Mtaaluma)
+    // 3. MENU YA WATUMIAJI (Super Admin PEKEE)
+    // Hapa ndipo tunaficha. Kama role yake sio 'super_admin', code hii haitekelezwi.
     if (user.role === 'super_admin') {
         html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
+    } else {
+        // Kama ni Mkuu au Mtaaluma, tunaweka console log kuthibitisha imezuiwa
+        console.log("Kadi ya Watumiaji imezuiwa kwa sababu wewe ni:", user.role);
     }
 
-    // 4. MENU ZA MWALIMU (Mwalimu Pekee)
+    // 4. MENU ZA MWALIMU
     if (user.role === 'teacher') {
         html += `
             <div class="menu-card border-blue"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
@@ -47,7 +53,6 @@ function renderMenu() {
     menuContainer.innerHTML = html;
 }
 
-// Kazi ya Kuleta Takwimu 
 async function loadDashboardData() {
     let url = '/api/dashboard/stats';
     
@@ -68,7 +73,6 @@ async function loadDashboardData() {
         const response = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
         const data = await response.json();
 
         if (response.ok) {
@@ -77,7 +81,6 @@ async function loadDashboardData() {
             document.getElementById('stat-classes').innerText = data.totalClasses;
             document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
 
-            // Mkuu wa shule na Mtaaluma wanaona jina la shule moja kwa moja (bila dropdown)
             if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
                 document.getElementById('dropdown-container').style.display = 'none';
                 document.getElementById('static-school-container').style.display = 'block';
@@ -89,7 +92,6 @@ async function loadDashboardData() {
     }
 }
 
-// Kazi ya Kuleta Shule kwa ajili ya Super Admin Dropdown
 async function loadSchoolsForDropdown() {
     if (user.role !== 'super_admin') return;
 
