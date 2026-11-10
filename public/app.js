@@ -1,13 +1,9 @@
-// Chukua taarifa za mtumiaji
 const user = JSON.parse(localStorage.getItem('user'));
 const token = localStorage.getItem('token');
 
 if (!token || !user) {
     window.location.href = '/login.html';
 }
-
-// Hii itatuonyesha kwenye Browser Console kuwa mfumo unajua huyu ni nani
-console.log("Mtumiaji aliyelogin:", user.name, "| Role yake:", user.role);
 
 document.getElementById('user-name').innerText = user.name;
 
@@ -27,18 +23,14 @@ function renderMenu() {
         `;
     }
 
-    // 2. MENU YA ADA (Mkuu wa Shule na Super Admin Pekee)
+    // 2. MENU YA ADA
     if (user.role === 'super_admin' || user.role === 'school_manager') {
         html += `<div class="menu-card border-green"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
     }
 
     // 3. MENU YA WATUMIAJI (Super Admin PEKEE)
-    // Hapa ndipo tunaficha. Kama role yake sio 'super_admin', code hii haitekelezwi.
     if (user.role === 'super_admin') {
         html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
-    } else {
-        // Kama ni Mkuu au Mtaaluma, tunaweka console log kuthibitisha imezuiwa
-        console.log("Kadi ya Watumiaji imezuiwa kwa sababu wewe ni:", user.role);
     }
 
     // 4. MENU ZA MWALIMU
@@ -54,6 +46,8 @@ function renderMenu() {
 }
 
 async function loadDashboardData() {
+    // Kama ni Mkuu wa Shule, tunatuma request bila school_id (Backend itachukua yake kutoka token)
+    // Kama ni Super Admin, tunachukua aliyoichagua kwenye dropdown
     let url = '/api/dashboard/stats';
     
     if (user.role === 'super_admin') {
@@ -73,22 +67,27 @@ async function loadDashboardData() {
         const response = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        // Hii ni muhimu: Kama API inarudisha 404 (haipo), tuelewe
+        if (!response.ok) {
+            console.error("Kosa kutoka API: API haipo au kuna tatizo la Server.");
+            return;
+        }
+
         const data = await response.json();
 
-        if (response.ok) {
-            document.getElementById('stat-students').innerText = data.totalStudents;
-            document.getElementById('stat-teachers').innerText = data.totalTeachers;
-            document.getElementById('stat-classes').innerText = data.totalClasses;
-            document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
+        document.getElementById('stat-students').innerText = data.totalStudents;
+        document.getElementById('stat-teachers').innerText = data.totalTeachers;
+        document.getElementById('stat-classes').innerText = data.totalClasses;
+        document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
 
-            if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
-                document.getElementById('dropdown-container').style.display = 'none';
-                document.getElementById('static-school-container').style.display = 'block';
-                document.getElementById('static-school-name').innerText = data.schoolName;
-            }
+        if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
+            document.getElementById('dropdown-container').style.display = 'none';
+            document.getElementById('static-school-container').style.display = 'block';
+            document.getElementById('static-school-name').innerText = data.schoolName;
         }
     } catch (error) {
-        console.error("Kosa la kupata data:", error);
+        console.error("Kosa la mtandao:", error);
     }
 }
 
@@ -102,6 +101,7 @@ async function loadSchoolsForDropdown() {
         const response = await fetch('/api/schools', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!response.ok) return;
         const schools = await response.json();
         
         const select = document.getElementById('school-select');
@@ -119,7 +119,7 @@ async function loadSchoolsForDropdown() {
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login.html';
+    window.location.href = '/login.html'; // Au '/' kulingana na muundo wako
 }
 
 document.addEventListener('DOMContentLoaded', () => {

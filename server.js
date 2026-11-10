@@ -2,14 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const pool = require('./db'); // Connection yako ya PostgreSQL
+const pool = require('./db'); // Hakikisha hii inaunganisha PostgreSQL
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Middleware ya Usalama
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -22,17 +21,22 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API ya Takwimu
+// 1. API YA TAKWIMU (Ilikuwa inatoa 404)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
+        // Kama ni Super Admin, chukua kutoka URL. Kama ni Mkuu, chukua kutoka kwenye Token yake
         let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
         
-        if (!targetSchoolId) return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
+        if (!targetSchoolId) {
+            return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
+        }
 
+        // Pata jina la shule
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
-        const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "";
+        const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
+        // Hesabu takwimu
         const studentsQuery = `SELECT COUNT(*) FROM students WHERE school_id = $1`;
         const teachersQuery = `SELECT COUNT(*) FROM teachers WHERE school_id = $1`;
         const classesQuery = `SELECT COUNT(*) FROM classes WHERE school_id = $1`;
@@ -54,18 +58,23 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             role: user.role
         });
     } catch (error) {
+        console.error("Database Error:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
 
-// API ya Kusajili Watumiaji (Super Admin PEKEE)
-app.post('/api/users', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') {
-        return res.status(403).json({ error: "Kosa: Ni Super Admin pekee anayeruhusiwa kusajili watumiaji." });
+// 2. API YA KULETA SHULE (Kwa ajili ya Dropdown ya Super Admin)
+app.get('/api/schools', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
+    try {
+        const result = await pool.query('SELECT id, name FROM schools ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: "Imeshindikana kuleta shule" });
     }
-    res.json({ message: "Mtumiaji amesajiliwa" });
 });
 
+// Catch-all route ya kurudisha index.html (Lazima iwe mwisho kabisa)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
