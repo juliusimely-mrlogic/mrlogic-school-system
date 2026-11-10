@@ -30,7 +30,7 @@ function renderMenu() {
         html += `<div class="menu-card border-green"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
     }
 
-    // 3. MENU YA WATUMIAJI (Super Admin PEKEE - Kama ulivyoomba)
+    // 3. MENU YA WATUMIAJI (Super Admin PEKEE - Imefichwa kwa Mkuu na Mtaaluma)
     if (user.role === 'super_admin') {
         html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
     }
@@ -47,7 +47,7 @@ function renderMenu() {
     menuContainer.innerHTML = html;
 }
 
-// Kazi ya Kuleta Takwimu (Ile tuliyoifanya awali)
+// Kazi ya Kuleta Takwimu 
 async function loadDashboardData() {
     let url = '/api/dashboard/stats';
     
@@ -77,6 +77,7 @@ async function loadDashboardData() {
             document.getElementById('stat-classes').innerText = data.totalClasses;
             document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
 
+            // Mkuu wa shule na Mtaaluma wanaona jina la shule moja kwa moja (bila dropdown)
             if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
                 document.getElementById('dropdown-container').style.display = 'none';
                 document.getElementById('static-school-container').style.display = 'block';

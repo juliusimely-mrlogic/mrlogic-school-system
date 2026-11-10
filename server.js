@@ -18,12 +18,12 @@ const authenticateToken = (req, res, next) => {
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
         if (err) return res.status(403).json({ error: "Token si sahihi" });
-        req.user = user;
+        req.user = user; 
         next();
     });
 };
 
-// API ya Kupata Takwimu za Dashibodi (Ile tuliyoifanya awali)
+// API ya Kupata Takwimu za Dashibodi
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -59,7 +59,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API ya kuleta shule zote (Kwa ajili ya Super Admin Dropdown)
+// API ya kuleta shule zote (Super Admin Pekee)
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
@@ -70,14 +70,14 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
-// MUHIMU: API ya Kusajili Watumiaji Wapya (Super Admin PEKEE)
-// Hapa ndipo tunazuia Mkuu wa Shule kusajili watumiaji wengine.
+// API ya Kusajili Watumiaji Wapya (Super Admin PEKEE)
 app.post('/api/users', authenticateToken, async (req, res) => {
+    // Ulinzi mkali: Mkuu wa shule au Mtaaluma wakijaribu, wanakataliwa hapa.
     if (req.user.role !== 'super_admin') {
-        return res.status(403).json({ error: "Samahani, ni Super Admin pekee anayeruhusiwa kusajili watumiaji wapya." });
+        return res.status(403).json({ error: "Kosa: Ni Super Admin pekee anayeruhusiwa kusajili watumiaji wapya." });
     }
     
-    // Code yako ya kusajili mtumiaji mpya iende hapa (INSERT INTO users...)
+    // Code yako ya INSERT INTO users iende hapa...
     res.json({ message: "Mtumiaji amesajiliwa kikamilifu" });
 });
 
