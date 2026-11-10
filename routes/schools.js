@@ -6,7 +6,6 @@ const { ensureLevelSetup } = require('../services/levelSetup');
 
 router.post('/', authenticate, async (req, res) => {
   if (req.user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Hauna ruhusa ya kusajili shule.' });
-
   let { name, code, region, district, ward, exam_center_no, headmaster_name, ownership, language, schoolLevels } = req.body;
   if (!name || !code) return res.status(400).json({ error: 'Jina na Msimbo wa Shule ni lazima.' });
   code = code.trim(); name = name.trim();
@@ -42,7 +41,6 @@ router.put('/:id/assets', authenticate, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// RBAC: Mkuu wa shule na wengine wanaona shule yao tu
 router.get('/', authenticate, async (req, res) => {
   try {
     let schools;
@@ -53,6 +51,32 @@ router.get('/', authenticate, async (req, res) => {
     }
     res.json({ schools });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ==========================================
+// API MPYA: TAKWIMU ZA SHULE MOJA (School Analytics)
+// ==========================================
+router.get('/:id/stats', authenticate, async (req, res) => {
+    const schoolId = req.params.id;
+    
+    // Ulinzi: Mkuu wa shule hawezi kuona takwimu za shule nyingine
+    if (req.user.role !== 'SUPER_ADMIN' && req.user.school_id != schoolId) {
+        return res.status(403).json({ error: 'Hauna ruhusa ya kuona takwimu za shule hii.' });
+    }
+
+    try {
+        const totalStudents = await db.get('SELECT COUNT(*) as n FROM students WHERE school_id = ?', [schoolId]);
+        const totalTeachers = await db.get('SELECT COUNT(*) as n FROM teachers WHERE school_id = ?', [schoolId]);
+        const totalClasses = await db.get('SELECT COUNT(*) as n FROM classes WHERE school_id = ?', [schoolId]);
+        const totalFees = await db.get('SELECT SUM(amount) as total FROM fees WHERE school_id = ?', [schoolId]);
+        
+        res.json({ 
+            totalStudents: parseInt(totalStudents.n), 
+            totalTeachers: parseInt(totalTeachers.n), 
+            totalClasses: parseInt(totalClasses.n), 
+            totalFees: totalFees.total || 0 
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.delete('/clear-all', authenticate, async (req, res) => {
