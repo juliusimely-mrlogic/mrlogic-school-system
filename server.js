@@ -18,41 +18,22 @@ const authenticateToken = (req, res, next) => {
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
         if (err) return res.status(403).json({ error: "Token si sahihi" });
-        req.user = user; // Hapa tunapata id, role, na school_id ya aliyelogin
+        req.user = user;
         next();
     });
 };
 
-// API ya Kupata Takwimu za Dashibodi
+// API ya Kupata Takwimu za Dashibodi (Ile tuliyoifanya awali)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        let targetSchoolId;
-        let schoolName = "";
+        let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
+        
+        if (!targetSchoolId) return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
 
-        // 1. Logic ya Kuchagua Shule
-        if (user.role === 'super_admin') {
-            // Super Admin anatumia ile ID aliyoichagua kwenye dropdown
-            targetSchoolId = req.query.school_id;
-            if (!targetSchoolId) {
-                return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
-            }
-        } else if (user.role === 'school_manager') {
-            // Mkuu wa Shule analazimishwa kutumia shule yake mwenyewe (Hata akibadilisha URL haitafanya kazi)
-            targetSchoolId = user.school_id;
-        } else {
-            return res.status(403).json({ error: "Hauna ruhusa kuona takwimu hizi" });
-        }
+        const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
+        const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "";
 
-        // 2. Pata Jina la Shule
-        const schoolQuery = `SELECT name FROM schools WHERE id = $1`;
-        const schoolResult = await pool.query(schoolQuery, [targetSchoolId]);
-        if (schoolResult.rows.length > 0) {
-            schoolName = schoolResult.rows[0].name;
-        }
-
-        // 3. Fanya Mahesabu (Queries)
-        // Badilisha 'students', 'teachers', 'classes', 'payments' kama majina ya tables zako yalivyo
         const studentsQuery = `SELECT COUNT(*) FROM students WHERE school_id = $1`;
         const teachersQuery = `SELECT COUNT(*) FROM teachers WHERE school_id = $1`;
         const classesQuery = `SELECT COUNT(*) FROM classes WHERE school_id = $1`;
@@ -73,9 +54,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             totalFees: parseFloat(fees.rows[0].total),
             role: user.role
         });
-
     } catch (error) {
-        console.error("Kosa kwenye Dashboard:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
@@ -91,7 +70,17 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
-// Kumalizia mfumo
+// MUHIMU: API ya Kusajili Watumiaji Wapya (Super Admin PEKEE)
+// Hapa ndipo tunazuia Mkuu wa Shule kusajili watumiaji wengine.
+app.post('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ error: "Samahani, ni Super Admin pekee anayeruhusiwa kusajili watumiaji wapya." });
+    }
+    
+    // Code yako ya kusajili mtumiaji mpya iende hapa (INSERT INTO users...)
+    res.json({ message: "Mtumiaji amesajiliwa kikamilifu" });
+});
+
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
