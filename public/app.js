@@ -1,99 +1,130 @@
-// 1. Simulizi ya mtumiaji aliyelogin (Kwenye mfumo halisi hii inatoka kwenye Login API yako)
-// Badilisha hizi taarifa hapa chini kujaribu (Mfano: weka role: 'super_admin' au 'school_manager')
-const currentUser = {
-    name: "WINSTON A MULUNGU",
-    role: "school_manager", // JARIBU KUBADILISHA HAPA: 'school_manager' au 'super_admin'
-    school_id: 101,
-    school_name: "NYANG'HOMANGO SECONDARY SCHOOL",
-    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // Weka token yako halisi
-};
+// Chukua taarifa za mtumiaji kutoka localStorage (Kama ulivyoweka kwenye login yako)
+const user = JSON.parse(localStorage.getItem('user'));
+const token = localStorage.getItem('token');
 
-// 2. KAZI YA KUPANGA UI KULINGANA NA CHEO
-function setupDashboardUI() {
-    document.getElementById('user-info').innerText = `Karibu, ${currentUser.name}`;
-    
-    const selectorContainer = document.getElementById('school-selector-container');
-
-    if (currentUser.role === 'super_admin') {
-        // Kama ni Super Admin, weka dropdown
-        selectorContainer.innerHTML = `
-            <label><strong>Chagua Shule:</strong></label>
-            <select id="school-dropdown" style="padding: 8px; margin-left: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                <option value="">-- Chagua Shule --</option>
-                <option value="101">NYANG'HOMANGO SECONDARY SCHOOL</option>
-                <option value="102">SHULE NYINGINE SECONDARY SCHOOL</option>
-            </select>
-        `;
-
-        // Weka event listener, kila akibadilisha dropdown, data ziletwe upya
-        document.getElementById('school-dropdown').addEventListener('change', (e) => {
-            const selectedId = e.target.value;
-            if(selectedId) loadStats(selectedId);
-        });
-
-        // Kama Super admin hajachagua, onyesha sifuri
-        loadStats(null); 
-
-    } else {
-        // Kama ni Mkuu wa Shule (School Manager), onyesha maandishi tu, HAKUNA DROPDOWN
-        selectorContainer.innerHTML = `
-            <label><strong>Shule:</strong></label>
-            <span style="margin-left: 10px; font-weight: bold; color: #1e3a8a;">${currentUser.school_name}</span>
-        `;
-
-        // Pakia takwimu za shule yake mwenyewe
-        loadStats(currentUser.school_id); 
-    }
+if (!token || !user) {
+    window.location.href = '/login.html'; // Mpeleke kwenye login kama hajalogin
 }
 
-// 3. KAZI YA KULETA TAKWIMU KUTOKA API
-async function loadStats(schoolId = null) {
-    try {
-        // Kama Super admin hajachagua shule, usifanye request
-        if (currentUser.role === 'super_admin' && !schoolId) {
-            document.getElementById('stat-students').innerText = "0";
-            document.getElementById('stat-teachers').innerText = "0";
-            document.getElementById('stat-classes').innerText = "0";
-            document.getElementById('stat-fees').innerText = "Tsh 0";
-            return;
+// Weka Jina la Mtumiaji
+document.getElementById('user-name').innerText = user.name;
+
+// Kazi ya Kuweka Kadi za Menu kulingana na Role
+function renderMenu() {
+    const menuContainer = document.getElementById('menu-container');
+    let html = '';
+
+    if (user.role === 'super_admin' || user.role === 'school_manager') {
+        html += `
+            <div class="menu-card border-blue"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
+            <div class="menu-card border-red"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
+            <div class="menu-card border-purple"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
+            <div class="menu-card border-orange"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+            <div class="menu-card border-blue"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
+            <div class="menu-card border-green"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>
+            <div class="menu-card border-blue"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
+        `;
+    }
+
+    if (user.role === 'super_admin' || user.role === 'school_manager') {
+        html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuru na Walimu</p></div>`;
+    }
+
+    if (user.role === 'teacher') {
+        html += `
+            <div class="menu-card border-blue"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
+            <div class="menu-card border-orange"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+            <div class="menu-card border-blue"><h3>Mitihani Yangu</h3><p>Weka alama</p></div>
+        `;
+    }
+
+    menuContainer.innerHTML = html;
+}
+
+// Kazi ya Kuleta Takwimu
+async function loadDashboardData() {
+    let url = '/api/dashboard/stats';
+    
+    // Kama ni Super Admin, ongeza school_id aliyoichagua kwenye dropdown
+    if (user.role === 'super_admin') {
+        const selectedSchool = document.getElementById('school-select').value;
+        if (selectedSchool) {
+            url += `?school_id=${selectedSchool}`;
+        } else {
+            // Kama hajachagua shule, usifanye request
+            document.getElementById('stat-students').innerText = '0';
+            document.getElementById('stat-teachers').innerText = '0';
+            document.getElementById('stat-classes').innerText = '0';
+            document.getElementById('stat-fees').innerText = 'Tsh 0';
+            return; 
         }
+    }
 
-        // Tengeneza URL. Kama kuna schoolId, iweke kwenye query
-        const url = schoolId 
-            ? `/api/dashboard/stats?school_id=${schoolId}` 
-            : `/api/dashboard/stats`;
-
+    try {
         const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${currentUser.token}`,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-
+        
         const data = await response.json();
 
         if (response.ok) {
+            // Weka Takwimu
             document.getElementById('stat-students').innerText = data.totalStudents;
             document.getElementById('stat-teachers').innerText = data.totalTeachers;
             document.getElementById('stat-classes').innerText = data.totalClasses;
-            document.getElementById('stat-fees').innerText = `Tsh ${data.totalFees.toLocaleString()}`;
-            
-            // Badilisha kichwa cha habari kama ni Super Admin
-            if (currentUser.role === 'super_admin' && schoolId) {
-                document.getElementById('stats-title').innerText = "Takwimu za Shule Iliyochaguliwa";
-            } else {
-                document.getElementById('stats-title').innerText = "Takwimu za Shule Yako";
+            document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
+
+            // Mabadiliko Muhimu: Ficha Dropdown kwa Mkuu wa Shule
+            if (user.role === 'school_manager') {
+                document.getElementById('dropdown-container').style.display = 'none';
+                document.getElementById('static-school-container').style.display = 'block';
+                document.getElementById('static-school-name').innerText = data.schoolName;
             }
-        } else {
-            console.error("Kosa kutoka API:", data.error);
         }
     } catch (error) {
-        console.error("Imeshindikana kuleta takwimu:", error);
+        console.error("Kosa la kupata data:", error);
     }
 }
 
-// 4. ANZISHA MFUMO MTUMIAJI AKIINGIA
+// Kazi ya Kuleta Shule kwa ajili ya Super Admin Dropdown
+async function loadSchoolsForDropdown() {
+    if (user.role !== 'super_admin') return;
+
+    document.getElementById('dropdown-container').style.display = 'block';
+    document.getElementById('static-school-container').style.display = 'none';
+
+    try {
+        const response = await fetch('/api/schools', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const schools = await response.json();
+        
+        const select = document.getElementById('school-select');
+        schools.forEach(school => {
+            const option = document.createElement('option');
+            option.value = school.id;
+            option.text = school.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Kosa la kuleta shule:", error);
+    }
+}
+
+// Kazi ya Kutoka (Logout)
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login.html';
+}
+
+// Anzisha mfumo mtumiaji akiingia
 document.addEventListener('DOMContentLoaded', () => {
-    setupDashboardUI();
+    renderMenu();
+    if (user.role === 'super_admin') {
+        loadSchoolsForDropdown();
+    } else if (user.role === 'school_manager') {
+        // Mkuu wa shule anaita data moja kwa moja
+        loadDashboardData(); 
+    }
 });

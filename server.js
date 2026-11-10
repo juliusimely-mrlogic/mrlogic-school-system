@@ -1,81 +1,100 @@
-require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
-const config = require('./config');
-const db = require('./db/database');
-const { hashPassword } = require('./services/authService');
+const pool = require('./db'); // Hakikisha connection yako ya PostgreSQL ipo
 
 const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// HAPA NDIO TUNAONGEZA LIMIT KUBWA (10MB) ILI KUPOKEA PICHA
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Middleware ya Usalama (Auth)
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) return res.status(401).json({ error: "Hakuna token" });
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
-  next();
+    jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
+        if (err) return res.status(403).json({ error: "Token si sahihi" });
+        req.user = user; // Hapa tunapata id, role, na school_id ya aliyelogin
+        next();
+    });
+};
+
+// API ya Kupata Takwimu za Dashibodi
+app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let targetSchoolId;
+        let schoolName = "";
+
+        // 1. Logic ya Kuchagua Shule
+        if (user.role === 'super_admin') {
+            // Super Admin anatumia ile ID aliyoichagua kwenye dropdown
+            targetSchoolId = req.query.school_id;
+            if (!targetSchoolId) {
+                return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
+            }
+        } else if (user.role === 'school_manager') {
+            // Mkuu wa Shule analazimishwa kutumia shule yake mwenyewe (Hata akibadilisha URL haitafanya kazi)
+            targetSchoolId = user.school_id;
+        } else {
+            return res.status(403).json({ error: "Hauna ruhusa kuona takwimu hizi" });
+        }
+
+        // 2. Pata Jina la Shule
+        const schoolQuery = `SELECT name FROM schools WHERE id = $1`;
+        const schoolResult = await pool.query(schoolQuery, [targetSchoolId]);
+        if (schoolResult.rows.length > 0) {
+            schoolName = schoolResult.rows[0].name;
+        }
+
+        // 3. Fanya Mahesabu (Queries)
+        // Badilisha 'students', 'teachers', 'classes', 'payments' kama majina ya tables zako yalivyo
+        const studentsQuery = `SELECT COUNT(*) FROM students WHERE school_id = $1`;
+        const teachersQuery = `SELECT COUNT(*) FROM teachers WHERE school_id = $1`;
+        const classesQuery = `SELECT COUNT(*) FROM classes WHERE school_id = $1`;
+        const feesQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE school_id = $1`;
+
+        const [students, teachers, classes, fees] = await Promise.all([
+            pool.query(studentsQuery, [targetSchoolId]),
+            pool.query(teachersQuery, [targetSchoolId]),
+            pool.query(classesQuery, [targetSchoolId]),
+            pool.query(feesQuery, [targetSchoolId])
+        ]);
+
+        res.json({
+            schoolName: schoolName,
+            totalStudents: parseInt(students.rows[0].count),
+            totalTeachers: parseInt(teachers.rows[0].count),
+            totalClasses: parseInt(classes.rows[0].count),
+            totalFees: parseFloat(fees.rows[0].total),
+            role: user.role
+        });
+
+    } catch (error) {
+        console.error("Kosa kwenye Dashboard:", error);
+        res.status(500).json({ error: "Imeshindikana kupata takwimu" });
+    }
 });
 
-async function startServer() {
-    await db.createTables();
-
+// API ya kuleta shule zote (Kwa ajili ya Super Admin Dropdown)
+app.get('/api/schools', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
-        const admin = await db.get('SELECT * FROM users WHERE username = "superadmin"');
-        if (!admin) {
-            const a = hashPassword('Mrlogic7500@');
-            await db.run(
-              `INSERT INTO users (school_id, full_name, email, username, password_hash, salt, role)
-               VALUES (NULL, 'Super Admin', 'admin@mrlogic.tz', 'superadmin', ?, ?, 'SUPER_ADMIN')`,
-              [a.hash, a.salt]
-            );
-            console.log('✅ Super Admin amewekwa tayari!');
-        }
+        const result = await pool.query('SELECT id, name FROM schools ORDER BY name ASC');
+        res.json(result.rows);
     } catch (error) {
-        console.error('❌ KOSA LA KUTENGENEZA ADMIN:', error.message);
+        res.status(500).json({ error: "Imeshindikana kuleta shule" });
     }
+});
 
-    function loadRoute(routePath, moduleName) {
-      try {
-        const router = require(moduleName);
-        app.use(routePath, router);
-        console.log(`✅ API imeunganishwa: ${routePath}`);
-      } catch (err) {
-        console.error(`❌ IMESHINDWA kuunganisha API ${routePath}:`, err.message);
-      }
-    }
+// Kumalizia mfumo
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-    loadRoute('/api/auth', './routes/auth');
-    loadRoute('/api/schools', './routes/schools');
-    loadRoute('/api/academics', './routes/academics');
-    loadRoute('/api/users', './routes/users');
-    loadRoute('/api/classes', './routes/classes');
-    loadRoute('/api/students', './routes/students');
-    loadRoute('/api/attendance', './routes/attendance');
-    loadRoute('/api/exams', './routes/exams');
-    loadRoute('/api/fees', './routes/fees');
-    loadRoute('/api/teachers', './routes/teachers');
-    loadRoute('/api/notifications', './routes/notifications');
-    loadRoute('/api/superadmin', './routes/superadmin');
-
-    const PUBLIC_DIR = path.join(__dirname, 'public');
-    app.use(express.static(PUBLIC_DIR));
-    app.use((req, res) => {
-      if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API haipo' });
-      const indexPath = path.join(PUBLIC_DIR, 'index.html');
-      if (fs.existsSync(indexPath)) res.sendFile(indexPath);
-      else res.status(404).send('Ukurasa haupatikani');
-    });
-
-    const PORT = config.port || 10000;
-    app.listen(PORT, () => {
-      console.log(`\n=========================================`);
-      console.log(`Mfumo wa MR-LOGIC unafanya kazi kwenye: http://localhost:${PORT}`);
-      console.log(`=========================================\n`);
-    });
-}
-
-startServer();
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server inakimbia kwenye port ${PORT}`));
