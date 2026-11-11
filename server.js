@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const bcrypt = require('bcryptjs'); // Tumeongeza hii
+const bcrypt = require('bcryptjs'); 
 const pool = require('./db'); 
 
 const app = express();
@@ -10,13 +10,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==========================================
-// API YA LOGIN (Imerekebishwa kwa Bcrypt)
-// ==========================================
+// 1. API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        // Tafuta mtumiaji kwa username (au email kama ndio unatumia)
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         
         if (result.rows.length === 0) {
@@ -24,16 +21,12 @@ app.post('/api/login', async (req, res) => {
         }
 
         const user = result.rows[0];
-
-        // TUMIA BCRYPT KULINGANISHA PASSWORD
-        // user.password_hash inatoka kwenye database yetu
         const validPassword = await bcrypt.compare(password, user.password_hash);
 
         if (!validPassword) {
             return res.status(401).json({ error: "Password si sahihi" });
         }
 
-        // Tengeneza Token
         const token = jwt.sign(
             { id: user.id, role: user.role, school_id: user.school_id, name: user.full_name },
             process.env.JWT_SECRET || 'siri_yako_ya_siri',
@@ -60,7 +53,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API YA TAKWIMU
+// 2. API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -70,13 +63,17 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
         }
 
+        // Pata jina la shule
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
         const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
+        // Hesabu takwimu (Tumia majina ya tables yaliyopo kwenye DB yako)
         const studentsQuery = `SELECT COUNT(*) FROM students WHERE school_id = $1`;
         const teachersQuery = `SELECT COUNT(*) FROM teachers WHERE school_id = $1`;
-        const classesQuery = `SELECT COUNT(*) FROM classes WHERE school_id = $1`;
-        const feesQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE school_id = $1`;
+        // Kama table yako ya madarasa inaitwa 'streams' badilisha hapa chini:
+        const classesQuery = `SELECT COUNT(*) FROM streams WHERE school_id = $1`; 
+        // Kama table ya malipo inaitwa 'fees' badilisha hapa chini:
+        const feesQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1`;
 
         const [students, teachers, classes, fees] = await Promise.all([
             pool.query(studentsQuery, [targetSchoolId]),
@@ -94,12 +91,12 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             role: user.role
         });
     } catch (error) {
-        console.error("Database Error:", error);
+        console.error("Database Error kwenye Stats:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
 
-// API YA KULETA SHULE
+// 3. API YA KULETA SHULE (Kwa Super Admin)
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
@@ -110,6 +107,7 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
+// Catch-all route
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

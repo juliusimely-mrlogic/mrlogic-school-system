@@ -1,11 +1,9 @@
 const userStr = localStorage.getItem('user');
 const token = localStorage.getItem('token');
 
-// KAMA HAKUNA TOKEN, RUDI KWENYE LOGIN (Hapa ndio mzizi wa loop)
 if (!token || !userStr) {
     window.location.replace('/login.html');
 } else {
-    // Kama token ipo, endelea na mfumo
     let user;
     try {
         user = JSON.parse(userStr);
@@ -53,7 +51,7 @@ if (!token || !userStr) {
         menuContainer.innerHTML = html;
     }
 
-    function logout() {
+    window.logout = function() {
         localStorage.clear();
         window.location.replace('/login.html');
     }
@@ -72,6 +70,7 @@ if (!token || !userStr) {
                     document.getElementById('stat-teachers').innerText = '0';
                     document.getElementById('stat-classes').innerText = '0';
                     document.getElementById('stat-fees').innerText = 'Tsh 0';
+                    document.getElementById('static-school-name').innerText = "Chagua Shule";
                     return; 
                 }
             }
@@ -82,7 +81,11 @@ if (!token || !userStr) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.error("API imeshindwa kupata data");
+                document.getElementById('static-school-name').innerText = "Hitilafu ya Mtandao";
+                return;
+            }
 
             const data = await response.json();
 
@@ -94,7 +97,8 @@ if (!token || !userStr) {
             if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
                 document.getElementById('dropdown-container').style.display = 'none';
                 document.getElementById('static-school-container').style.display = 'block';
-                document.getElementById('static-school-name').innerText = data.schoolName;
+                // Hapa ndipo jina la shule linapowekwa
+                document.getElementById('static-school-name').innerText = data.schoolName || "Shule Haijulikani";
             }
         } catch (error) {
             console.error("Kosa la mtandao:", error);

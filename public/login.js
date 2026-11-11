@@ -16,7 +16,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/index.html'; // Mpeleke kwenye dashibodi
+            window.location.href = '/index.html'; 
         } else {
             errorMsg.innerText = data.error || "Kuingia kimeshindikana";
         }
