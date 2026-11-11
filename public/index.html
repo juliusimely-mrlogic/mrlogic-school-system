@@ -8,8 +8,6 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 30px; max-width: 1200px; margin: auto; }
-        
-        /* Kadi za Takwimu */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { padding: 20px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .stat-card h4 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; }
@@ -18,20 +16,14 @@
         .bg-red { background-color: #ef4444; }
         .bg-purple { background-color: #a855f7; }
         .bg-green { background-color: #10b981; }
-
-        /* Sehemu ya Kuchagua Shule */
         .school-selector { margin-bottom: 30px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .school-selector select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; width: 100%; max-width: 400px; }
         .school-static { font-size: 18px; font-weight: bold; color: #1e3a8a; }
-
-        /* Kadi za Menu */
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
         .menu-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border-left: 5px solid #ccc; }
         .menu-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .menu-card h3 { margin: 0 0 5px 0; color: #333; }
         .menu-card p { margin: 0; color: #666; font-size: 14px; }
-        
-        /* Rangi za Mistari ya Kadi */
         .border-blue { border-left-color: #3b82f6; }
         .border-red { border-left-color: #ef4444; }
         .border-purple { border-left-color: #a855f7; }
@@ -60,7 +52,6 @@
             <div class="stat-card bg-green"><h4>Malipo Yaliyokusanywa</h4><h2 id="stat-fees">Tsh 0</h2></div>
         </div>
 
-        <!-- Dropdown (Inaonekana kwa Super Admin Tu) -->
         <div class="school-selector" id="dropdown-container" style="display: none;">
             <label><strong>Chagua Shule:</strong></label><br><br>
             <select id="school-select" onchange="loadDashboardData()">
@@ -68,13 +59,11 @@
             </select>
         </div>
 
-        <!-- Maandishi ya Shule (Inaonekana kwa Mkuu wa Shule Tu) -->
         <div class="school-selector" id="static-school-container" style="display: none;">
             <span class="school-static">Shule: <span id="static-school-name"></span></span>
         </div>
 
         <div class="menu-grid" id="menu-container">
-            <!-- JS itajaza hapa -->
         </div>
     </div>
 

@@ -5,7 +5,7 @@ if (!token || !user) {
     window.location.href = '/login.html';
 }
 
-document.getElementById('user-name').innerText = user.name;
+document.getElementById('user-name').innerText = user.name || user.full_name;
 
 function renderMenu() {
     const menuContainer = document.getElementById('menu-container');
@@ -45,21 +45,27 @@ function renderMenu() {
     menuContainer.innerHTML = html;
 }
 
+function logout() {
+    localStorage.clear(); // Inafuta kumbukumbu zote
+    window.location.href = '/login.html';
+}
+
 async function loadDashboardData() {
-    // Kama ni Mkuu wa Shule, tunatuma request bila school_id (Backend itachukua yake kutoka token)
-    // Kama ni Super Admin, tunachukua aliyoichagua kwenye dropdown
     let url = '/api/dashboard/stats';
     
     if (user.role === 'super_admin') {
-        const selectedSchool = document.getElementById('school-select').value;
-        if (selectedSchool) {
-            url += `?school_id=${selectedSchool}`;
-        } else {
-            document.getElementById('stat-students').innerText = '0';
-            document.getElementById('stat-teachers').innerText = '0';
-            document.getElementById('stat-classes').innerText = '0';
-            document.getElementById('stat-fees').innerText = 'Tsh 0';
-            return; 
+        const selectElement = document.getElementById('school-select');
+        if (selectElement) {
+            const selectedSchool = selectElement.value;
+            if (selectedSchool) {
+                url += `?school_id=${selectedSchool}`;
+            } else {
+                document.getElementById('stat-students').innerText = '0';
+                document.getElementById('stat-teachers').innerText = '0';
+                document.getElementById('stat-classes').innerText = '0';
+                document.getElementById('stat-fees').innerText = 'Tsh 0';
+                return; 
+            }
         }
     }
 
@@ -68,11 +74,7 @@ async function loadDashboardData() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // Hii ni muhimu: Kama API inarudisha 404 (haipo), tuelewe
-        if (!response.ok) {
-            console.error("Kosa kutoka API: API haipo au kuna tatizo la Server.");
-            return;
-        }
+        if (!response.ok) return;
 
         const data = await response.json();
 
@@ -114,12 +116,6 @@ async function loadSchoolsForDropdown() {
     } catch (error) {
         console.error("Kosa la kuleta shule:", error);
     }
-}
-
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login.html'; // Au '/' kulingana na muundo wako
 }
 
 document.addEventListener('DOMContentLoaded', () => {
