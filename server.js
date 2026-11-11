@@ -2,30 +2,38 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const pool = require('./db'); // Sasa ipo kwenye file la db.js
+const bcrypt = require('bcryptjs'); // Tumeongeza hii
+const pool = require('./db'); 
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. API YA LOGIN (Imerekebishwa)
+// ==========================================
+// API YA LOGIN (Imerekebishwa kwa Bcrypt)
+// ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
+        // Tafuta mtumiaji kwa username (au email kama ndio unatumia)
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         
         if (result.rows.length === 0) {
-            return res.status(401).json({ error: "Jina la mtumiaji au password si sahihi" });
+            return res.status(401).json({ error: "Jina la mtumiaji si sahihi" });
         }
 
         const user = result.rows[0];
 
-        // (Kama unatumia bcrypt, badilisha hii line. Kama ni plain text, tumia hii)
-        if (password !== user.password) {
+        // TUMIA BCRYPT KULINGANISHA PASSWORD
+        // user.password_hash inatoka kwenye database yetu
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+
+        if (!validPassword) {
             return res.status(401).json({ error: "Password si sahihi" });
         }
 
+        // Tengeneza Token
         const token = jwt.sign(
             { id: user.id, role: user.role, school_id: user.school_id, name: user.full_name },
             process.env.JWT_SECRET || 'siri_yako_ya_siri',
@@ -52,7 +60,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU
+// API YA TAKWIMU
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -91,7 +99,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA KULETA SHULE (Kwa ajili ya Super Admin)
+// API YA KULETA SHULE
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
@@ -102,7 +110,6 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
-// Catch-all route (LAZIMA IWE MWISHO)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
