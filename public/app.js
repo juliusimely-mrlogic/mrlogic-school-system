@@ -46,7 +46,7 @@ function renderMenu() {
 }
 
 function logout() {
-    localStorage.clear(); // Inafuta kumbukumbu zote
+    localStorage.clear();
     window.location.href = '/login.html';
 }
 

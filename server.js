@@ -2,20 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const pool = require('./db'); // Hakikisha hii inaunganisha PostgreSQL
+const pool = require('./db'); // Sasa ipo kwenye file la db.js
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==========================================
-// 1. API YA LOGIN (Imerekebishwa kosa la Quotes)
-// ==========================================
+// 1. API YA LOGIN (Imerekebishwa)
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        // TUNATUMIA $1 BADALA YA "$username" KUEpusha kosa la Quotes
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         
         if (result.rows.length === 0) {
@@ -24,12 +21,11 @@ app.post('/api/login', async (req, res) => {
 
         const user = result.rows[0];
 
-        // (Kama unatumia bcrypt kwa password, weka mlinganisho hapa. Kama ni plain text, tumia hii)
+        // (Kama unatumia bcrypt, badilisha hii line. Kama ni plain text, tumia hii)
         if (password !== user.password) {
             return res.status(401).json({ error: "Password si sahihi" });
         }
 
-        // Tengeneza Token
         const token = jwt.sign(
             { id: user.id, role: user.role, school_id: user.school_id, name: user.full_name },
             process.env.JWT_SECRET || 'siri_yako_ya_siri',
@@ -56,9 +52,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// ==========================================
-// 2. API YA TAKWIMU ZA DASHIBODI
-// ==========================================
+// 2. API YA TAKWIMU
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -97,7 +91,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API YA KULETA SHULE (Super Admin Dropdown)
+// 3. API YA KULETA SHULE (Kwa ajili ya Super Admin)
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
