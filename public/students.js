@@ -18,6 +18,13 @@ async function loadStudents() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // Kama token imeisha muda (401), mtoe mtumiaji
+        if (response.status === 401) {
+            localStorage.clear();
+            window.location.replace('/login.html');
+            return;
+        }
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -46,7 +53,7 @@ async function loadStudents() {
 
     } catch (error) {
         console.error("Kosa la mtandao:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Token imeisha muda. Tafadhali toka na uingie upya.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Hitilafu ya mtandao. Hakikisha umeingia vizuri.</td></tr>`;
     }
 }
 

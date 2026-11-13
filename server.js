@@ -28,21 +28,23 @@ app.post('/api/login', async (req, res) => {
         );
         res.json({ token, user });
     } catch (error) {
-        console.error(error);
+        console.error("Login Error:", error);
         res.status(500).json({ error: "Kuna tatizo la kiufundi" });
     }
 });
 
-// Middleware ya Usalama
+// Middleware ya Usalama (Inarudisha 401 kama token imeisha muda au haipo)
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: "Hakuna token" });
+    
+    if (!token) return res.status(401).json({ error: "Hakuna token iliyotolewa" });
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
         if (err) {
             console.error("Token Error:", err.message);
-            return res.status(403).json({ error: "Token si sahihi au imeisha muda" });
+            // Hapa tunarudisha 401 (Unauthorized) na sio 400
+            return res.status(401).json({ error: "Token imeisha muda au si sahihi" });
         }
         req.user = user; 
         next();
