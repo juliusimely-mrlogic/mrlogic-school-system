@@ -25,7 +25,7 @@ async function loadDropdownData() {
             examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
 
-        // Pakia Masomo
+        // Pakia Masomo (Backend itachuja kama ni Mwalimu)
         const subjectsRes = await fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } });
         const subjects = await subjectsRes.json();
         const subjectSelect = document.getElementById('subject-select');
@@ -34,7 +34,7 @@ async function loadDropdownData() {
             subjectSelect.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
         });
 
-        // Pakia Madarasa
+        // Pakia Madarasa (Backend itachuja kama ni Mwalimu)
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
