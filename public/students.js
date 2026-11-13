@@ -178,10 +178,9 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             statusSpan.innerText = `✅ ${data.message}`;
             statusSpan.style.color = "green";
-            fileInput.value = ""; // Safisha faili
-            loadStudents(); // Refresh orodha
+            fileInput.value = ""; 
+            loadStudents(); 
 
-            // Onyesha makosa kama yapo
             if (data.errors && data.errors.length > 0) {
                 data.errors.forEach(err => {
                     const li = document.createElement('li');
