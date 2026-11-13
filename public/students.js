@@ -46,7 +46,7 @@ async function loadStudents() {
 
     } catch (error) {
         console.error("Kosa la mtandao:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Kuna tatizo limetokea wakati wa kuleta wanafunzi. Hakikisha API inafanya kazi.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Token imeisha muda. Tafadhali toka na uingie upya.</td></tr>`;
     }
 }
 

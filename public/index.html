@@ -32,7 +32,6 @@
     </style>
 </head>
 <body>
-
     <div class="navbar">
         <h2>Dashibodi ya MR-LOGIC</h2>
         <div id="user-info">
@@ -40,33 +39,25 @@
             <button onclick="logout()" style="margin-left: 15px; padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
         </div>
     </div>
-
     <div class="container">
         <h3>Takwimu za Shule Yako</h3>
-        
         <div class="stats-grid" id="stats-container">
             <div class="stat-card bg-blue"><h4>Wanafunzi</h4><h2 id="stat-students">0</h2></div>
             <div class="stat-card bg-red"><h4>Walimu</h4><h2 id="stat-teachers">0</h2></div>
             <div class="stat-card bg-purple"><h4>Madarasa</h4><h2 id="stat-classes">0</h2></div>
             <div class="stat-card bg-green"><h4>Malipo Yaliyokusanywa</h4><h2 id="stat-fees">Tsh 0</h2></div>
         </div>
-
         <div class="school-selector" id="dropdown-container" style="display: none;">
             <label><strong>Chagua Shule:</strong></label><br><br>
             <select id="school-select" onchange="loadDashboardData()">
                 <option value="">-- Chagua Shule --</option>
             </select>
         </div>
-
         <div class="school-selector" id="static-school-container" style="display: none;">
             <span class="school-static">Shule: <span id="static-school-name">Inatafuta...</span></span>
         </div>
-
-        <div class="menu-grid" id="menu-container">
-            <!-- Kadi zitaingizwa hapa na JavaScript -->
-        </div>
+        <div class="menu-grid" id="menu-container"></div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>

@@ -28,6 +28,7 @@ app.post('/api/login', async (req, res) => {
         );
         res.json({ token, user });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Kuna tatizo la kiufundi" });
     }
 });
@@ -39,7 +40,10 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.status(401).json({ error: "Hakuna token" });
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
-        if (err) return res.status(403).json({ error: "Token si sahihi" });
+        if (err) {
+            console.error("Token Error:", err.message);
+            return res.status(403).json({ error: "Token si sahihi au imeisha muda" });
+        }
         req.user = user; 
         next();
     });
@@ -77,7 +81,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA KULETA ORODHA YA WANAFUNZI (Imeboreshwa kwa majina halisi ya DB)
+// 3. API YA KULETA ORODHA YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -85,14 +89,8 @@ app.get('/api/students', authenticateToken, async (req, res) => {
 
         if (!targetSchoolId) return res.status(400).json({ error: "Hakuna shule iliyochaguliwa" });
 
-        // Tumia majina halisi ya safu kama yalivyoonyeshwa kwenye picha yako ya DBeaver
         const query = `
-            SELECT 
-                id, 
-                full_name, 
-                gender, 
-                stream_id,
-                admission_number
+            SELECT id, full_name, gender, stream_id, admission_number
             FROM students 
             WHERE school_id = $1 
             ORDER BY full_name ASC
@@ -102,17 +100,6 @@ app.get('/api/students', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Kosa la kuleta wanafunzi kutoka DB:", error);
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya wanafunzi" });
-    }
-});
-
-// 4. API YA KULETA SHULE
-app.get('/api/schools', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
-    try {
-        const result = await pool.query('SELECT id, name FROM schools ORDER BY name ASC');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: "Imeshindikana kuleta shule" });
     }
 });
 
