@@ -34,6 +34,8 @@ if (!token || !userStr) {
         }
         if (user.role === 'super_admin') {
             html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
+            // HAPA: Tumeongeza kadi ya Shule
+            html += `<div class="menu-card border-blue" onclick="window.location.href='/schools.html'"><h3>Shule</h3><p>Sajili na Simamia Shule</p></div>`;
         }
         if (user.role === 'teacher') {
             html += `
