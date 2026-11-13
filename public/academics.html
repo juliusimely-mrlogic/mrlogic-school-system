@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mipangilio ya Masomo - MR-LOGIC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
+        .navbar a:hover { background: #2563eb; }
+        .container { padding: 30px; max-width: 1200px; margin: auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card h3 { margin-top: 0; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        .btn-add { padding: 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-add:hover { background: #059669; }
+
+        ul { list-style-type: none; padding: 0; margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        li { padding: 10px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; }
+        li:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="/index.html">&larr; Rudi Dashibodi</a>
+            <span style="font-size: 20px; font-weight: bold;">Mipangilio ya Masomo</span>
+        </div>
+        <div>
+            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Madarasa (Streams) -->
+        <div class="card">
+            <h3>Madarasa (Streams)</h3>
+            <form id="streamForm">
+                <div class="form-group">
+                    <input type="text" id="stream_name" placeholder="Mfano: Stream A, Form One" required>
+                </div>
+                <button type="submit" class="btn-add">Ongeza Darasa</button>
+            </form>
+            <p id="stream-msg" style="text-align:center; font-weight:bold;"></p>
+            <ul id="stream-list"></ul>
+        </div>
+
+        <!-- Masomo (Subjects) -->
+        <div class="card">
+            <h3>Masomo (Subjects)</h3>
+            <form id="subjectForm">
+                <div class="form-group">
+                    <input type="text" id="subject_name" placeholder="Mfano: Hisabati, English" required>
+                </div>
+                <button type="submit" class="btn-add">Ongeza Somo</button>
+            </form>
+            <p id="subject-msg" style="text-align:center; font-weight:bold;"></p>
+            <ul id="subject-list"></ul>
+        </div>
+
+        <!-- Mitihani (Exams) -->
+        <div class="card">
+            <h3>Mitihani (Exams)</h3>
+            <form id="examForm">
+                <div class="form-group">
+                    <input type="text" id="exam_name" placeholder="Mfano: Mtihani wa Muhula wa Kwanza" required>
+                </div>
+                <button type="submit" class="btn-add">Ongeza Mtihani</button>
+            </form>
+            <p id="exam-msg" style="text-align:center; font-weight:bold;"></p>
+            <ul id="exam-list"></ul>
+        </div>
+    </div>
+
+    <script src="academics.js"></script>
+</body>
+</html>
