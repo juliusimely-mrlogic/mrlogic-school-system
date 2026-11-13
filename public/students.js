@@ -5,7 +5,7 @@ if (!token || !userStr) {
     window.location.replace('/login.html');
 }
 
-let isEditing = false; // Kufuatilia kama tuko kwenye hali ya kurekebisha
+let isEditing = false;
 
 function logout() {
     localStorage.clear();
@@ -63,7 +63,6 @@ async function loadStudents() {
     }
 }
 
-// Kazi ya Kurekebisha (Edit)
 function editStudent(id, full_name, admission_number, gender, stream_id, parent_phone) {
     isEditing = true;
     document.getElementById('form-title').innerText = "Rekebisha Taarifa za Mwanafunzi";
@@ -76,19 +75,18 @@ function editStudent(id, full_name, admission_number, gender, stream_id, parent_
     
     document.getElementById('btn-submit').innerText = "Hifadhi Marekebisho";
     document.getElementById('btn-cancel').style.display = 'inline-block';
-    window.scrollTo(0, 0); // Peleka juu
+    window.scrollTo(0, 0); 
 }
 
 function cancelEdit() {
     isEditing = false;
-    document.getElementById('form-title').innerText = "Sajili Mwanafunzi Mpya";
+    document.getElementById('form-title').innerText = "Sajili Mwanafunzi Mpya (Mmoja)";
     document.getElementById('studentForm').reset();
     document.getElementById('student_id').value = '';
     document.getElementById('btn-submit').innerText = "Sajili Mwanafunzi";
     document.getElementById('btn-cancel').style.display = 'none';
 }
 
-// Kazi ya Kufuta (Delete)
 async function deleteStudent(id) {
     if (!confirm("Je, una uhakika unataka kumfuta mwanafunzi huyu?")) return;
     try {
@@ -105,7 +103,6 @@ async function deleteStudent(id) {
     } catch (error) { alert("Kosa la mtandao."); }
 }
 
-// Kusimamia Fomu (Submit)
 document.getElementById('studentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusMsg = document.getElementById('status-msg');
@@ -137,7 +134,7 @@ document.getElementById('studentForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             statusMsg.innerText = isEditing ? "✅ Marekebisho yamehifadhiwa!" : "✅ Mwanafunzi amesajiliwa!";
             statusMsg.style.color = "green";
-            cancelEdit(); // Safisha fomu
+            cancelEdit(); 
             loadStudents();
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
@@ -146,5 +143,59 @@ document.getElementById('studentForm').addEventListener('submit', async (e) => {
         }
     } catch (error) {
         statusMsg.innerText = "❌ Kosa la mtandao"; statusMsg.style.color = "red";
+    }
+});
+
+// KAZI YA KUPOKEA NA KUPakia EXCEL
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('excelFile');
+    const file = fileInput.files[0];
+    const statusSpan = document.getElementById('upload-status');
+    const errorList = document.getElementById('upload-errors');
+
+    if (!file) {
+        alert("Tafadhali chagua faili la Excel kwanza!");
+        return;
+    }
+
+    statusSpan.innerText = "Inapakia... Tafadhali subiri.";
+    statusSpan.style.color = "blue";
+    errorList.innerHTML = "";
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/students/bulk', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusSpan.innerText = `✅ ${data.message}`;
+            statusSpan.style.color = "green";
+            fileInput.value = ""; // Safisha faili
+            loadStudents(); // Refresh orodha
+
+            // Onyesha makosa kama yapo
+            if (data.errors && data.errors.length > 0) {
+                data.errors.forEach(err => {
+                    const li = document.createElement('li');
+                    li.innerText = err;
+                    errorList.appendChild(li);
+                });
+            }
+        } else {
+            statusSpan.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;
+            statusSpan.style.color = "red";
+        }
+    } catch (error) {
+        console.error("Kosa la kupakia:", error);
+        statusSpan.innerText = "❌ Kosa la mtandao.";
+        statusSpan.style.color = "red";
     }
 });
