@@ -18,8 +18,12 @@ if (!token || !userStr) {
 
         if (user.role === 'super_admin' || user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
             html += `
-                <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
-                <div class="menu-card border-red"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/students.html'">
+                    <h3>Wanafunzi</h3><p>Simamia wanafunzi</p>
+                </div>
+                <div class="menu-card border-red" onclick="window.location.href='/teachers.html'">
+                    <h3>Walimu</h3><p>Walimu na Majukumu</p>
+                </div>
                 <div class="menu-card border-purple"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
                 <div class="menu-card border-orange"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
@@ -62,6 +66,7 @@ if (!token || !userStr) {
         }
         try {
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.status === 401) { localStorage.clear(); window.location.replace('/login.html'); return; }
             if (!response.ok) return;
             const data = await response.json();
             document.getElementById('stat-students').innerText = data.totalStudents;

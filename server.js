@@ -76,7 +76,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA KULETA ORODHA YA WANAFUNZI (IMEREKEBISHWA)
+// 3. API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -84,16 +84,12 @@ app.get('/api/students', authenticateToken, async (req, res) => {
         let params = [];
 
         if (user.role === 'super_admin') {
-            // Super Admin: Kama amechagua shule kwenye dropdown, chuja kwa shule hiyo. Kama hajachagua, lete wote.
             if (req.query.school_id) {
                 query += ` WHERE school_id = $1`;
                 params.push(req.query.school_id);
             }
         } else {
-            // Mkuu wa Shule / Mwalimu: Lazima aone wanafunzi wa shule yake tu.
-            if (!user.school_id) {
-                return res.status(400).json({ error: "Mtumiaji hana shule iliyounganishwa" });
-            }
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
             query += ` WHERE school_id = $1`;
             params.push(user.school_id);
         }
@@ -102,8 +98,35 @@ app.get('/api/students', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta wanafunzi:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta orodha ya wanafunzi" });
+        res.status(500).json({ error: "Imeshindikana kuleta wanafunzi" });
+    }
+});
+
+// 4. API MPYA: KULETA ORODHA YA WALIMU
+app.get('/api/teachers', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        // Hapa tunatumia majina ya safu za kawaida. Badilisha kama zinajitofautisha kwenye DB yako.
+        let query = `SELECT id, full_name, gender, phone, email FROM teachers`;
+        let params = [];
+
+        if (user.role === 'super_admin') {
+            if (req.query.school_id) {
+                query += ` WHERE school_id = $1`;
+                params.push(req.query.school_id);
+            }
+        } else {
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+            query += ` WHERE school_id = $1`;
+            params.push(user.school_id);
+        }
+        
+        query += ` ORDER BY full_name ASC`;
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Kosa la kuleta walimu:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta orodha ya walimu" });
     }
 });
 
