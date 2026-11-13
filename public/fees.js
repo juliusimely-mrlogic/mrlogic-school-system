@@ -10,7 +10,6 @@ function logout() {
     window.location.replace('/login.html');
 }
 
-// Weka tarehe ya leo kama default
 document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('payment-date').value = today;
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFeesList();
 });
 
-// 1. Pakia Wanafunzi kwenye Dropdown
 async function loadStudentsDropdown() {
     const select = document.getElementById('student-select');
     try {
@@ -40,7 +38,6 @@ async function loadStudentsDropdown() {
     }
 }
 
-// 2. Pakia Historia ya Malipo
 async function loadFeesList() {
     const tableBody = document.getElementById('fees-table-body');
     try {
@@ -59,9 +56,9 @@ async function loadFeesList() {
 
         let html = '';
         fees.forEach((fee, index) => {
-            // Format tarehe vizuri
-            const dateObj = new Date(fee.payment_date || fee.date);
-            const formattedDate = isNaN(dateObj) ? (fee.payment_date || 'Hajajaza') : dateObj.toLocaleDateString('sw-TZ');
+            // Hapa tunasoma date_paid kutoka kwenye database
+            const dateObj = new Date(fee.date_paid);
+            const formattedDate = isNaN(dateObj) ? (fee.date_paid || 'Hajajaza') : dateObj.toLocaleDateString('sw-TZ');
 
             html += `
                 <tr>
@@ -80,13 +77,12 @@ async function loadFeesList() {
     }
 }
 
-// 3. Wasilisha Fomu ya Malipo
 document.getElementById('feeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const student_id = document.getElementById('student-select').value;
     const amount = document.getElementById('amount').value;
-    const payment_date = document.getElementById('payment-date').value;
+    const date_paid = document.getElementById('payment-date').value; // Tunasoma kutoka HTML ID ya payment-date
     const statusMsg = document.getElementById('status-msg');
 
     statusMsg.innerText = "Inahifadhi...";
@@ -99,19 +95,21 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ student_id, amount, payment_date })
+            // Tunatuma date_paid kwenda Backend
+            body: JSON.stringify({ student_id, amount, date_paid })
         });
+
+        const data = await response.json();
 
         if (response.ok) {
             statusMsg.innerText = "✅ Malipo yamehifadhiwa!";
             statusMsg.style.color = "green";
-            document.getElementById('feeForm').reset(); // Safisha fomu
-            document.getElementById('payment-date').value = payment_date; // Rudisha tarehe
-            loadFeesList(); // Refresh orodha
+            document.getElementById('feeForm').reset();
+            document.getElementById('payment-date').value = date_paid; 
+            loadFeesList();
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
-            const data = await response.json();
-            statusMsg.innerText = `❌ Kosa: ${data.error}`;
+            statusMsg.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;
             statusMsg.style.color = "red";
         }
     } catch (error) {

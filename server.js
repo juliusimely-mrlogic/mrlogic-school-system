@@ -186,11 +186,10 @@ app.get('/api/streams', authenticateToken, async (req, res) => {
     }
 });
 
-// 7. API MPYA: KULETA ORODHA YA MALIPO (FEES)
+// 7. API YA KULETA ORODHA YA MALIPO (FEES)
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        // Tunachukua taarifa za malipo pamoja na jina la mwanafunzi kwa kutumia JOIN
         let query = `
             SELECT f.*, s.full_name as student_name 
             FROM fees f 
@@ -209,7 +208,7 @@ app.get('/api/fees', authenticateToken, async (req, res) => {
             params.push(user.school_id);
         }
         
-        query += ` ORDER BY f.id DESC`; // Malipo ya karibuni kwanza
+        query += ` ORDER BY f.id DESC`; 
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
@@ -218,23 +217,24 @@ app.get('/api/fees', authenticateToken, async (req, res) => {
     }
 });
 
-// 8. API MPYA: KUREKODI MALIPO MAPYA
+// 8. API YA KUREKODI MALIPO MAPYA (Tumetumia date_paid)
 app.post('/api/fees', authenticateToken, async (req, res) => {
-    const { student_id, amount, payment_date } = req.body;
+    const { student_id, amount, date_paid } = req.body;
     const user = req.user;
 
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
 
     try {
+        // Tumehakikisha inatumia date_paid
         const query = `
-            INSERT INTO fees (student_id, amount, payment_date, school_id) 
+            INSERT INTO fees (student_id, amount, date_paid, school_id) 
             VALUES ($1, $2, $3, $4) RETURNING *
         `;
-        const result = await pool.query(query, [student_id, amount, payment_date, user.school_id]);
+        const result = await pool.query(query, [student_id, amount, date_paid, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error("Kosa la kurekodi malipo:", error);
-        res.status(500).json({ error: "Imeshindikana kurekodi malipo" });
+        console.error("Kosa la kurekodi malipo kutoka DB:", error.message);
+        res.status(500).json({ error: `Imeshindikana kurekodi malipo: ${error.message}` });
     }
 });
 
