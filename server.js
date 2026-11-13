@@ -93,7 +93,6 @@ app.get('/api/students', authenticateToken, async (req, res) => {
             query += ` WHERE school_id = $1`;
             params.push(user.school_id);
         }
-        
         query += ` ORDER BY full_name ASC`;
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -119,7 +118,6 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
             query += ` WHERE school_id = $1`;
             params.push(user.school_id);
         }
-        
         query += ` ORDER BY full_name ASC`; 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -132,7 +130,6 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body;
     const user = req.user;
-
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
 
     try {
@@ -140,12 +137,8 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
         try {
             await client.query('BEGIN');
             await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id]);
-
             for (let record of records) {
-                await client.query(
-                    'INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)',
-                    [record.student_id, date, record.status, user.school_id]
-                );
+                await client.query('INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)', [record.student_id, date, record.status, user.school_id]);
             }
             await client.query('COMMIT');
             res.json({ message: "Mahudhurio yamehifadhiwa kikamilifu" });
@@ -166,18 +159,12 @@ app.get('/api/streams', authenticateToken, async (req, res) => {
         const user = req.user;
         let query = `SELECT * FROM streams`;
         let params = [];
-
         if (user.role === 'super_admin') {
-            if (req.query.school_id) {
-                query += ` WHERE school_id = $1`;
-                params.push(req.query.school_id);
-            }
+            if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); }
         } else {
             if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
-            query += ` WHERE school_id = $1`;
-            params.push(user.school_id);
+            query += ` WHERE school_id = $1`; params.push(user.school_id);
         }
-        
         query += ` ORDER BY name ASC`; 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -186,55 +173,116 @@ app.get('/api/streams', authenticateToken, async (req, res) => {
     }
 });
 
-// 7. API YA KULETA ORODHA YA MALIPO (FEES)
+// 7. API YA MALIPO
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        let query = `
-            SELECT f.*, s.full_name as student_name 
-            FROM fees f 
-            LEFT JOIN students s ON f.student_id = s.id
-        `;
+        let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`;
         let params = [];
-
         if (user.role === 'super_admin') {
-            if (req.query.school_id) {
-                query += ` WHERE f.school_id = $1`;
-                params.push(req.query.school_id);
-            }
+            if (req.query.school_id) { query += ` WHERE f.school_id = $1`; params.push(req.query.school_id); }
         } else {
             if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
-            query += ` WHERE f.school_id = $1`;
-            params.push(user.school_id);
+            query += ` WHERE f.school_id = $1`; params.push(user.school_id);
         }
-        
         query += ` ORDER BY f.id DESC`; 
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta malipo:", error);
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya malipo" });
     }
 });
 
-// 8. API YA KUREKODI MALIPO MAPYA (Tumetumia date_paid)
 app.post('/api/fees', authenticateToken, async (req, res) => {
     const { student_id, amount, date_paid } = req.body;
     const user = req.user;
-
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
-
     try {
-        // Tumehakikisha inatumia date_paid
-        const query = `
-            INSERT INTO fees (student_id, amount, date_paid, school_id) 
-            VALUES ($1, $2, $3, $4) RETURNING *
-        `;
+        const query = `INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`;
         const result = await pool.query(query, [student_id, amount, date_paid, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error("Kosa la kurekodi malipo kutoka DB:", error.message);
         res.status(500).json({ error: `Imeshindikana kurekodi malipo: ${error.message}` });
+    }
+});
+
+// ==========================================
+// API MPYA: MITIHANI NA ALAMA
+// ==========================================
+
+// 8. KULETA MASOMO
+app.get('/api/subjects', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let query = `SELECT * FROM subjects`;
+        let params = [];
+        if (user.role === 'super_admin') {
+            if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); }
+        } else {
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+            query += ` WHERE school_id = $1`; params.push(user.school_id);
+        }
+        query += ` ORDER BY name ASC`;
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: "Imeshindikana kuleta masomo" });
+    }
+});
+
+// 9. KULETA MITIHANI
+app.get('/api/exams', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let query = `SELECT * FROM exams`;
+        let params = [];
+        if (user.role === 'super_admin') {
+            if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); }
+        } else {
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+            query += ` WHERE school_id = $1`; params.push(user.school_id);
+        }
+        query += ` ORDER BY id DESC`;
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: "Imeshindikana kuleta mitihani" });
+    }
+});
+
+// 10. KUHIFADHI ALAMA ZA WANAFUNZI
+app.post('/api/results', authenticateToken, async (req, res) => {
+    const { exam_id, subject_id, marks } = req.body; // marks ni array ya {student_id, score}
+    const user = req.user;
+    if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            // Futa alama za zamani za mtihani huu na somo hili (kama zipo) ili kuepuka marudio
+            await client.query('DELETE FROM results WHERE exam_id = $1 AND subject_id = $2 AND school_id = $3', [exam_id, subject_id, user.school_id]);
+
+            for (let record of marks) {
+                // Kama mwanafunzi hana alama (score tupu), usiweke
+                if (record.score !== '' && record.score !== null) {
+                    await client.query(
+                        'INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)',
+                        [record.student_id, exam_id, subject_id, record.score, user.school_id]
+                    );
+                }
+            }
+            await client.query('COMMIT');
+            res.json({ message: "Alama zimehifadhiwa kikamilifu" });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error("Kosa la kuhifadhi alama:", error);
+        res.status(500).json({ error: "Imeshindikana kuhifadhi alama" });
     }
 });
 

@@ -22,12 +22,11 @@ if (!token || !userStr) {
                 <div class="menu-card border-red" onclick="window.location.href='/teachers.html'"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
                 <div class="menu-card border-purple" onclick="window.location.href='/streams.html'"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
                 <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
-                <div class="menu-card border-blue"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
                 <div class="menu-card border-blue"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
             `;
         }
         if (user.role === 'super_admin' || user.role === 'school_manager') {
-            // Tumeongeza kiungo hapa
             html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
         if (user.role === 'super_admin') {
@@ -37,7 +36,7 @@ if (!token || !userStr) {
             html += `
                 <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
                 <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
-                <div class="menu-card border-blue"><h3>Mitihani Yangu</h3><p>Weka alama</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Mitihani Yangu</h3><p>Weka alama</p></div>
             `;
         }
         menuContainer.innerHTML = html;
