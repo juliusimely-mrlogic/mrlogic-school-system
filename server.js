@@ -76,23 +76,35 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA WANAFUNZI
+// 3. API YA WANAFUNZI (Imeboreshwa kupokea stream_id)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
         let query = `SELECT id, full_name, gender, stream_id, admission_number FROM students`;
         let params = [];
+        let conditions = [];
 
         if (user.role === 'super_admin') {
             if (req.query.school_id) {
-                query += ` WHERE school_id = $1`;
+                conditions.push(`school_id = $${params.length + 1}`);
                 params.push(req.query.school_id);
             }
         } else {
             if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
-            query += ` WHERE school_id = $1`;
+            conditions.push(`school_id = $${params.length + 1}`);
             params.push(user.school_id);
         }
+
+        // Kama kuna stream_id imetumwa kwenye URL (kama ?stream_id=1), chuja kwa stream hiyo
+        if (req.query.stream_id) {
+            conditions.push(`stream_id = $${params.length + 1}`);
+            params.push(req.query.stream_id);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ` + conditions.join(' AND ');
+        }
+        
         query += ` ORDER BY full_name ASC`;
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -206,10 +218,6 @@ app.post('/api/fees', authenticateToken, async (req, res) => {
     }
 });
 
-// ==========================================
-// API MPYA: MITIHANI NA ALAMA
-// ==========================================
-
 // 8. KULETA MASOMO
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
@@ -252,7 +260,7 @@ app.get('/api/exams', authenticateToken, async (req, res) => {
 
 // 10. KUHIFADHI ALAMA ZA WANAFUNZI
 app.post('/api/results', authenticateToken, async (req, res) => {
-    const { exam_id, subject_id, marks } = req.body; // marks ni array ya {student_id, score}
+    const { exam_id, subject_id, marks } = req.body; 
     const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
 
@@ -260,11 +268,9 @@ app.post('/api/results', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            // Futa alama za zamani za mtihani huu na somo hili (kama zipo) ili kuepuka marudio
             await client.query('DELETE FROM results WHERE exam_id = $1 AND subject_id = $2 AND school_id = $3', [exam_id, subject_id, user.school_id]);
 
             for (let record of marks) {
-                // Kama mwanafunzi hana alama (score tupu), usiweke
                 if (record.score !== '' && record.score !== null) {
                     await client.query(
                         'INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)',

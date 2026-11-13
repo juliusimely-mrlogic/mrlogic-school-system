@@ -63,16 +63,15 @@ async function loadStudentsForMarks() {
     tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Inapakia wanafunzi...</td></tr>`;
 
     try {
-        const response = await fetch('/api/students', {
+        // Tunatuma stream_id kwenye URL ili Backend ichuje wanafunzi wa darasa hili tu
+        const response = await fetch(`/api/students?stream_id=${streamId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        let students = await response.json();
         
-        // Chuja wanafunzi wa darasa husika tu
-        students = students.filter(s => s.stream_id == streamId);
+        const students = await response.json();
 
         if (students.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Hakuna wanafunzi kwenye darasa hili.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Hakuna wanafunzi kwenye darasa hili. (Hakikisha wamesajiliwa kwenye darasa hili)</td></tr>`;
             btnSubmit.style.display = 'none';
             return;
         }
@@ -115,11 +114,10 @@ document.getElementById('marksForm').addEventListener('submit', async (e) => {
     statusMsg.innerText = "Inahifadhi alama...";
     statusMsg.style.color = "blue";
 
-    // Kusanya alama zote zilizoingizwa
     const marksData = [];
     const inputs = document.querySelectorAll('input[type="number"]');
     inputs.forEach(input => {
-        const studentId = input.name.split('_')[1]; // Tunatoa ID kutoka kwenye jina la input (score_1)
+        const studentId = input.name.split('_')[1]; 
         if (input.value !== '') {
             marksData.push({
                 student_id: studentId,
@@ -150,10 +148,9 @@ document.getElementById('marksForm').addEventListener('submit', async (e) => {
             statusMsg.innerText = "✅ Alama zimehifadhiwa!";
             statusMsg.style.color = "green";
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
-            // Unaweza kuamua kutvfuta inputs hapa kama unataka
         } else {
             statusMsg.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;
-            statusMsg.style.color = "red";
+            statusMsg.style.color = 'red';
         }
     } catch (error) {
         console.error("Kosa la mtandao:", error);
