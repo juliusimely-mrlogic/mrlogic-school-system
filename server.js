@@ -124,7 +124,6 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta walimu:", error); 
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya walimu" });
     }
 });
@@ -157,12 +156,11 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
             client.release();
         }
     } catch (error) {
-        console.error("Kosa la kuhifadhi mahudhurio:", error);
         res.status(500).json({ error: "Imeshindikana kuhifadhi mahudhurio" });
     }
 });
 
-// 6. API MPYA: KULETA MADARASA (STREAMS)
+// 6. API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -180,13 +178,63 @@ app.get('/api/streams', authenticateToken, async (req, res) => {
             params.push(user.school_id);
         }
         
-        // Kama table yako ya streams ina column ya 'name' au 'class_name', tunatumia 'name' hapa.
         query += ` ORDER BY name ASC`; 
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta madarasa:", error);
         res.status(500).json({ error: "Imeshindikana kuleta madarasa" });
+    }
+});
+
+// 7. API MPYA: KULETA ORODHA YA MALIPO (FEES)
+app.get('/api/fees', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        // Tunachukua taarifa za malipo pamoja na jina la mwanafunzi kwa kutumia JOIN
+        let query = `
+            SELECT f.*, s.full_name as student_name 
+            FROM fees f 
+            LEFT JOIN students s ON f.student_id = s.id
+        `;
+        let params = [];
+
+        if (user.role === 'super_admin') {
+            if (req.query.school_id) {
+                query += ` WHERE f.school_id = $1`;
+                params.push(req.query.school_id);
+            }
+        } else {
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+            query += ` WHERE f.school_id = $1`;
+            params.push(user.school_id);
+        }
+        
+        query += ` ORDER BY f.id DESC`; // Malipo ya karibuni kwanza
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Kosa la kuleta malipo:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta orodha ya malipo" });
+    }
+});
+
+// 8. API MPYA: KUREKODI MALIPO MAPYA
+app.post('/api/fees', authenticateToken, async (req, res) => {
+    const { student_id, amount, payment_date } = req.body;
+    const user = req.user;
+
+    if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+
+    try {
+        const query = `
+            INSERT INTO fees (student_id, amount, payment_date, school_id) 
+            VALUES ($1, $2, $3, $4) RETURNING *
+        `;
+        const result = await pool.query(query, [student_id, amount, payment_date, user.school_id]);
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error("Kosa la kurekodi malipo:", error);
+        res.status(500).json({ error: "Imeshindikana kurekodi malipo" });
     }
 });
 

@@ -27,7 +27,8 @@ if (!token || !userStr) {
             `;
         }
         if (user.role === 'super_admin' || user.role === 'school_manager') {
-            html += `<div class="menu-card border-green"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
+            // Tumeongeza kiungo hapa
+            html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
         if (user.role === 'super_admin') {
             html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;

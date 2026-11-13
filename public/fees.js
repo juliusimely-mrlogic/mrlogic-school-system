@@ -1,0 +1,122 @@
+const token = localStorage.getItem('token');
+const userStr = localStorage.getItem('user');
+
+if (!token || !userStr) {
+    window.location.replace('/login.html');
+}
+
+function logout() {
+    localStorage.clear();
+    window.location.replace('/login.html');
+}
+
+// Weka tarehe ya leo kama default
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('payment-date').value = today;
+    
+    loadStudentsDropdown();
+    loadFeesList();
+});
+
+// 1. Pakia Wanafunzi kwenye Dropdown
+async function loadStudentsDropdown() {
+    const select = document.getElementById('student-select');
+    try {
+        const response = await fetch('/api/students', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const students = await response.json();
+        
+        select.innerHTML = '<option value="">-- Chagua Mwanafunzi --</option>';
+        students.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.id;
+            option.text = `${student.full_name} (${student.admission_number || 'No Adm'})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Kosa la kuleta wanafunzi:", error);
+    }
+}
+
+// 2. Pakia Historia ya Malipo
+async function loadFeesList() {
+    const tableBody = document.getElementById('fees-table-body');
+    try {
+        const response = await fetch('/api/fees', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error("Imeshindwa kuleta malipo");
+
+        const fees = await response.json();
+
+        if (fees.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Hakuna malipo yaliyorekodiwa bado.</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        fees.forEach((fee, index) => {
+            // Format tarehe vizuri
+            const dateObj = new Date(fee.payment_date || fee.date);
+            const formattedDate = isNaN(dateObj) ? (fee.payment_date || 'Hajajaza') : dateObj.toLocaleDateString('sw-TZ');
+
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${fee.student_name || 'Mwanafunzi Hayupo'}</td>
+                    <td>${parseFloat(fee.amount).toLocaleString()}</td>
+                    <td>${formattedDate}</td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = html;
+
+    } catch (error) {
+        console.error(error);
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Kuna tatizo limetokea wakati wa kuleta malipo.</td></tr>`;
+    }
+}
+
+// 3. Wasilisha Fomu ya Malipo
+document.getElementById('feeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const student_id = document.getElementById('student-select').value;
+    const amount = document.getElementById('amount').value;
+    const payment_date = document.getElementById('payment-date').value;
+    const statusMsg = document.getElementById('status-msg');
+
+    statusMsg.innerText = "Inahifadhi...";
+    statusMsg.style.color = "blue";
+
+    try {
+        const response = await fetch('/api/fees', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ student_id, amount, payment_date })
+        });
+
+        if (response.ok) {
+            statusMsg.innerText = "✅ Malipo yamehifadhiwa!";
+            statusMsg.style.color = "green";
+            document.getElementById('feeForm').reset(); // Safisha fomu
+            document.getElementById('payment-date').value = payment_date; // Rudisha tarehe
+            loadFeesList(); // Refresh orodha
+            setTimeout(() => { statusMsg.innerText = ""; }, 3000);
+        } else {
+            const data = await response.json();
+            statusMsg.innerText = `❌ Kosa: ${data.error}`;
+            statusMsg.style.color = "red";
+        }
+    } catch (error) {
+        console.error("Kosa la mtandao:", error);
+        statusMsg.innerText = "❌ Kosa la mtandao";
+        statusMsg.style.color = "red";
+    }
+});
