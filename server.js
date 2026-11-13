@@ -76,7 +76,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA WANAFUNZI (Imeboreshwa kupokea stream_id)
+// 3. API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -95,7 +95,6 @@ app.get('/api/students', authenticateToken, async (req, res) => {
             params.push(user.school_id);
         }
 
-        // Kama kuna stream_id imetumwa kwenye URL (kama ?stream_id=1), chuja kwa stream hiyo
         if (req.query.stream_id) {
             conditions.push(`stream_id = $${params.length + 1}`);
             params.push(req.query.stream_id);
@@ -121,14 +120,10 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
         let params = [];
 
         if (user.role === 'super_admin') {
-            if (req.query.school_id) {
-                query += ` WHERE school_id = $1`;
-                params.push(req.query.school_id);
-            }
+            if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); }
         } else {
             if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
-            query += ` WHERE school_id = $1`;
-            params.push(user.school_id);
+            query += ` WHERE school_id = $1`; params.push(user.school_id);
         }
         query += ` ORDER BY full_name ASC`; 
         const result = await pool.query(query, params);
@@ -287,7 +282,6 @@ app.post('/api/results', authenticateToken, async (req, res) => {
             client.release();
         }
     } catch (error) {
-        console.error("Kosa la kuhifadhi alama:", error);
         res.status(500).json({ error: "Imeshindikana kuhifadhi alama" });
     }
 });

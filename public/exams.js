@@ -14,10 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDropdownData();
 });
 
-// 1. Pakia Mitihani, Masomo na Madarasa kwenye Dropdown
 async function loadDropdownData() {
     try {
-        // Pakia Mitihani
         const examsRes = await fetch('/api/exams', { headers: { 'Authorization': `Bearer ${token}` } });
         const exams = await examsRes.json();
         const examSelect = document.getElementById('exam-select');
@@ -26,7 +24,6 @@ async function loadDropdownData() {
             examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
 
-        // Pakia Masomo
         const subjectsRes = await fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } });
         const subjects = await subjectsRes.json();
         const subjectSelect = document.getElementById('subject-select');
@@ -35,7 +32,6 @@ async function loadDropdownData() {
             subjectSelect.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
         });
 
-        // Pakia Madarasa
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
@@ -43,13 +39,11 @@ async function loadDropdownData() {
         streams.forEach(stream => {
             streamSelect.innerHTML += `<option value="${stream.id}">${stream.name}</option>`;
         });
-
     } catch (error) {
         console.error("Kosa la kupakia data:", error);
     }
 }
 
-// 2. Pakia Wanafunzi wa Darasa Husika
 async function loadStudentsForMarks() {
     const streamId = document.getElementById('stream-select').value;
     const tableBody = document.getElementById('marks-table-body');
@@ -63,7 +57,6 @@ async function loadStudentsForMarks() {
     tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Inapakia wanafunzi...</td></tr>`;
 
     try {
-        // Tunatuma stream_id kwenye URL ili Backend ichuje wanafunzi wa darasa hili tu
         const response = await fetch(`/api/students?stream_id=${streamId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -71,7 +64,7 @@ async function loadStudentsForMarks() {
         const students = await response.json();
 
         if (students.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Hakuna wanafunzi kwenye darasa hili. (Hakikisha wamesajiliwa kwenye darasa hili)</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Hakuna wanafunzi kwenye darasa hili.</td></tr>`;
             btnSubmit.style.display = 'none';
             return;
         }
@@ -98,7 +91,6 @@ async function loadStudentsForMarks() {
     }
 }
 
-// 3. Hifadhi Alama
 document.getElementById('marksForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
