@@ -21,6 +21,7 @@ if (!token || !userStr) {
                 <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
                 <div class="menu-card border-red" onclick="window.location.href='/teachers.html'"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
                 <div class="menu-card border-purple" onclick="window.location.href='/academics.html'"><h3>Mipangilio ya Masomo</h3><p>Madarasa, Masomo & Mitihani</p></div>
+                <div class="menu-card border-red" onclick="window.location.href='/assignments.html'"><h3>Kupanga Walimu</h3><p>Gawa Masomo kwa Walimu</p></div>
                 <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama za mitihani</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo ya darasa zima</p></div>
