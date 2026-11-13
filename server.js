@@ -317,7 +317,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// 13. API MPYA: TEACHER ASSIGNMENTS
+// 13. API MPYA: TEACHER ASSIGNMENTS (IMEREKEBISHWA)
 // ==========================================
 
 // Kuleta assignments zote
@@ -348,7 +348,7 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error(error);
+        console.error("Kosa la kuleta assignments:", error.message);
         res.status(500).json({ error: "Imeshindikana kuleta assignments" });
     }
 });
@@ -360,13 +360,14 @@ app.post('/api/assignments', authenticateToken, async (req, res) => {
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
 
     try {
-        // Kagua kama hii assignment ipo tayari
+        // 1. Kagua kama hii assignment ipo tayari
         const check = await pool.query(
             'SELECT * FROM teacher_assignments WHERE teacher_id = $1 AND stream_id = $2 AND subject_id = $3 AND school_id = $4',
             [teacher_id, stream_id, subject_id, user.school_id]
         );
         if (check.rows.length > 0) return res.status(400).json({ error: "Mwalimu huyu ameshawekwa kwenye somo hili na darasa hili." });
 
+        // 2. Ingiza
         const query = `
             INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id)
             VALUES ($1, $2, $3, $4) RETURNING *
@@ -374,7 +375,10 @@ app.post('/api/assignments', authenticateToken, async (req, res) => {
         const result = await pool.query(query, [teacher_id, stream_id, subject_id, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error(error);
+        console.error("Kosa la kuongeza assignment:", error.message);
+        if (error.code === '23503') {
+            return res.status(400).json({ error: "Mwalimu, Darasa au Somo ulilochagua halipo kwenye mfumo." });
+        }
         res.status(500).json({ error: "Imeshindikana kuongeza assignment." });
     }
 });
@@ -387,7 +391,6 @@ app.delete('/api/assignments/:id', authenticateToken, async (req, res) => {
         let query = 'DELETE FROM teacher_assignments WHERE id = $1';
         let params = [id];
 
-        // Kama si super admin, hakikisha anafuta ya shule yake tu
         if (user.role !== 'super_admin') {
             query += ' AND school_id = $2';
             params.push(user.school_id);
