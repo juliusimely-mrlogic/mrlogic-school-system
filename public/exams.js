@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDropdownData() {
     try {
+        // Pakia Mitihani
         const examsRes = await fetch('/api/exams', { headers: { 'Authorization': `Bearer ${token}` } });
         const exams = await examsRes.json();
         const examSelect = document.getElementById('exam-select');
@@ -24,6 +25,7 @@ async function loadDropdownData() {
             examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
 
+        // Pakia Masomo
         const subjectsRes = await fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } });
         const subjects = await subjectsRes.json();
         const subjectSelect = document.getElementById('subject-select');
@@ -32,6 +34,7 @@ async function loadDropdownData() {
             subjectSelect.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
         });
 
+        // Pakia Madarasa
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
@@ -39,6 +42,7 @@ async function loadDropdownData() {
         streams.forEach(stream => {
             streamSelect.innerHTML += `<option value="${stream.id}">${stream.name}</option>`;
         });
+
     } catch (error) {
         console.error("Kosa la kupakia data:", error);
     }
