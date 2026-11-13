@@ -69,13 +69,13 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API MPYA: USIMAMIZI WA SHULE (Super Admin Only)
+// API YA USIMAMIZI WA SHULE (IMEBORESHWA)
 // ==========================================
 
 // Kuleta shule zote
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM schools ORDER BY name ASC');
+        const result = await pool.query('SELECT * FROM schools ORDER BY id ASC'); // Tumeongeza ORDER BY ID ili zote zionekane
         res.json(result.rows);
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta shule" }); }
 });
@@ -87,10 +87,19 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
     const { name, code, region, district } = req.body;
 
     try {
-        // Kagua kama shule ipo
-        const check = await pool.query('SELECT * FROM schools WHERE name = $1 OR code = $2', [name, code]);
-        if (check.rows.length > 0) return res.status(400).json({ error: "Shule yenye jina au code hii imeshasajiliwa." });
+        // 1. Kagua kama Jina la Shule lipo
+        const checkName = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
+        if (checkName.rows.length > 0) {
+            return res.status(400).json({ error: "Jina la shule hii limeshasajiliwa kwenye mfumo." });
+        }
 
+        // 2. Kagua kama Code ya Shule ipo
+        const checkCode = await pool.query('SELECT id FROM schools WHERE code ILIKE $1', [code]);
+        if (checkCode.rows.length > 0) {
+            return res.status(400).json({ error: "Code ya shule hii imeshasajiliwa kwenye mfumo. Tumia code nyingine." });
+        }
+
+        // 3. Ingiza
         const query = `
             INSERT INTO schools (name, code, region, district) 
             VALUES ($1, $2, $3, $4) RETURNING *
@@ -114,7 +123,7 @@ app.delete('/api/schools/:id', authenticateToken, async (req, res) => {
         res.json({ message: "Shule imefutwa kikamilifu" });
     } catch (error) {
         console.error("Kosa la kufuta shule:", error.message);
-        res.status(500).json({ error: "Imeshindikana kufuta shule. Kuna data zinazotegemea shule hii." });
+        res.status(500).json({ error: "Imeshindikana kufuta shule. Kuna data (kama wanafunzi au walimu) zinazotegemea shule hii." });
     }
 });
 
