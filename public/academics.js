@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
 });
 
-// 1. Pakia Data Zote
 async function loadData() {
     loadStreams();
     loadSubjects();
@@ -26,7 +25,12 @@ async function loadStreams() {
     try {
         const res = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
-        list.innerHTML = data.map(s => `<li><span>${s.name}</span> <small>ID: ${s.id}</small></li>`).join('');
+        list.innerHTML = data.map(s => `
+            <li>
+                <span>${s.name}</span> 
+                <small>Ada: ${parseFloat(s.fee_amount || 0).toLocaleString()} | ID: ${s.id}</small>
+            </li>
+        `).join('');
     } catch (err) { console.error(err); }
 }
 
@@ -48,17 +52,17 @@ async function loadExams() {
     } catch (err) { console.error(err); }
 }
 
-// 2. Wasilisha Fomu za Kuongeza
 document.getElementById('streamForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('stream_name').value;
+    const fee_amount = document.getElementById('stream_fee').value;
     const msg = document.getElementById('stream-msg');
     msg.innerText = "Inaongeza..."; msg.style.color = "blue";
 
     try {
         const res = await fetch('/api/streams', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, fee_amount })
         });
         if (res.ok) {
             msg.innerText = "✅ Imeongezwa!"; msg.style.color = "green";
