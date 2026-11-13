@@ -31,7 +31,8 @@ if (!token || !userStr) {
             html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
         if (user.role === 'super_admin') {
-            html += `<div class="menu-card border-purple"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
+            // HAPA: Tumeongeza kiungo cha ukurasa wa watumiaji
+            html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
         }
         if (user.role === 'teacher') {
             html += `
@@ -46,7 +47,6 @@ if (!token || !userStr) {
 
     window.logout = function() { localStorage.clear(); window.location.replace('/login.html'); }
 
-    // ... (Sehemu inayosalia ya loadDashboardData na loadSchoolsForDropdown inabaki kama ilivyokuwa) ...
     async function loadDashboardData() {
         let url = '/api/dashboard/stats';
         if (user.role === 'super_admin') {

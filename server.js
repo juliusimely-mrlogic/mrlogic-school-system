@@ -175,7 +175,7 @@ app.post('/api/fees', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: `Imeshindikana kurekodi malipo: ${error.message}` }); }
 });
 
-// 8. KULETA MASOMO NA MITIHANI
+// 8. API YA MASOMO NA MITIHANI
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -231,75 +231,92 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuhifadhi alama" }); }
 });
 
-// 10. API MPYA: KULETA RIPOTI (BROADSHEET)
+// 10. RIPOTI (BROADSHEET)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query;
     const user = req.user;
-
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua mtihani na darasa" });
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
 
     try {
-        // 1. Pata wanafunzi wa darasa hili
         const studentsRes = await pool.query(`SELECT id, full_name FROM students WHERE stream_id = $1 AND school_id = $2 ORDER BY full_name ASC`, [stream_id, user.school_id]);
-        const students = studentsRes.rows;
-
-        // 2. Pata masomo yote ya shule
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
-        const subjects = subjectsRes.rows;
-
-        // 3. Pata alama zote za mtihani huu kwa darasa hili
         const resultsRes = await pool.query(`
             SELECT r.student_id, r.subject_id, r.score 
-            FROM results r
-            JOIN students s ON r.student_id = s.id
+            FROM results r JOIN students s ON r.student_id = s.id
             WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3
         `, [exam_id, stream_id, user.school_id]);
-        const results = resultsRes.rows;
 
-        // 4. Chakarata data (Pivot)
-        const reportData = students.map(student => {
-            let totalScore = 0;
-            let subjectsCount = 0;
+        const reportData = studentsRes.rows.map(student => {
+            let totalScore = 0, subjectsCount = 0;
             const scores = {};
-
-            subjects.forEach(sub => {
-                const result = results.find(r => r.student_id === student.id && r.subject_id === sub.id);
-                if (result) {
-                    scores[sub.id] = parseFloat(result.score);
-                    totalScore += parseFloat(result.score);
-                    subjectsCount++;
-                } else {
-                    scores[sub.id] = '-';
-                }
+            subjectsRes.rows.forEach(sub => {
+                const result = resultsRes.rows.find(r => r.student_id === student.id && r.subject_id === sub.id);
+                if (result) { scores[sub.id] = parseFloat(result.score); totalScore += parseFloat(result.score); subjectsCount++; } 
+                else { scores[sub.id] = '-'; }
             });
-
             const average = subjectsCount > 0 ? (totalScore / subjectsCount).toFixed(2) : 0;
-
-            return {
-                student_id: student.id,
-                full_name: student.full_name,
-                scores: scores,
-                total: totalScore,
-                average: parseFloat(average)
-            };
+            return { student_id: student.id, full_name: student.full_name, scores, total: totalScore, average: parseFloat(average) };
         });
 
-        // 5. Panga kwa nafasi (Position) kwa kutumia Total
         reportData.sort((a, b) => b.total - a.total);
         let currentPosition = 1;
         for (let i = 0; i < reportData.length; i++) {
-            if (i > 0 && reportData[i].total < reportData[i-1].total) {
-                currentPosition = i + 1;
-            }
+            if (i > 0 && reportData[i].total < reportData[i-1].total) { currentPosition = i + 1; }
             reportData[i].position = currentPosition;
         }
+        res.json({ subjects: subjectsRes.rows, reportData });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); }
+});
 
-        res.json({ subjects, reportData });
+// ==========================================
+// 11. API MPYA: USIMAMIZI WA WATUMIAJI (Super Admin Only)
+// ==========================================
 
+// Kuleta watumiaji wote
+app.get('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
+    try {
+        const result = await pool.query(`
+            SELECT u.id, u.full_name, u.username, u.role, u.school_id, s.name as school_name 
+            FROM users u
+            LEFT JOIN schools s ON u.school_id = s.id
+            ORDER BY u.id DESC
+        `);
+        res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta ripoti:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta ripoti" });
+        res.status(500).json({ error: "Imeshindikana kuleta watumiaji" });
+    }
+});
+
+// Kusajili mtumiaji mpya
+app.post('/api/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
+    
+    const { full_name, username, password, role, school_id } = req.body;
+    
+    try {
+        // 1. Kagua kama username imetumika
+        const checkUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (checkUser.rows.length > 0) return res.status(400).json({ error: "Jina la mtumiaji (username) limeshatumika" });
+
+        // 2. Fanya password kuwa hash
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 3. Ingiza kwenye database (kama ni super_admin, school_id inaweza kuwa NULL)
+        const finalSchoolId = role === 'super_admin' ? null : school_id;
+
+        const query = `
+            INSERT INTO users (full_name, username, password_hash, role, school_id) 
+            VALUES ($1, $2, $3, $4, $5) RETURNING id, full_name, username, role
+        `;
+        const result = await pool.query(query, [full_name, username, hashedPassword, role, finalSchoolId]);
+        
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error("Kosa la kusajili mtumiaji:", error);
+        res.status(500).json({ error: `Imeshindikana kusajili mtumiaji: ${error.message}` });
     }
 });
 
