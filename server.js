@@ -129,7 +129,7 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
     }
 });
 
-// 5. API MPYA: KUHIFADHI MAHUDHURIO
+// 5. API YA MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body;
     const user = req.user;
@@ -140,18 +140,14 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            
-            // Futa mahudhurio ya siku hiyo kwanza ili kuepuka marudio (upsert logic)
             await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id]);
 
-            // Ingiza mahudhurio mapya
             for (let record of records) {
                 await client.query(
                     'INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)',
                     [record.student_id, date, record.status, user.school_id]
                 );
             }
-            
             await client.query('COMMIT');
             res.json({ message: "Mahudhurio yamehifadhiwa kikamilifu" });
         } catch (e) {
@@ -163,6 +159,34 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Kosa la kuhifadhi mahudhurio:", error);
         res.status(500).json({ error: "Imeshindikana kuhifadhi mahudhurio" });
+    }
+});
+
+// 6. API MPYA: KULETA MADARASA (STREAMS)
+app.get('/api/streams', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let query = `SELECT * FROM streams`;
+        let params = [];
+
+        if (user.role === 'super_admin') {
+            if (req.query.school_id) {
+                query += ` WHERE school_id = $1`;
+                params.push(req.query.school_id);
+            }
+        } else {
+            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+            query += ` WHERE school_id = $1`;
+            params.push(user.school_id);
+        }
+        
+        // Kama table yako ya streams ina column ya 'name' au 'class_name', tunatumia 'name' hapa.
+        query += ` ORDER BY name ASC`; 
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Kosa la kuleta madarasa:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta madarasa" });
     }
 });
 
