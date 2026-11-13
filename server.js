@@ -72,11 +72,12 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             role: user.role
         });
     } catch (error) {
+        console.error("Dashboard Error:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
 
-// 3. API MPYA: KULETA ORODHA YA WANAFUNZI
+// 3. API YA KULETA ORODHA YA WANAFUNZI (Imeboreshwa kwa majina halisi ya DB)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -84,23 +85,27 @@ app.get('/api/students', authenticateToken, async (req, res) => {
 
         if (!targetSchoolId) return res.status(400).json({ error: "Hakuna shule iliyochaguliwa" });
 
-        // Inachukua wanafunzi wote wa shule husika
-        // (Hakikisha 'full_name' inalingana na jina la column kwenye table yako ya students)
+        // Tumia majina halisi ya safu kama yalivyoonyeshwa kwenye picha yako ya DBeaver
         const query = `
-            SELECT s.id, s.full_name, s.gender, s.stream_id 
-            FROM students s 
-            WHERE s.school_id = $1 
-            ORDER BY s.full_name ASC
+            SELECT 
+                id, 
+                full_name, 
+                gender, 
+                stream_id,
+                admission_number
+            FROM students 
+            WHERE school_id = $1 
+            ORDER BY full_name ASC
         `;
         const result = await pool.query(query, [targetSchoolId]);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta wanafunzi:", error);
+        console.error("Kosa la kuleta wanafunzi kutoka DB:", error);
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya wanafunzi" });
     }
 });
 
-// 4. API YA KULETA SHULE (Kwa Super Admin)
+// 4. API YA KULETA SHULE
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
