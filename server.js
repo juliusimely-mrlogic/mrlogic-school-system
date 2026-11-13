@@ -28,24 +28,18 @@ app.post('/api/login', async (req, res) => {
         );
         res.json({ token, user });
     } catch (error) {
-        console.error("Login Error:", error);
         res.status(500).json({ error: "Kuna tatizo la kiufundi" });
     }
 });
 
-// Middleware ya Usalama (Inarudisha 401 kama token imeisha muda au haipo)
+// Middleware ya Usalama
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) return res.status(401).json({ error: "Hakuna token iliyotolewa" });
+    if (!token) return res.status(401).json({ error: "Hakuna token" });
 
     jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
-        if (err) {
-            console.error("Token Error:", err.message);
-            // Hapa tunarudisha 401 (Unauthorized) na sio 400
-            return res.status(401).json({ error: "Token imeisha muda au si sahihi" });
-        }
+        if (err) return res.status(401).json({ error: "Token imeisha muda au si sahihi" });
         req.user = user; 
         next();
     });
@@ -78,29 +72,37 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             role: user.role
         });
     } catch (error) {
-        console.error("Dashboard Error:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
 
-// 3. API YA KULETA ORODHA YA WANAFUNZI
+// 3. API YA KULETA ORODHA YA WANAFUNZI (IMEREKEBISHWA)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
+        let query = `SELECT id, full_name, gender, stream_id, admission_number FROM students`;
+        let params = [];
 
-        if (!targetSchoolId) return res.status(400).json({ error: "Hakuna shule iliyochaguliwa" });
-
-        const query = `
-            SELECT id, full_name, gender, stream_id, admission_number
-            FROM students 
-            WHERE school_id = $1 
-            ORDER BY full_name ASC
-        `;
-        const result = await pool.query(query, [targetSchoolId]);
+        if (user.role === 'super_admin') {
+            // Super Admin: Kama amechagua shule kwenye dropdown, chuja kwa shule hiyo. Kama hajachagua, lete wote.
+            if (req.query.school_id) {
+                query += ` WHERE school_id = $1`;
+                params.push(req.query.school_id);
+            }
+        } else {
+            // Mkuu wa Shule / Mwalimu: Lazima aone wanafunzi wa shule yake tu.
+            if (!user.school_id) {
+                return res.status(400).json({ error: "Mtumiaji hana shule iliyounganishwa" });
+            }
+            query += ` WHERE school_id = $1`;
+            params.push(user.school_id);
+        }
+        
+        query += ` ORDER BY full_name ASC`;
+        const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta wanafunzi kutoka DB:", error);
+        console.error("Kosa la kuleta wanafunzi:", error);
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya wanafunzi" });
     }
 });
