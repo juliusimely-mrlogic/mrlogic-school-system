@@ -5,6 +5,8 @@ if (!token || !userStr) {
     window.location.replace('/login.html');
 }
 
+let isEditing = false;
+
 function logout() {
     localStorage.clear();
     window.location.replace('/login.html');
@@ -22,7 +24,7 @@ async function loadTeachers() {
         const teachers = await response.json();
 
         if (teachers.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Hakuna walimu.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Hakuna walimu.</td></tr>`;
             return;
         }
 
@@ -39,13 +41,56 @@ async function loadTeachers() {
                     <td>${jinsia}</td>
                     <td>${phone}</td>
                     <td>${email}</td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="editTeacher(${teacher.id}, '${teacher.full_name}', '${teacher.gender}', '${teacher.phone || ''}', '${teacher.email || ''}')">Rekebisha</button>
+                        <button class="action-btn btn-delete" onclick="deleteTeacher(${teacher.id})">Futa</button>
+                    </td>
                 </tr>
             `;
         });
         tableBody.innerHTML = html;
     } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`;
     }
+}
+
+function editTeacher(id, full_name, gender, phone, email) {
+    isEditing = true;
+    document.getElementById('form-title').innerText = "Rekebisha Taarifa za Mwalimu";
+    document.getElementById('teacher_id').value = id;
+    document.getElementById('full_name').value = full_name;
+    document.getElementById('gender').value = gender;
+    document.getElementById('phone').value = phone;
+    document.getElementById('email').value = email;
+    
+    document.getElementById('btn-submit').innerText = "Hifadhi Marekebisho";
+    document.getElementById('btn-cancel').style.display = 'inline-block';
+    window.scrollTo(0, 0);
+}
+
+function cancelEdit() {
+    isEditing = false;
+    document.getElementById('form-title').innerText = "Sajili Mwalimu Mpya";
+    document.getElementById('teacherForm').reset();
+    document.getElementById('teacher_id').value = '';
+    document.getElementById('btn-submit').innerText = "Sajili Mwalimu";
+    document.getElementById('btn-cancel').style.display = 'none';
+}
+
+async function deleteTeacher(id) {
+    if (!confirm("Je, una uhakika unataka kumfuta mwalimu huyu?")) return;
+    try {
+        const response = await fetch(`/api/teachers/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            loadTeachers();
+        } else {
+            const data = await response.json();
+            alert("Kosa: " + data.error);
+        }
+    } catch (error) { alert("Kosa la mtandao."); }
 }
 
 document.getElementById('teacherForm').addEventListener('submit', async (e) => {
@@ -59,11 +104,15 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
         email: document.getElementById('email').value
     };
 
-    statusMsg.innerText = "Inasajili..."; statusMsg.style.color = "blue";
+    const id = document.getElementById('teacher_id').value;
+    const method = isEditing ? 'PUT' : 'POST';
+    const url = isEditing ? `/api/teachers/${id}` : '/api/teachers';
+
+    statusMsg.innerText = isEditing ? "Inahifadhi marekebisho..." : "Inasajili..."; statusMsg.style.color = "blue";
 
     try {
-        const response = await fetch('/api/teachers', {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
         });
@@ -71,9 +120,9 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (response.ok) {
-            statusMsg.innerText = "✅ Mwalimu amesajiliwa!";
+            statusMsg.innerText = isEditing ? "✅ Marekebisho yamehifadhiwa!" : "✅ Mwalimu amesajiliwa!";
             statusMsg.style.color = "green";
-            document.getElementById('teacherForm').reset();
+            cancelEdit();
             loadTeachers();
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
