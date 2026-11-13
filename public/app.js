@@ -18,14 +18,10 @@ if (!token || !userStr) {
 
         if (user.role === 'super_admin' || user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
             html += `
-                <div class="menu-card border-blue" onclick="window.location.href='/students.html'">
-                    <h3>Wanafunzi</h3><p>Simamia wanafunzi</p>
-                </div>
-                <div class="menu-card border-red" onclick="window.location.href='/teachers.html'">
-                    <h3>Walimu</h3><p>Walimu na Majukumu</p>
-                </div>
+                <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
+                <div class="menu-card border-red" onclick="window.location.href='/teachers.html'"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
                 <div class="menu-card border-purple"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
-                <div class="menu-card border-orange"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+                <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue"><h3>Mitihani & Ripoti</h3><p>Ingiza, chakata, na chapisha</p></div>
                 <div class="menu-card border-blue"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
             `;
@@ -39,7 +35,7 @@ if (!token || !userStr) {
         if (user.role === 'teacher') {
             html += `
                 <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
-                <div class="menu-card border-orange"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
+                <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue"><h3>Mitihani Yangu</h3><p>Weka alama</p></div>
             `;
         }

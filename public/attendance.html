@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahudhurio - MR-LOGIC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
+        .navbar a:hover { background: #2563eb; }
+        .container { padding: 30px; max-width: 1200px; margin: auto; }
+        
+        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .controls input[type="date"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .btn-save { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .btn-save:hover { background: #059669; }
+
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f8fafc; color: #1e3a8a; font-weight: bold; text-transform: uppercase; font-size: 14px;}
+        tr:hover { background-color: #f9fafb; }
+        
+        .radio-group { display: flex; gap: 15px; }
+        .radio-group label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .present { color: #10b981; font-weight: bold; }
+        .absent { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="/index.html">&larr; Rudi Dashibodi</a>
+            <span style="font-size: 20px; font-weight: bold;">Mahudhurio ya Wanafunzi</span>
+        </div>
+        <div>
+            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <label><strong>Chagua Tarehe:</strong></label>
+            <input type="date" id="attendance-date">
+            <button class="btn-save" onclick="saveAttendance()">Hifadhi Mahudhurio</button>
+            <span id="save-status" style="font-weight: bold;"></span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Jina Kamili</th>
+                    <th>Hali (Status)</th>
+                </tr>
+            </thead>
+            <tbody id="attendance-table-body">
+                <tr><td colspan="3" style="text-align: center;">Inapakia wanafunzi...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="attendance.js"></script>
+</body>
+</html>

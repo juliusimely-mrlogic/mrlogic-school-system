@@ -102,12 +102,10 @@ app.get('/api/students', authenticateToken, async (req, res) => {
     }
 });
 
-// 4. API YA WALIMU (Tumetumia SELECT * kuepuka makosa ya majina ya safu)
+// 4. API YA WALIMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        
-        // Tunachukua kila kitu (*) ili kama phone haipo, isilete kosa la 500
         let query = `SELECT * FROM teachers`;
         let params = [];
 
@@ -122,14 +120,49 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
             params.push(user.school_id);
         }
         
-        // Kama table ya teachers haina full_name, unaweza kuondoa hii ORDER BY
         query += ` ORDER BY full_name ASC`; 
-        
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta walimu:", error); // Kosa hili litaonekana kwenye Render Logs
+        console.error("Kosa la kuleta walimu:", error); 
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya walimu" });
+    }
+});
+
+// 5. API MPYA: KUHIFADHI MAHUDHURIO
+app.post('/api/attendance', authenticateToken, async (req, res) => {
+    const { records, date } = req.body;
+    const user = req.user;
+
+    if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
+
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // Futa mahudhurio ya siku hiyo kwanza ili kuepuka marudio (upsert logic)
+            await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id]);
+
+            // Ingiza mahudhurio mapya
+            for (let record of records) {
+                await client.query(
+                    'INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)',
+                    [record.student_id, date, record.status, user.school_id]
+                );
+            }
+            
+            await client.query('COMMIT');
+            res.json({ message: "Mahudhurio yamehifadhiwa kikamilifu" });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error("Kosa la kuhifadhi mahudhurio:", error);
+        res.status(500).json({ error: "Imeshindikana kuhifadhi mahudhurio" });
     }
 });
 
