@@ -105,8 +105,18 @@ app.put('/api/students/:id', authenticateToken, async (req, res) => {
     const { full_name, gender, stream_id, admission_number, parent_phone } = req.body;
     const user = req.user;
     try {
-        const query = `UPDATE students SET full_name=$1, gender=$2, stream_id=$3, admission_number=$4, parent_phone=$5 WHERE id=$6 AND school_id=$7 RETURNING *`;
-        const result = await pool.query(query, [full_name, gender, stream_id, admission_number, parent_phone, id, user.school_id]);
+        // IMEBORESHWA: Hapa tunahakikisha Super Admin hafungwi na school_id
+        let query = `UPDATE students SET full_name=$1, gender=$2, stream_id=$3, admission_number=$4, parent_phone=$5 WHERE id=$6`;
+        let params = [full_name, gender, stream_id, admission_number, parent_phone, id];
+        
+        if (user.role !== 'super_admin') {
+            query += ` AND school_id=$7`;
+            params.push(user.school_id);
+        }
+        
+        query += ` RETURNING *`;
+        const result = await pool.query(query, params);
+        
         if (result.rowCount === 0) return res.status(404).json({ error: "Mwanafunzi hajapatikana" });
         res.json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuboresha taarifa." }); }
@@ -116,7 +126,15 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
     try {
-        const result = await pool.query(`DELETE FROM students WHERE id=$1 AND school_id=$2`, [id, user.school_id]);
+        let query = `DELETE FROM students WHERE id=$1`;
+        let params = [id];
+        
+        if (user.role !== 'super_admin') {
+            query += ` AND school_id=$2`;
+            params.push(user.school_id);
+        }
+        
+        const result = await pool.query(query, params);
         if (result.rowCount === 0) return res.status(404).json({ error: "Mwanafunzi hajapatikana" });
         res.json({ message: "Mwanafunzi amefutwa" });
     } catch (error) {
@@ -159,8 +177,17 @@ app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
     const { full_name, gender, phone, email } = req.body;
     const user = req.user;
     try {
-        const query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3, email=$4 WHERE id=$5 AND school_id=$6 RETURNING *`;
-        const result = await pool.query(query, [full_name, gender, phone, email, id, user.school_id]);
+        let query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3, email=$4 WHERE id=$5`;
+        let params = [full_name, gender, phone, email, id];
+        
+        if (user.role !== 'super_admin') {
+            query += ` AND school_id=$6`;
+            params.push(user.school_id);
+        }
+        
+        query += ` RETURNING *`;
+        const result = await pool.query(query, params);
+        
         if (result.rowCount === 0) return res.status(404).json({ error: "Mwalimu hajapatikana" });
         res.json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuboresha taarifa." }); }
@@ -170,7 +197,15 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
     try {
-        const result = await pool.query(`DELETE FROM teachers WHERE id=$1 AND school_id=$2`, [id, user.school_id]);
+        let query = `DELETE FROM teachers WHERE id=$1`;
+        let params = [id];
+        
+        if (user.role !== 'super_admin') {
+            query += ` AND school_id=$2`;
+            params.push(user.school_id);
+        }
+        
+        const result = await pool.query(query, params);
         if (result.rowCount === 0) return res.status(404).json({ error: "Mwalimu hajapatikana" });
         res.json({ message: "Mwalimu amefutwa" });
     } catch (error) {
