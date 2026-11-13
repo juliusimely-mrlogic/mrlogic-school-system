@@ -37,13 +37,18 @@ async function loadTeachers() {
 
         let html = '';
         teachers.forEach((teacher, index) => {
+            // Tunatafuta jina la simu na email kwa uangalifu
+            const phone = teacher.phone || teacher.phone_number || teacher.simu || 'Hajajaza';
+            const email = teacher.email || teacher.email_address || teacher.barua_pepe || 'Hajajaza';
+            const jinsia = teacher.gender || teacher.jinsia || 'Hajajaza';
+
             html += `
                 <tr>
                     <td>${index + 1}</td>
-                    <td>${teacher.full_name}</td>
-                    <td>${teacher.gender || 'Hajajaza'}</td>
-                    <td>${teacher.phone || 'Hajajaza'}</td>
-                    <td>${teacher.email || 'Hajajaza'}</td>
+                    <td>${teacher.full_name || teacher.name || 'Hajajaza'}</td>
+                    <td>${jinsia}</td>
+                    <td>${phone}</td>
+                    <td>${email}</td>
                 </tr>
             `;
         });

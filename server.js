@@ -102,12 +102,13 @@ app.get('/api/students', authenticateToken, async (req, res) => {
     }
 });
 
-// 4. API MPYA: KULETA ORODHA YA WALIMU
+// 4. API YA WALIMU (Tumetumia SELECT * kuepuka makosa ya majina ya safu)
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        // Hapa tunatumia majina ya safu za kawaida. Badilisha kama zinajitofautisha kwenye DB yako.
-        let query = `SELECT id, full_name, gender, phone, email FROM teachers`;
+        
+        // Tunachukua kila kitu (*) ili kama phone haipo, isilete kosa la 500
+        let query = `SELECT * FROM teachers`;
         let params = [];
 
         if (user.role === 'super_admin') {
@@ -121,11 +122,13 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
             params.push(user.school_id);
         }
         
-        query += ` ORDER BY full_name ASC`;
+        // Kama table ya teachers haina full_name, unaweza kuondoa hii ORDER BY
+        query += ` ORDER BY full_name ASC`; 
+        
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        console.error("Kosa la kuleta walimu:", error);
+        console.error("Kosa la kuleta walimu:", error); // Kosa hili litaonekana kwenye Render Logs
         res.status(500).json({ error: "Imeshindikana kuleta orodha ya walimu" });
     }
 });
