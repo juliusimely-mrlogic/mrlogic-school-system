@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ripoti Binafsi - MR-LOGIC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
+        .navbar a:hover { background: #2563eb; }
+        .container { padding: 30px; max-width: 900px; margin: auto; }
+        
+        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        
+        .btn-load { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
+        .btn-print { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
+
+        /* Muonekano wa Report Card */
+        .report-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+        .report-header { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+        .report-header h1 { margin: 0; color: #1e3a8a; font-size: 24px; text-transform: uppercase; }
+        .report-header h3 { margin: 5px 0 0 0; color: #666; }
+        .student-info { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 16px; }
+        .student-info p { margin: 5px 0; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #f8fafc; color: #1e3a8a; }
+        td:nth-child(1) { text-align: left; font-weight: bold; }
+        
+        .summary-table th, .summary-table td { font-weight: bold; }
+        .summary-table .total-row { background-color: #dbeafe; }
+        
+        .comments-section { margin-top: 30px; }
+        .comments-section label { font-weight: bold; display: block; margin-bottom: 5px; }
+        .comments-section textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; height: 80px; box-sizing: border-box; }
+        
+        .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+        .signature-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; }
+
+        @media print {
+            .navbar, .controls { display: none; }
+            .container { padding: 0; }
+            .report-card { box-shadow: none; border: none; display: block !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="/index.html">&larr; Rudi Dashibodi</a>
+            <span style="font-size: 20px; font-weight: bold;">Ripoti Binafsi (Report Card)</span>
+        </div>
+        <div>
+            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="form-group">
+                <label>Chagua Mtihani:</label>
+                <select id="exam-select">
+                    <option value="">-- Inapakia... --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Chagua Darasa:</label>
+                <select id="stream-select" onchange="loadStudentsDropdown()">
+                    <option value="">-- Inapakia... --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Chagua Mwanafunzi:</label>
+                <select id="student-select">
+                    <option value="">-- Chagua Darasa Kwanza --</option>
+                </select>
+            </div>
+            <button class="btn-load" onclick="loadReportCard()">Tengeneza Ripoti</button>
+            <button class="btn-print" onclick="window.print()" id="btn-print" style="display: none;">Chapisha (Print)</button>
+        </div>
+
+        <div id="report-card-container" class="report-card">
+            <div class="report-header">
+                <h1 id="school-name-display">JINA LA SHULE</h1>
+                <h3>TAARIFA YA MATOKEO YA MTIHANI</h3>
+            </div>
+            
+            <div class="student-info">
+                <div>
+                    <p><strong>Jina la Mwanafunzi:</strong> <span id="student-name-display">-</span></p>
+                    <p><strong>Namba ya Usajili:</strong> <span id="student-adm-display">-</span></p>
+                </div>
+                <div>
+                    <p><strong>Darasa:</strong> <span id="student-stream-display">-</span></p>
+                    <p><strong>Mtihani:</strong> <span id="exam-name-display">-</span></p>
+                </div>
+            </div>
+
+            <table id="subjects-table">
+                <thead>
+                    <tr>
+                        <th>SOMO (SUBJECT)</th>
+                        <th>ALAMA (MARKS)</th>
+                        <th>DARAJA (GRADE)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Subjects injected here -->
+                </tbody>
+            </table>
+
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>JUMLA YA ALAMA</th>
+                        <th>WASTANI</th>
+                        <th>NAFASI (POSITION)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="total-row">
+                        <td id="total-display">0</td>
+                        <td id="average-display">0.00%</td>
+                        <td id="position-display">-</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="comments-section">
+                <label>Maoni ya Mwalimu wa Darasa:</label>
+                <textarea id="teacher-comments" placeholder="Andika maoni hapa..."></textarea>
+            </div>
+
+            <div class="signatures">
+                <div class="signature-line">Sahihi ya Mwalimu</div>
+                <div class="signature-line">Muhuri wa Shule</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="student-report.js"></script>
+</body>
+</html>

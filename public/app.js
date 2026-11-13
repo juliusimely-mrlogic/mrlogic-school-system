@@ -23,7 +23,8 @@ if (!token || !userStr) {
                 <div class="menu-card border-purple" onclick="window.location.href='/streams.html'"><h3>Madarasa</h3><p>Angalia madarasa</p></div>
                 <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama za mitihani</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Ripoti za Mitihani</h3><p>Angalia na chapisha matokeo</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo ya darasa zima</p></div>
+                <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card ya mwanafunzi</p></div>
                 <div class="menu-card border-blue"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
             `;
         }
@@ -31,7 +32,6 @@ if (!token || !userStr) {
             html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
         if (user.role === 'super_admin') {
-            // HAPA: Tumeongeza kiungo cha ukurasa wa watumiaji
             html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
         }
         if (user.role === 'teacher') {
@@ -39,7 +39,8 @@ if (!token || !userStr) {
                 <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
                 <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Ripoti za Mitihani</h3><p>Angalia matokeo</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo</p></div>
+                <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card</p></div>
             `;
         }
         menuContainer.innerHTML = html;
