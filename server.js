@@ -15,27 +15,19 @@ app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        
-        if (result.rows.length === 0) {
-            return res.status(401).json({ error: "Jina la mtumiaji si sahihi" });
-        }
+        if (result.rows.length === 0) return res.status(401).json({ error: "Jina la mtumiaji si sahihi" });
 
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.password_hash);
-
-        if (!validPassword) {
-            return res.status(401).json({ error: "Password si sahihi" });
-        }
+        if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
 
         const token = jwt.sign(
             { id: user.id, role: user.role, school_id: user.school_id, name: user.full_name },
             process.env.JWT_SECRET || 'siri_yako_ya_siri',
             { expiresIn: '1d' }
         );
-
         res.json({ token, user });
     } catch (error) {
-        console.error("Login Error:", error);
         res.status(500).json({ error: "Kuna tatizo la kiufundi" });
     }
 });
@@ -59,27 +51,16 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const user = req.user;
         let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
         
-        if (!targetSchoolId) {
-            return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
-        }
+        if (!targetSchoolId) return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
 
-        // Pata jina la shule
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
         const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
-        // Hesabu takwimu (Tumia majina ya tables yaliyopo kwenye DB yako)
-        const studentsQuery = `SELECT COUNT(*) FROM students WHERE school_id = $1`;
-        const teachersQuery = `SELECT COUNT(*) FROM teachers WHERE school_id = $1`;
-        // Kama table yako ya madarasa inaitwa 'streams' badilisha hapa chini:
-        const classesQuery = `SELECT COUNT(*) FROM streams WHERE school_id = $1`; 
-        // Kama table ya malipo inaitwa 'fees' badilisha hapa chini:
-        const feesQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1`;
-
         const [students, teachers, classes, fees] = await Promise.all([
-            pool.query(studentsQuery, [targetSchoolId]),
-            pool.query(teachersQuery, [targetSchoolId]),
-            pool.query(classesQuery, [targetSchoolId]),
-            pool.query(feesQuery, [targetSchoolId])
+            pool.query(`SELECT COUNT(*) FROM students WHERE school_id = $1`, [targetSchoolId]),
+            pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
+            pool.query(`SELECT COUNT(*) FROM streams WHERE school_id = $1`, [targetSchoolId]),
+            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1`, [targetSchoolId])
         ]);
 
         res.json({
@@ -91,12 +72,35 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             role: user.role
         });
     } catch (error) {
-        console.error("Database Error kwenye Stats:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" });
     }
 });
 
-// 3. API YA KULETA SHULE (Kwa Super Admin)
+// 3. API MPYA: KULETA ORODHA YA WANAFUNZI
+app.get('/api/students', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
+
+        if (!targetSchoolId) return res.status(400).json({ error: "Hakuna shule iliyochaguliwa" });
+
+        // Inachukua wanafunzi wote wa shule husika
+        // (Hakikisha 'full_name' inalingana na jina la column kwenye table yako ya students)
+        const query = `
+            SELECT s.id, s.full_name, s.gender, s.stream_id 
+            FROM students s 
+            WHERE s.school_id = $1 
+            ORDER BY s.full_name ASC
+        `;
+        const result = await pool.query(query, [targetSchoolId]);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Kosa la kuleta wanafunzi:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta orodha ya wanafunzi" });
+    }
+});
+
+// 4. API YA KULETA SHULE (Kwa Super Admin)
 app.get('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa" });
     try {
@@ -107,7 +111,6 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
-// Catch-all route
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
