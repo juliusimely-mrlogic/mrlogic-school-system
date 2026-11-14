@@ -40,13 +40,9 @@ if (!token || !userStr) {
             html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
         
+        // KADI MPYA: Wanafunzi Waliofeli
         if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
-            html += `<div class="menu-card" onclick="window.location.href='/district-ranking.html'" style="border-left-color: #f59e0b;"><h3>Nafasi ya Shule (Halmashauri)</h3><p>Rank ya shule na Top 20</p></div>`;
-        }
-
-        // KADI MPYA: Wanafunzi Wote F - Kwa Mkuu wa Shule pekee (na super admin kwa testing)
-        if (user.role === 'school_manager' || user.role === 'super_admin') {
-            html += `<div class="menu-card" onclick="window.location.href='/f-grades.html'" style="border-left-color: #ef4444;"><h3>Wanafunzi Wote F</h3><p>Orodha ya waliofeli masomo yote</p></div>`;
+            html += `<div class="menu-card" onclick="window.location.href='/failed-students.html'" style="border-left-color: #ef4444;"><h3>Wanafunzi Waliofeli</h3><p>Jumla ya F na Orodha</p></div>`;
         }
 
         if (user.role === 'super_admin') {

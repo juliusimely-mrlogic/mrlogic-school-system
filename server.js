@@ -33,15 +33,6 @@ const getDivision = (points) => {
     return '0';
 };
 
-// Function ya kupata Grade ya Shule (GPA)
-const getSchoolGrade = (gpa) => {
-    if (gpa >= 1.0 && gpa <= 1.6) return 'Daraja la Juu (Excellent)';
-    if (gpa >= 1.7 && gpa <= 2.6) return 'Daraja la Pili (Very Good)';
-    if (gpa >= 2.7 && gpa <= 3.5) return 'Daraja la Tatu (Good)';
-    if (gpa >= 3.6 && gpa <= 4.4) return 'Daraja la Nne (Satisfactory)';
-    return 'Fail';
-};
-
 // 1. API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -204,73 +195,82 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API MPYA: KUPATA WANAFUNZI WOTE WALIOPATA F KWENYE MASOMO YOTE
-app.get('/api/reports/all-f-students', authenticateToken, async (req, res) => {
-    const { exam_id } = req.query; 
+// API MPYA: WANAFUNZI WALIOFELI MASOMO YOTE
+app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
+    const { exam_id, stream_id } = req.query;
     const user = req.user;
     
     if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // 1. Pata masomo yote
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
-        const subjects = subjectsRes.rows;
+        // 1. Hesabu Jumla ya F zote (Score < 30) kwenye mtihani huu
+        let totalFQuery = `SELECT COUNT(*) as total_f FROM results WHERE exam_id = $1 AND school_id = $2 AND score < 30`;
+        let totalFParams = [exam_id, user.school_id];
+        if (stream_id) {
+             totalFQuery += ` AND student_id IN (SELECT id FROM students WHERE stream_id = $3)`;
+             totalFParams.push(stream_id);
+        }
+        const totalFRes = await pool.query(totalFQuery, totalFParams);
+        const totalFs = parseInt(totalFRes.rows[0].total_f);
 
-        // 2. Pata wanafunzi wote
-        const studentsRes = await pool.query(`SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`, [user.school_id]);
-        const students = studentsRes.rows;
-
-        // 3. Pata alama zote
-        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
-        const results = resultsRes.rows;
-
-        // 4. Hesabu jumla ya F zote shule nzima
-        let totalFsInSchool = 0;
-        results.forEach(r => { if (parseFloat(r.score) < 30) totalFsInSchool++; });
-
-        // 5. Chakarata (Process) data
-        let fStudentsData = [];
+        // 2. Pata Wanafunzi wote wa shule (au stream husika)
+        let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
+        let studentParams = [user.school_id];
+        if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
         
-        students.forEach(student => {
-            const studentResults = results.filter(r => r.student_id === student.id);
-            if (studentResults.length === 0) return; // Ruka ABS (hawakufanya mtihani)
+        const studentsRes = await pool.query(studentQuery, studentParams);
+        
+        // 3. Pata alama zote za mtihani huu
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        
+        // 4. Pata majina ya masomo
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
+        const subjectMap = {};
+        subjectsRes.rows.forEach(sub => subjectMap[sub.id] = sub.name);
 
-            let allAreF = true;
-            let subjectsDetail = [];
+        let failedStudents = [];
+        
+        studentsRes.rows.forEach(student => {
+            const studentResults = resultsRes.rows.filter(r => r.student_id === student.id);
+            if (studentResults.length === 0) return; // Hakufanya mtihani wowote
+
+            let allF = true;
+            let failedSubjects = [];
             let totalScore = 0;
 
             studentResults.forEach(r => {
                 const score = parseFloat(r.score);
                 totalScore += score;
-                if (score >= 30) { allAreF = false; } // Kama kuna D, C, B, A, basi si F zote
-                
-                const subName = subjects.find(sub => sub.id === r.subject_id)?.name || 'SUB';
-                subjectsDetail.push({ code: subName.substring(0,3).toUpperCase(), grade: getGradeAndPoints(score).grade });
+                if (score >= 30) { // Kama kuna somo lolote amepata D, C, B, A basi si "All F"
+                    allF = false;
+                } else {
+                    failedSubjects.push({ code: subjectMap[r.subject_id].substring(0, 3).toUpperCase(), grade: 'F' });
+                }
             });
 
-            if (allAreF && subjectsDetail.length > 0) {
-                const average = parseFloat((totalScore / studentResults.length).toFixed(2));
-                fStudentsData.push({
-                    id: student.id,
-                    name: student.full_name,
+            // Kama amepata F kwenye masomo yote aliyofanya
+            if (allF) {
+                failedStudents.push({
+                    student_id: student.id,
+                    full_name: student.full_name,
                     gender: student.gender,
                     stream_name: student.stream_name || 'Hajapewa',
-                    average: average,
-                    subjects: subjectsDetail
+                    total_score: totalScore,
+                    failed_subjects: failedSubjects
                 });
             }
         });
 
-        // 6. Panga kwa wastani (Ascending: Mdogo kwenda Mkubwa)
-        fStudentsData.sort((a, b) => a.average - b.average);
-        fStudentsData.forEach((s, idx) => s.rank = idx + 1);
+        // 5. Panga kwa Ascending order ya Total Score (Aliyepata alama ndogo sana aongoze)
+        failedStudents.sort((a, b) => a.total_score - b.total_score);
+        failedStudents.forEach((s, idx) => s.rank = idx + 1);
 
-        res.json({ totalFsInSchool, reportData: fStudentsData });
+        res.json({ totalFs, failedStudents });
 
     } catch (error) { 
-        console.error("All F Students Error:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
+        console.error("Failed Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta data ya wanafunzi waliofeli" }); 
     }
 });
 
@@ -799,7 +799,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA KUPATA EXCEL
+// API YA KUPATA EXCEL YA ALAMA ZOTE
 app.get('/api/reports/export-excel/:exam_id', authenticateToken, async (req, res) => {
     const { exam_id } = req.params;
     const user = req.user;
@@ -854,7 +854,6 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
         `, [exam_id, stream_id, user.school_id]);
 
         const subjects = subjectsRes.rows;
-
         const resultsRes = await pool.query(`SELECT r.student_id, r.subject_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3`, [exam_id, stream_id, user.school_id]);
         const results = resultsRes.rows;
         
@@ -948,7 +947,7 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 10. API YA SHULE NA WATUMIAJI
+// API YA SHULE NA WATUMIAJI
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } 
     catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
