@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="sw"><head><meta charset="UTF-8"><title>Usimamizi wa Ada</title>
+<style>body{font-family:sans-serif;background:#f3f4f6;padding:20px;} .container{max-width:1000px;margin:auto;background:#fff;padding:20px;border-radius:8px;} .header{display:flex;justify-content:space-between;margin-bottom:20px;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;} input,select{padding:8px;margin:5px 0;box-sizing:border-box;} .btn{background:#2563eb;color:#fff;padding:10px 15px;border-radius:4px;border:none;cursor:pointer;} .bg-red{color:#dc2626;font-weight:bold;} .bg-green{color:#16a34a;font-weight:bold;}</style></head>
+<body><div class="container"><div class="header"><h2>Ada na Malipo</h2><a href="/" class="btn">⬅️ Rudi</a></div>
+<div style="background:#f8fafc;padding:15px;border-radius:8px;margin-bottom:20px;display:flex;gap:10px;">
+<select id="stud" required></select><input type="number" id="amount" placeholder="Kiasi (Tsh)" required><input type="date" id="date" required><button class="btn" onclick="addFee()">Weka Malipo</button>
+</div>
+<table><thead><tr><th>Jina</th><th>Darasa</th><th>Makadirio</th><th>Iliyolipwa</th><th>Deni</th></tr></thead><tbody id="tbl"></tbody></table></div>
+<script>
+const token=localStorage.getItem('token'); const h={'Authorization':`Bearer ${token}`,'Content-Type':'application/json'};
+async function load(){ 
+  const [r1,r2]=await Promise.all([fetch('/api/fees/balances',{headers:h}),fetch('/api/students',{headers:h})]); const f=await r1.json(), s=await r2.json();
+  document.getElementById('stud').innerHTML='<option value="">Chagua Mwanafunzi</option>'+s.map(x=>`<option value="${x.id}">${x.full_name}</option>`).join('');
+  document.getElementById('tbl').innerHTML=f.map(x=>`<tr><td>${x.full_name}</td><td>${x.stream_name}</td><td>${parseInt(x.expected_fee).toLocaleString()}</td><td class="bg-green">${parseInt(x.total_paid).toLocaleString()}</td><td class="${x.balance>0?'bg-red':'bg-green'}">${parseInt(x.balance).toLocaleString()}</td></tr>`).join(''); 
+}
+window.addFee=async()=>{
+  if(!stud.value||!amount.value||!date.value) return alert('Jaza vitu vyote');
+  await fetch('/api/fees',{method:'POST',headers:h,body:JSON.stringify({student_id:stud.value,amount:amount.value,date_paid:date.value})}); load();
+};
+load();
+</script></body></html>

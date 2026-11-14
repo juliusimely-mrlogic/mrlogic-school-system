@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="sw"><head><meta charset="UTF-8"><title>Mahudhurio</title>
+<style>body{font-family:sans-serif;background:#f3f4f6;padding:20px;} .container{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:8px;} .header{display:flex;justify-content:space-between;margin-bottom:20px;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;} input,select{padding:8px;margin:5px 0;width:100%;box-sizing:border-box;} .btn{background:#2563eb;color:#fff;padding:10px 15px;text-decoration:none;border-radius:4px;border:none;cursor:pointer;} .btn-green{background:#10b981;width:100%;margin-top:15px;font-size:16px;}</style></head>
+<body><div class="container"><div class="header"><h2>Mahudhurio</h2><a href="/" class="btn">⬅️ Rudi</a></div>
+<div style="display:flex;gap:10px;margin-bottom:15px;"><input type="date" id="date" required><select id="stream" required><option value="">Chagua Darasa</option></select><button onclick="loadStuds()" class="btn" style="margin:0;">Pakia</button></div>
+<table><thead><tr><th>Jina</th><th>Yupo (Present)</th><th>Hayupo (Absent)</th></tr></thead><tbody id="tbl"></tbody></table>
+<button class="btn btn-green" id="saveBtn" style="display:none;" onclick="saveAtt()">Hifadhi Mahudhurio</button></div>
+<script>
+const token=localStorage.getItem('token'); const h={'Authorization':`Bearer ${token}`,'Content-Type':'application/json'};
+async function init(){ const r=await fetch('/api/streams',{headers:h}); const s=await r.json(); document.getElementById('stream').innerHTML='<option value="">Chagua Darasa</option>'+s.map(x=>`<option value="${x.id}">${x.name}</option>`).join(''); }
+window.loadStuds=async()=>{
+  const st=document.getElementById('stream').value; if(!st) return alert('Chagua Darasa');
+  const r=await fetch(`/api/students?stream_id=${st}`,{headers:h}); const studs=await r.json();
+  document.getElementById('tbl').innerHTML=studs.map(s=>`<tr><td>${s.full_name}</td><td><input type="radio" name="att_${s.id}" value="Present" checked></td><td><input type="radio" name="att_${s.id}" value="Absent"></td></tr>`).join('');
+  document.getElementById('saveBtn').style.display='block';
+};
+window.saveAtt=async()=>{
+  const date=document.getElementById('date').value; if(!date) return alert('Weka tarehe');
+  const records=[]; document.querySelectorAll('input[type="radio"]:checked').forEach(r=>{ const id=r.name.split('_')[1]; records.push({student_id:id, status:r.value}); });
+  await fetch('/api/attendance',{method:'POST',headers:h,body:JSON.stringify({records,date})}); alert('Zimehifadhiwa');
+};
+init();
+</script></body></html>

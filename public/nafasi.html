@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="sw"><head><meta charset="UTF-8"><title>Nafasi ya Shule</title>
+<style>body{font-family:sans-serif;background:#f3f4f6;padding:20px;} .container{max-width:800px;margin:auto;background:#fff;padding:20px;border-radius:8px;text-align:center;} .header{display:flex;justify-content:space-between;margin-bottom:20px;text-align:left;} .rank-box{background:linear-gradient(135deg, #1e3a8a, #3b82f6);color:#fff;padding:40px;border-radius:12px;margin-top:20px;} .rank-box h1{font-size:60px;margin:0;} .btn{background:#2563eb;color:#fff;padding:10px 15px;border-radius:4px;border:none;cursor:pointer;text-decoration:none;}</style></head>
+<body><div class="container"><div class="header"><h2>Nafasi ya Shule (Halmashauri)</h2><a href="/" class="btn">⬅️ Rudi</a></div>
+<div class="rank-box"><h3>Nafasi ya Shule Yako</h3><h1 id="rank">-</h1><p style="font-size:18px;">Kati ya Shule <span id="total">0</span> kwenye Halmashauri yako</p></div>
+<p style="margin-top:20px;color:#6b7280;">*Nafasi hii inahesabiwa kwa kutumia ufaulu wa mtihani wa mwisho uliowekwa kwenye mfumo.</p></div>
+<script>
+const token=localStorage.getItem('token');
+async function load(){ const r=await fetch('/api/dashboard/stats',{headers:{'Authorization':`Bearer ${token}`}}); const d=await r.json(); document.getElementById('rank').textContent=d.districtRank||'-'; document.getElementById('total').textContent=d.totalSchoolsInDistrict||0; }
+load();
+</script></body></html>

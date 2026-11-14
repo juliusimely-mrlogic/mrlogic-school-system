@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="sw"><head><meta charset="UTF-8"><title>Walimu</title>
+<style>body{font-family:sans-serif;background:#f3f4f6;padding:20px;} .container{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:8px;} .header{display:flex;justify-content:space-between;margin-bottom:20px;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left;} input,select{padding:8px;margin:5px 0;width:100%;box-sizing:border-box;} .btn{background:#2563eb;color:#fff;padding:10px 15px;border-radius:4px;border:none;cursor:pointer;} .btn-red{background:#dc2626;}</style></head>
+<body><div class="container"><div class="header"><h2>Walimu</h2><a href="/" class="btn">⬅️ Rudi</a></div>
+<form id="frm"><input type="text" id="name" placeholder="Jina Kamili" required><select id="gender"><option value="M">Me</option><option value="F">Ke</option></select><input type="text" id="phone" placeholder="Namba ya Simu" required><select id="desig"><option value="Mwalimu">Mwalimu</option><option value="Mtaaluma">Mtaaluma</option><option value="Mhasibu wa Shule">Mhasibu</option><option value="Mwalimu wa Nidhamu">Nidhamu</option><option value="Makamu Mkuu wa Shule">Makamu</option></select><button class="btn" type="submit">Sajili Mwalimu</button></form>
+<table><thead><tr><th>Jina</th><th>Jukumu</th><th>Simu</th><th>Username</th><th>Futa</th></tr></thead><tbody id="tbl"></tbody></table></div>
+<script>
+const token=localStorage.getItem('token'); const h={'Authorization':`Bearer ${token}`};
+async function load(){ const res=await fetch('/api/teachers',{headers:h}); const data=await res.json(); document.getElementById('tbl').innerHTML=data.map(t=>`<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td><td><button onclick="del(${t.id})" class="btn btn-red">Futa</button></td></tr>`).join(''); }
+document.getElementById('frm').onsubmit=async(e)=>{e.preventDefault(); await fetch('/api/teachers',{method:'POST',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({full_name:name.value,gender:gender.value,phone:phone.value,designation:desig.value})}); location.reload();};
+window.del=async(id)=>{if(confirm('Futa?')){await fetch('/api/teachers/'+id,{method:'DELETE',headers:h});load();}};
+load();
+</script></body></html>
