@@ -73,7 +73,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kupata takwimu" }); }
 });
 
-// 3. API YA WANAFUNZI (CRUD)
+// 3. API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -207,7 +207,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. API YA MADARASA
+// 6. API YA MADARASA (IMEBORESHWA KUZUIA MAJINA KUJIRUDIA)
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -221,6 +221,12 @@ app.post('/api/streams', authenticateToken, async (req, res) => {
     const { name, fee_amount } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
+        // KAGUA KAMA JINA LA DARASA LIPO TAYARI
+        const check = await pool.query('SELECT id FROM streams WHERE name ILIKE $1 AND school_id = $2', [name, user.school_id]);
+        if (check.rows.length > 0) {
+            return res.status(400).json({ error: "Darasa lenye jina hili limeshasajiliwa." });
+        }
+
         const query = `INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`;
         const result = await pool.query(query, [name, fee_amount || 0, user.school_id]);
         res.status(201).json(result.rows[0]);
