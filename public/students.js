@@ -6,6 +6,8 @@ if (!token || !userStr) {
 }
 
 let isEditing = false;
+let allStreams = []; // Tutahifadhi madarasa hapa
+let allStudents = []; // Tutahifadhi wanafunzi hapa
 
 function logout() {
     localStorage.clear();
@@ -17,39 +19,55 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStudents();
 });
 
+// 1. Pakia Madarasa
 async function loadStreams() {
-    const select = document.getElementById('stream_id');
     try {
         const response = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
-        const streams = await response.json();
+        allStreams = await response.json();
+        
+        // Jaza dropdown ya fomu ya kusajili
+        const select = document.getElementById('stream_id');
         select.innerHTML = '<option value="">-- Chagua Darasa --</option>';
-        streams.forEach(stream => {
+        allStreams.forEach(stream => {
             select.innerHTML += `<option value="${stream.id}">${stream.name}</option>`;
         });
     } catch (error) { console.error("Kosa la kuleta madarasa:", error); }
 }
 
+// 2. Pakia Wanafunzi na Tengeneza Jedwali
 async function loadStudents() {
     const tableBody = document.getElementById('students-table-body');
     try {
         const response = await fetch('/api/students', { headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) throw new Error("Imeshindwa");
-        const students = await response.json();
+        allStudents = await response.json();
 
-        if (students.length === 0) {
+        if (allStudents.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Hakuna wanafunzi.</td></tr>`;
             return;
         }
 
         let html = '';
-        students.forEach((student, index) => {
+        allStudents.forEach((student, index) => {
+            // Tengeneza Dropdown ya Madarasa kwa ajili ya mwanafunzi huyu
+            let streamOptions = `<option value="">-- Hajapewa --</option>`;
+            allStreams.forEach(stream => {
+                const isSelected = student.stream_id === stream.id ? 'selected' : '';
+                streamOptions += `<option value="${stream.id}" ${isSelected}>${stream.name}</option>`;
+            });
+
             html += `
                 <tr>
                     <td>${index + 1}</td>
                     <td>${student.admission_number || 'Hajapewa'}</td>
                     <td>${student.full_name}</td>
                     <td>${student.gender || 'Hajajaza'}</td>
-                    <td>${student.stream_id || 'Hajapewa'}</td>
+                    <td>
+                        <!-- Hapa ndipo mabadiliko makubwa yalipo -->
+                        <select class="stream-select-table" onchange="assignStudentToStream(${student.id}, this.value, this)">
+                            ${streamOptions}
+                        </select>
+                    </td>
                     <td>
                         <button class="action-btn btn-edit" onclick="editStudent(${student.id}, '${student.full_name}', '${student.admission_number}', '${student.gender}', ${student.stream_id}, '${student.parent_phone || ''}')">Rekebisha</button>
                         <button class="action-btn btn-delete" onclick="deleteStudent(${student.id})">Futa</button>
@@ -63,6 +81,50 @@ async function loadStudents() {
     }
 }
 
+// 3. Kazi Mpya: Kubadilisha Darasa la Mwanafunzi Papo Hapo
+async function assignStudentToStream(studentId, newStreamId, selectElement) {
+    selectElement.disabled = true; // Zima dropdown kidogo isigongwe mara mbili
+    const originalBorder = selectElement.style.border;
+
+    try {
+        // Tafuta taarifa za mwanafunzi ili tuzitume zote kwenye PUT
+        const student = allStudents.find(s => s.id === studentId);
+        
+        const payload = {
+            full_name: student.full_name,
+            gender: student.gender,
+            admission_number: student.admission_number,
+            parent_phone: student.parent_phone,
+            stream_id: newStreamId || null // Kama amechagua tupu, iwe null
+        };
+
+        const response = await fetch(`/api/students/${studentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            // Onyesha mafanikio kwa kubadilisha rangi ya border
+            selectElement.style.border = "2px solid #10b981"; 
+            setTimeout(() => { selectElement.style.border = originalBorder; }, 2000);
+            
+            // Sasisha kumbukumbu yetu ya ndani
+            student.stream_id = newStreamId ? parseInt(newStreamId) : null;
+        } else {
+            alert("Imeshindikana kuweka darasa.");
+            selectElement.value = student.stream_id || ""; // Rudisha kwenye hali ya awali
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Kosa la mtandao.");
+        selectElement.value = ""; // Rudisha
+    } finally {
+        selectElement.disabled = false;
+    }
+}
+
+// 4. Kazi za Kawaida (Edit, Delete, Submit, Bulk Upload)
 function editStudent(id, full_name, admission_number, gender, stream_id, parent_phone) {
     isEditing = true;
     document.getElementById('form-title').innerText = "Rekebisha Taarifa za Mwanafunzi";
@@ -146,7 +208,6 @@ document.getElementById('studentForm').addEventListener('submit', async (e) => {
     }
 });
 
-// KAZI YA KUPOKEA NA KUPakia EXCEL
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fileInput = document.getElementById('excelFile');

@@ -22,7 +22,6 @@
         
         .btn-upload { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
         .btn-upload:hover { background: #2563eb; }
-        .file-input-wrapper { margin-bottom: 15px; }
 
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -33,8 +32,11 @@
         .btn-edit { background: #f59e0b; color: white; }
         .btn-delete { background: #ef4444; color: white; }
 
+        /* CSS kwa ajili ya Dropdown ya Darasa kwenye Jedwali */
+        .stream-select-table { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; width: 100%; max-width: 150px; cursor: pointer; background-color: #fff;}
+        .stream-select-table:disabled { background-color: #e5e7eb; cursor: not-allowed; }
+
         .upload-section { border-left: 5px solid #3b82f6; background: #eff6ff; }
-        .error-list { color: #ef4444; font-size: 14px; margin-top: 10px; padding-left: 20px;}
     </style>
 </head>
 <body>
@@ -52,18 +54,14 @@
         <!-- Sehemu ya Kupakia Excel -->
         <div class="form-section upload-section">
             <h3>Pakia Wanafunzi Kupitia Excel (Bulk Upload)</h3>
-            <p style="font-size: 14px; color: #555; margin-bottom: 15px;">
-                <strong>Muundo wa Excel unatakiwa uwe na vichwa hivi:</strong> <br>
-                <code>Jina Kamili | Namba ya Usajili | Jinsia (M/F) | Darasa ID | Namba ya Mzazi</code>
-            </p>
             <form id="uploadForm">
-                <div class="file-input-wrapper">
+                <div class="file-input-wrapper" style="margin-bottom: 15px;">
                     <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" required>
                 </div>
                 <button type="submit" class="btn-upload">Pakia Faili</button>
                 <span id="upload-status" style="font-weight:bold; margin-left: 15px;"></span>
             </form>
-            <ul id="upload-errors" class="error-list"></ul>
+            <ul id="upload-errors" style="color: #ef4444; font-size: 14px; margin-top: 10px;"></ul>
         </div>
 
         <div class="form-section">
@@ -94,7 +92,7 @@
                     <th>Namba ya Usajili</th>
                     <th>Jina Kamili</th>
                     <th>Jinsia</th>
-                    <th>Darasa</th>
+                    <th>Darasa (Badilisha Hapa)</th>
                     <th>Hatua (Actions)</th>
                 </tr>
             </thead>
