@@ -52,7 +52,6 @@ async function loadFailedStudents() {
         return;
     }
 
-    // Weka vichwa vya print
     const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
     const streamName = document.getElementById('stream-select').options[document.getElementById('stream-select').selectedIndex].text;
     
@@ -70,11 +69,13 @@ async function loadFailedStudents() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) throw new Error("Imeshindwa kuleta ripoti");
+        const data = await response.json(); // Soma majibu hata kama ni kosa
 
-        const data = await response.json();
+        if (!response.ok) {
+            // Ikitoa kosa kutoka Backend, lionyeshe hapa badala ya "Kuna tatizo"
+            throw new Error(data.error || "Imeshindwa kuleta ripoti");
+        }
         
-        // Onyesha Jumla ya F
         statsContainer.style.display = 'grid';
         document.getElementById('stat-total-f').innerText = data.totalFs;
 
@@ -120,7 +121,8 @@ async function loadFailedStudents() {
         btnPrint.style.display = 'inline-block';
 
     } catch (error) {
-        console.error("Kosa:", error);
-        container.innerHTML = `<p style="text-align: center; color: red;">Kuna tatizo limetokea wakati wa kuleta ripoti.</p>`;
+        console.error("Kosa Kamili:", error);
+        // HAPA TUTAONYESHA KOSA HALISI KWENYE SCREEN
+        container.innerHTML = `<p style="text-align: center; color: red; font-weight: bold;">Kosa: ${error.message}</p>`;
     }
 }

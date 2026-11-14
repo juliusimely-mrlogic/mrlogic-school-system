@@ -195,7 +195,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API MPYA: WANAFUNZI WALIOFELI MASOMO YOTE
+// API MPYA: WANAFUNZI WALIOFELI MASOMO YOTE (IMEBORESHWA)
 app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query;
     const user = req.user;
@@ -204,7 +204,7 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // 1. Hesabu Jumla ya F zote (Score < 30) kwenye mtihani huu
+        // 1. Hesabu Jumla ya F zote (Score < 30)
         let totalFQuery = `SELECT COUNT(*) as total_f FROM results WHERE exam_id = $1 AND school_id = $2 AND score < 30`;
         let totalFParams = [exam_id, user.school_id];
         if (stream_id) {
@@ -214,17 +214,17 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
         const totalFRes = await pool.query(totalFQuery, totalFParams);
         const totalFs = parseInt(totalFRes.rows[0].total_f);
 
-        // 2. Pata Wanafunzi wote wa shule (au stream husika)
+        // 2. Pata Wanafunzi
         let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
         let studentParams = [user.school_id];
         if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
         
         const studentsRes = await pool.query(studentQuery, studentParams);
         
-        // 3. Pata alama zote za mtihani huu
+        // 3. Pata alama zote
         const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
         
-        // 4. Pata majina ya masomo
+        // 4. Pata majina ya masomo (Kinga: Kama somo halipo, usicrash)
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
         const subjectMap = {};
         subjectsRes.rows.forEach(sub => subjectMap[sub.id] = sub.name);
@@ -233,7 +233,7 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
         
         studentsRes.rows.forEach(student => {
             const studentResults = resultsRes.rows.filter(r => r.student_id === student.id);
-            if (studentResults.length === 0) return; // Hakufanya mtihani wowote
+            if (studentResults.length === 0) return; // Hana alama zozote
 
             let allF = true;
             let failedSubjects = [];
@@ -242,14 +242,15 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
             studentResults.forEach(r => {
                 const score = parseFloat(r.score);
                 totalScore += score;
-                if (score >= 30) { // Kama kuna somo lolote amepata D, C, B, A basi si "All F"
-                    allF = false;
+                if (score >= 30) { 
+                    allF = false; // Kama kuna D, C, B, A basi si masomo yote F
                 } else {
-                    failedSubjects.push({ code: subjectMap[r.subject_id].substring(0, 3).toUpperCase(), grade: 'F' });
+                    // KINGA: Kama jina la somo halipo, tumia 'SUB'
+                    const subName = subjectMap[r.subject_id] || 'SUB';
+                    failedSubjects.push({ code: subName.substring(0, 3).toUpperCase(), grade: 'F' });
                 }
             });
 
-            // Kama amepata F kwenye masomo yote aliyofanya
             if (allF) {
                 failedStudents.push({
                     student_id: student.id,
@@ -262,15 +263,15 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
             }
         });
 
-        // 5. Panga kwa Ascending order ya Total Score (Aliyepata alama ndogo sana aongoze)
+        // 5. Panga kwa Ascending order (Aliyepata alama ndogo sana aongoze)
         failedStudents.sort((a, b) => a.total_score - b.total_score);
         failedStudents.forEach((s, idx) => s.rank = idx + 1);
 
         res.json({ totalFs, failedStudents });
 
     } catch (error) { 
-        console.error("Failed Students Error:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta data ya wanafunzi waliofeli" }); 
+        console.error("Failed Students Error:", error); // Hii itaonekana kwenye Render Logs
+        res.status(500).json({ error: `Imeshindikana kuleta data: ${error.message}` }); 
     }
 });
 
