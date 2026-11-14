@@ -273,6 +273,18 @@ app.post('/api/fees', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// API MPYA: KUFUTA MALIPO
+app.delete('/api/fees/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params; const user = req.user;
+    try {
+        let query = `DELETE FROM fees WHERE id=$1`; let params = [id];
+        if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
+        const result = await pool.query(query, params);
+        if (result.rowCount === 0) return res.status(404).json({ error: "Malipo haya hayapatikani au hauna ruhusa." });
+        res.json({ message: "Malipo yamefutwa kikamilifu." });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta malipo." }); }
+});
+
 app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     const user = req.user; if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
@@ -283,14 +295,13 @@ app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API MPYA: KUPATA TAARIFA ZA RISITI
+// API YA RISITI
 app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // 1. Pata taarifa za malipo na mwanafunzi
         const feeRes = await pool.query(`
             SELECT f.id as receipt_no, f.amount as amount_paid, f.date_paid, f.student_id,
                    s.full_name as student_name, s.admission_number, 
@@ -306,7 +317,6 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
         if (feeRes.rows.length === 0) return res.status(404).json({ error: "Risiti haijapatikana" });
         const data = feeRes.rows[0];
 
-        // 2. Pata jumla ya malipo yote ya mwanafunzi huyu hadi sasa
         const totalPaidRes = await pool.query(`
             SELECT COALESCE(SUM(amount), 0) as total_paid 
             FROM fees 
@@ -316,16 +326,8 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
         const total_paid = parseFloat(totalPaidRes.rows[0].total_paid);
         const balance = parseFloat(data.expected_fee) - total_paid;
 
-        res.json({
-            ...data,
-            total_paid: total_paid,
-            balance: balance
-        });
-
-    } catch (error) {
-        console.error("Kosa la kuleta risiti:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta risiti" });
-    }
+        res.json({ ...data, total_paid: total_paid, balance: balance });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta risiti" }); }
 });
 
 // 8. API YA MASOMO NA MITIHANI

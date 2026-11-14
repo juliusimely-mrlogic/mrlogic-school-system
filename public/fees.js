@@ -93,6 +93,7 @@ async function loadFeesHistory() {
                     <td>${formattedDate}</td>
                     <td>
                         <button class="btn-receipt" onclick="showReceipt(${fee.id})">Risiti</button>
+                        <button class="btn-delete" onclick="deleteFee(${fee.id})">Futa</button>
                     </td>
                 </tr>
             `;
@@ -145,7 +146,33 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
 });
 
 // ==========================================
-// KAZI MPYA: KUONYESHA RISITI
+// KAZI YA KUFUTA MALIPO (DELETE)
+// ==========================================
+async function deleteFee(id) {
+    if (!confirm("Je, una uhakika unataka kufuta malipo haya? Taarifa hii haitaweza kurudishwa.")) return;
+
+    try {
+        const response = await fetch(`/api/fees/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            alert("Malipo yamefutwa kikamilifu.");
+            loadBalances(); // Sasisha madeni
+            loadFeesHistory(); // Sasisha historia
+        } else {
+            const data = await response.json();
+            alert(`Kosa: ${data.error}`);
+        }
+    } catch (error) {
+        console.error("Kosa la mtandao:", error);
+        alert("Kosa la mtandao wakati wa kufuta.");
+    }
+}
+
+// ==========================================
+// KAZI YA KUONYESHA RISITI
 // ==========================================
 async function showReceipt(feeId) {
     try {
