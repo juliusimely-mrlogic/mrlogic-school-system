@@ -1,5 +1,5 @@
 // ==========================================
-// 1. LOGIN & AUTH
+// 1. AUTHENTICATION & NAVIGATION
 // ==========================================
 async function login() {
     const u = document.getElementById('username').value;
@@ -19,12 +19,9 @@ async function login() {
 }
 
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.clear();
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
 }
 
 function showApp() {
@@ -33,9 +30,6 @@ function showApp() {
     navigate('dashboard');
 }
 
-// ==========================================
-// 2. ROUTER & GLOBAL VARIABLES
-// ==========================================
 const token = localStorage.getItem('token');
 const authHeaders = { 'Authorization': `Bearer ${token}` };
 const content = document.getElementById('content-area');
@@ -51,11 +45,14 @@ function navigate(page) {
     else if (page === 'ada') renderAda();
     else if (page === 'alama') renderAlama();
     else if (page === 'broadsheet') renderBroadsheet();
+    else if (page === 'mahudhurio') renderMahudhurio();
+    else if (page === 'kupanga') renderKupanga();
+    else if (page === 'ripoti') renderRipoti();
     else if (page === 'mipangilio') renderMipangilio();
 }
 
 // ==========================================
-// 3. RENDER: DASHBOARD
+// 2. DASHBOARD
 // ==========================================
 async function renderDashboard() {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -80,19 +77,25 @@ async function renderDashboard() {
                 <h1 style="font-size:48px; color:#1e3a8a; margin:0;">${d.districtRank || '-'}</h1>
                 <p>Kati ya shule ${d.totalSchoolsInDistrict || 0}</p>
             </div>
+            <div class="grid-charts">
+                <div class="chart-box"><canvas id="feesChart"></canvas></div>
+                <div class="chart-box"><canvas id="genderChart"></canvas></div>
+            </div>
         `;
+
+        new Chart(document.getElementById('feesChart'), { type: 'bar', data: { labels: ['Makadirio', 'Iliyokusanywa', 'Deni'], datasets: [{ data: [d.totalExpectedFees, d.totalCollectedFees, d.totalOutstandingFees], backgroundColor: ['#f97316', '#22c55e', '#ef4444'] }] }, options: { plugins: { title: { display: true, text: 'Mchanganuo wa Fedha' } } } });
+        new Chart(document.getElementById('genderChart'), { type: 'doughnut', data: { labels: ['Me', 'Ke'], datasets: [{ data: [d.overallGender.M, d.overallGender.F], backgroundColor: ['#0ea5e9', '#ec4899'] }] }, options: { plugins: { title: { display: true, text: 'Jumla ya Jinsia' } } } });
+
     } catch (e) { content.innerHTML = `<h2 style="color:red;">Kosa: ${e.message}</h2>`; }
 }
 
 // ==========================================
-// 4. RENDER: WANAFUNZI
+// 3. WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
     content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
     const [r1, r2] = await Promise.all([fetch('/api/students', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
-    const students = await r1.json();
-    const streams = await r2.json();
-    const streamOptions = streams.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    const students = await r1.json(), streams = await r2.json();
     
     content.innerHTML = `
         <div class="card">
@@ -101,29 +104,29 @@ async function renderWanafunzi() {
                 <input type="text" id="s_name" placeholder="Jina Kamili" required>
                 <select id="s_gender"><option value="M">Me</option><option value="F">Ke</option></select>
                 <input type="text" id="s_adm" placeholder="Namba ya Usajili" required>
-                <select id="s_stream" required><option value="">Chagua Darasa</option>${streamOptions}</select>
+                <select id="s_stream" required><option value="">Chagua Darasa</option>${streams.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
                 <button type="submit" class="btn-primary">Sajili</button>
             </form>
         </div>
-        <div class="card">
+        <div class="card" style="overflow-x:auto;">
             <table>
-                <thead><tr><th>Jina</th><th>Darasa</th><th>Jinsia</th><th>Namba</th></tr></thead>
+                <thead><tr><th>Jina</th><th>Darasa</th><th>Jinsia</th><th>Namba</th><th>Futa</th></tr></thead>
                 <tbody>
-                    ${students.map(s => `<tr><td>${s.full_name}</td><td>${streams.find(x => x.id === s.stream_id)?.name || '-'}</td><td>${s.gender}</td><td>${s.admission_number}</td></tr>`).join('')}
+                    ${students.map(s => `<tr><td>${s.full_name}</td><td>${streams.find(x => x.id === s.stream_id)?.name || '-'}</td><td>${s.gender}</td><td>${s.admission_number}</td><td><button class="btn-logout" onclick="delStudent(${s.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}
                 </tbody>
             </table>
         </div>
     `;
 }
-
 async function addStudent() {
     const payload = { full_name: document.getElementById('s_name').value, gender: document.getElementById('s_gender').value, admission_number: document.getElementById('s_adm').value, stream_id: document.getElementById('s_stream').value };
     await fetch('/api/students', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    renderWanafunzi(); // Reload
+    renderWanafunzi();
 }
+async function delStudent(id) { if(confirm('Futa mwanafunzi huyu?')) { await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders }); renderWanafunzi(); } }
 
 // ==========================================
-// 5. RENDER: WALIMU
+// 4. WALIMU
 // ==========================================
 async function renderWalimu() {
     content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
@@ -141,31 +144,30 @@ async function renderWalimu() {
                 <button type="submit" class="btn-primary">Sajili</button>
             </form>
         </div>
-        <div class="card">
+        <div class="card" style="overflow-x:auto;">
             <table>
-                <thead><tr><th>Jina</th><th>Jukumu</th><th>Simu</th><th>Username</th></tr></thead>
+                <thead><tr><th>Jina</th><th>Jukumu</th><th>Simu</th><th>Username</th><th>Futa</th></tr></thead>
                 <tbody>
-                    ${teachers.map(t => `<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td></tr>`).join('')}
+                    ${teachers.map(t => `<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td><td><button class="btn-logout" onclick="delTeacher(${t.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}
                 </tbody>
             </table>
         </div>
     `;
 }
-
 async function addTeacher() {
     const payload = { full_name: document.getElementById('t_name').value, gender: document.getElementById('t_gender').value, phone: document.getElementById('t_phone').value, designation: document.getElementById('t_desig').value };
     await fetch('/api/teachers', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     renderWalimu();
 }
+async function delTeacher(id) { if(confirm('Futa mwalimu huyu?')) { await fetch('/api/teachers/' + id, { method: 'DELETE', headers: authHeaders }); renderWalimu(); } }
 
 // ==========================================
-// 6. RENDER: ADA (Fees)
+// 5. ADA
 // ==========================================
 async function renderAda() {
     content.innerHTML = `<h2>Inapakia Ada...</h2>`;
     const [r1, r2] = await Promise.all([fetch('/api/fees/balances', { headers: authHeaders }), fetch('/api/students', { headers: authHeaders })]);
-    const fees = await r1.json();
-    const students = await r2.json();
+    const fees = await r1.json(), students = await r2.json();
     
     content.innerHTML = `
         <div class="card">
@@ -177,7 +179,7 @@ async function renderAda() {
                 <button type="submit" class="btn-primary">Weka</button>
             </form>
         </div>
-        <div class="card">
+        <div class="card" style="overflow-x:auto;">
             <table>
                 <thead><tr><th>Jina</th><th>Darasa</th><th>Makadirio</th><th>Iliyolipwa</th><th>Deni</th></tr></thead>
                 <tbody>
@@ -187,7 +189,6 @@ async function renderAda() {
         </div>
     `;
 }
-
 async function addFee() {
     const payload = { student_id: document.getElementById('f_stud').value, amount: document.getElementById('f_amt').value, date_paid: document.getElementById('f_date').value };
     await fetch('/api/fees', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -195,7 +196,7 @@ async function addFee() {
 }
 
 // ==========================================
-// 7. RENDER: ALAMA (Exams)
+// 6. ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -211,12 +212,11 @@ async function renderAlama() {
                 <select id="a_stream">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
                 <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
             </div>
-            <table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table>
-            <button class="btn-primary" style="margin-top:10px; display:none;" id="save_marks_btn" onclick="saveMarks()">Hifadhi Alama</button>
+            <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
+            <button class="btn-green" style="margin-top:10px; display:none;" id="save_marks_btn" onclick="saveMarks()">Hifadhi Alama</button>
         </div>
     `;
 }
-
 async function loadMarks() {
     const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value, st = document.getElementById('a_stream').value;
     const [r1, r2] = await Promise.all([fetch(`/api/students?stream_id=${st}`, { headers: authHeaders }), fetch(`/api/results/existing?exam_id=${ex}&subject_id=${sub}&stream_id=${st}`, { headers: authHeaders })]);
@@ -226,7 +226,6 @@ async function loadMarks() {
     document.getElementById('marks_table').innerHTML = studs.map(x => `<tr><td>${x.full_name}</td><td><input type="number" class="mark-input" data-id="${x.id}" value="${map[x.id] || ''}" style="width:80px;"></td></tr>`).join('');
     document.getElementById('save_marks_btn').style.display = 'block';
 }
-
 async function saveMarks() {
     const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value;
     const marks = [...document.querySelectorAll('.mark-input')].map(i => ({ student_id: i.dataset.id, score: i.value }));
@@ -235,7 +234,7 @@ async function saveMarks() {
 }
 
 // ==========================================
-// 8. RENDER: BROADSHEET
+// 7. BROADSHEET
 // ==========================================
 async function renderBroadsheet() {
     content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
@@ -254,7 +253,6 @@ async function renderBroadsheet() {
         </div>
     `;
 }
-
 async function loadBroadsheet() {
     const ex = document.getElementById('b_exam').value, st = document.getElementById('b_stream').value;
     const res = await fetch(`/api/reports/broadsheet?exam_id=${ex}&stream_id=${st}`, { headers: authHeaders });
@@ -263,15 +261,117 @@ async function loadBroadsheet() {
     document.getElementById('broadsheet_result').innerHTML = `
         <table>
             <thead><tr><th>NAFASI</th><th>JINA</th>${d.subjects.map(s => `<th>${s.name.substring(0,3)}</th>`).join('')}<th>WASTANI</th><th>DIV</th></tr></thead>
-            <tbody>
-                ${d.reportData.map(r => `<tr><td>${r.position}</td><td>${r.full_name}</td>${d.subjects.map(s => `<td>${r.scores[s.id]?.score || '-'}</td>`).join('')}<td>${r.average}</td><td>${r.division}</td></tr>`).join('')}
-            </tbody>
+            <tbody>${d.reportData.map(r => `<tr><td>${r.position}</td><td>${r.full_name}</td>${d.subjects.map(s => `<td>${r.scores[s.id]?.score || '-'}</td>`).join('')}<td>${r.average}</td><td>${r.division}</td></tr>`).join('')}</tbody>
         </table>
     `;
 }
 
 // ==========================================
-// 9. RENDER: MIPANGILIO (Settings)
+// 8. MAHUDHURIO
+// ==========================================
+async function renderMahudhurio() {
+    content.innerHTML = `<h2>Inapakia Mahudhurio...</h2>`;
+    const res = await fetch('/api/streams', { headers: authHeaders });
+    const streams = await res.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Chagua Darasa na Tarehe</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="date" id="att_date" required>
+                <select id="att_stream">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <button class="btn-primary" onclick="loadAttendance()">Pakia Wanafunzi</button>
+            </div>
+            <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Yupo</th><th>Hayupo</th></tr></thead><tbody id="att_table"></tbody></table></div>
+            <button class="btn-green" style="margin-top:10px; display:none;" id="save_att_btn" onclick="saveAttendance()">Hifadhi Mahudhurio</button>
+        </div>
+    `;
+}
+async function loadAttendance() {
+    const st = document.getElementById('att_stream').value;
+    const res = await fetch(`/api/students?stream_id=${st}`, { headers: authHeaders });
+    const students = await res.json();
+    
+    document.getElementById('att_table').innerHTML = students.map(s => `<tr><td>${s.full_name}</td><td><input type="radio" name="att_${s.id}" value="Present" checked></td><td><input type="radio" name="att_${s.id}" value="Absent"></td></tr>`).join('');
+    document.getElementById('save_att_btn').style.display = 'block';
+}
+async function saveAttendance() {
+    const date = document.getElementById('att_date').value;
+    if(!date) return alert('Weka tarehe kwanza');
+    const records = [];
+    document.querySelectorAll('input[type="radio"]:checked').forEach(r => { records.push({ student_id: r.name.split('_')[1], status: r.value }); });
+    await fetch('/api/attendance', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ records, date }) });
+    alert('Mahudhurio yamehifadhiwa!');
+}
+
+// ==========================================
+// 9. KUPANGA WALIMU
+// ==========================================
+async function renderKupanga() {
+    content.innerHTML = `<h2>Inapakia Kupanga Walimu...</h2>`;
+    const [t, st, su, a] = await Promise.all([fetch('/api/teachers', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders }), fetch('/api/subjects', { headers: authHeaders }), fetch('/api/assignments', { headers: authHeaders })]);
+    const teachers = await t.json(), streams = await st.json(), subjects = await su.json(), assignments = await a.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Gawa Somo kwa Mwalimu</h3>
+            <form onsubmit="event.preventDefault(); addAssignment();" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="as_teacher" required><option value="">Chagua Mwalimu</option>${teachers.map(x => `<option value="${x.id}">${x.full_name}</option>`).join('')}</select>
+                <select id="as_stream" required><option value="">Chagua Darasa</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="as_subject" required><option value="">Chagua Somo</option>${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <button type="submit" class="btn-primary">Gawa</button>
+            </form>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+            <table>
+                <thead><tr><th>Mwalimu</th><th>Darasa</th><th>Somo</th></tr></thead>
+                <tbody>${assignments.map(x => `<tr><td>${x.teacher_name}</td><td>${x.stream_name}</td><td>${x.subject_name}</td></tr>`).join('')}</tbody>
+            </table>
+        </div>
+    `;
+}
+async function addAssignment() {
+    const payload = { teacher_id: document.getElementById('as_teacher').value, stream_id: document.getElementById('as_stream').value, subject_id: document.getElementById('as_subject').value };
+    await fetch('/api/assignments', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    renderKupanga();
+}
+
+// ==========================================
+// 10. RIPOTI (BORA & WABOVU)
+// ==========================================
+async function renderRipoti() {
+    content.innerHTML = `<h2>Inapakia Ripoti...</h2>`;
+    const [e, st] = await Promise.all([fetch('/api/exams', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
+    const exams = await e.json(), streams = await st.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Chagua Mtihani na Aina ya Ripoti</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <select id="r_exam">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="r_stream"><option value="">Madarasa Yote</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="r_type"><option value="top">Wanafunzi Bora (Top 50)</option><option value="worst">Wanafunzi Wabovu (Bottom 50)</option></select>
+                <button class="btn-primary" onclick="loadRipoti()">Pakia</button>
+            </div>
+            <div style="overflow-x:auto;" id="ripoti_result"></div>
+        </div>
+    `;
+}
+async function loadRipoti() {
+    const ex = document.getElementById('r_exam').value, st = document.getElementById('r_stream').value, tp = document.getElementById('r_type').value;
+    const res = await fetch(`/api/reports/top-students?exam_id=${ex}&stream_id=${st}&type=${tp}`, { headers: authHeaders });
+    const d = await res.json();
+    
+    document.getElementById('ripoti_result').innerHTML = `
+        <table>
+            <thead><tr><th>NAFASI</th><th>JINA</th><th>DARASA</th><th>WASTANI</th><th>DIV</th></tr></thead>
+            <tbody>${d.reportData.map(r => `<tr><td>${r.rank}</td><td>${r.full_name}</td><td>${r.stream_name}</td><td>${r.average}</td><td>${r.division}</td></tr>`).join('')}</tbody>
+        </table>
+    `;
+}
+
+// ==========================================
+// 11. MIPANGILIO
 // ==========================================
 async function renderMipangilio() {
     content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
@@ -308,7 +408,6 @@ async function renderMipangilio() {
         </div>
     `;
 }
-
 async function addStream() {
     await fetch('/api/streams', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('set_sname').value, fee_amount: document.getElementById('set_sfee').value }) });
     renderMipangilio();
@@ -323,7 +422,7 @@ async function addExam() {
 }
 
 // ==========================================
-// 10. INITIALIZATION
+// 12. INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('token')) {
