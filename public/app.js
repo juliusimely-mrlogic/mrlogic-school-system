@@ -11,6 +11,10 @@ if (!token || !userStr) {
         document.getElementById('user-name').innerText = user.full_name || user.name || "Mtumiaji";
     }
 
+    // Vigeu vya kutunza Chart instances
+    let peopleChartInstance = null;
+    let feesChartInstance = null;
+
     function renderMenu() {
         const menuContainer = document.getElementById('menu-container');
         if(!menuContainer) return;
@@ -51,61 +55,156 @@ if (!token || !userStr) {
 
     window.logout = function() { localStorage.clear(); window.location.replace('/login.html'); }
 
+    // ==========================================
+    // KAZI YA KUCHORA MICHORO (CHARTS)
+    // ==========================================
+    function renderCharts(data) {
+        // 1. Futa charts za zamani kama zipo (ili kuzuia kujirudia)
+        if (peopleChartInstance) peopleChartInstance.destroy();
+        if (feesChartInstance) feesChartInstance.destroy();
+
+        // 2. Chart ya Idadi ya Watu (Bar Chart)
+        const ctxPeople = document.getElementById('peopleChart').getContext('2d');
+        peopleChartInstance = new Chart(ctxPeople, {
+            type: 'bar',
+            data: {
+                labels: ['Wanafunzi', 'Walimu', 'Madarasa'],
+                datasets: [{
+                    label: 'Idadi',
+                    data: [data.totalStudents, data.totalTeachers, data.totalClasses],
+                    backgroundColor: ['#3b82f6', '#ef4444', '#a855f7'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+
+        // 3. Chart ya Ada (Doughnut Chart)
+        // Kwa kuwa hatuna kiasi cha "Target", tutatumia kiasi kilicholipwa kama kielelezo
+        // Kama kiasi ni 0, tunaweka 1 ili chart ionekane (isiyo na data)
+        const ctxFees = document.getElementById('feesChart').getContext('2d');
+        const feesValue = data.totalFees > 0 ? data.totalFees : 1; 
+        
+        feesChartInstance = new Chart(ctxFees, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ada Iliyokusanywa (Tsh)'],
+                datasets: [{
+                    data: [feesValue],
+                    backgroundColor: ['#10b981'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed !== null) {
+                                    label += new Intl.NumberFormat('sw-TZ', { style: 'currency', currency: 'TZS' }).format(data.totalFees);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Kazi ya Kuleta Takwimu
     async function loadDashboardData() {
         let url = '/api/dashboard/stats';
+        
         if (user.role === 'super_admin') {
             const selectElement = document.getElementById('school-select');
             if (selectElement) {
                 const selectedSchool = selectElement.value;
-                if (selectedSchool) { url += `?school_id=${selectedSchool}`; } 
-                else {
+                if (selectedSchool) { 
+                    url += `?school_id=${selectedSchool}`; 
+                } else {
                     document.getElementById('stat-students').innerText = '0';
                     document.getElementById('stat-teachers').innerText = '0';
                     document.getElementById('stat-classes').innerText = '0';
                     document.getElementById('stat-fees').innerText = 'Tsh 0';
+                    // Futa charts kama hakuna shule iliyochaguliwa
+                    if (peopleChartInstance) peopleChartInstance.destroy();
+                    if (feesChartInstance) feesChartInstance.destroy();
                     return; 
                 }
             }
         }
+
         try {
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.status === 401) { localStorage.clear(); window.location.replace('/login.html'); return; }
+            
+            if (response.status === 401) { 
+                localStorage.clear(); 
+                window.location.replace('/login.html'); 
+                return; 
+            }
             if (!response.ok) return;
+            
             const data = await response.json();
+            
+            // Sasisha Kadi za Takwimu
             document.getElementById('stat-students').innerText = data.totalStudents;
             document.getElementById('stat-teachers').innerText = data.totalTeachers;
             document.getElementById('stat-classes').innerText = data.totalClasses;
             document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
 
+            // Chora Michoro
+            renderCharts(data);
+
+            // Mkuu wa shule na Mtaaluma wanaona jina la shule moja kwa moja
             if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
                 document.getElementById('dropdown-container').style.display = 'none';
                 document.getElementById('static-school-container').style.display = 'block';
                 document.getElementById('static-school-name').innerText = data.schoolName;
             }
-        } catch (error) { console.error("Kosa:", error); }
+        } catch (error) { 
+            console.error("Kosa la kuleta takwimu:", error); 
+        }
     }
 
+    // Kazi ya kuleta orodha ya shule kwenye Dropdown (Super Admin)
     async function loadSchoolsForDropdown() {
         if (user.role !== 'super_admin') return;
+        
         document.getElementById('dropdown-container').style.display = 'block';
         document.getElementById('static-school-container').style.display = 'none';
+        
         try {
             const response = await fetch('/api/schools', { headers: { 'Authorization': `Bearer ${token}` } });
             if (!response.ok) return;
             const schools = await response.json();
+            
             const select = document.getElementById('school-select');
             schools.forEach(school => {
                 const option = document.createElement('option');
-                option.value = school.id; option.text = school.name; select.appendChild(option);
+                option.value = school.id; 
+                option.text = school.name; 
+                select.appendChild(option);
             });
-        } catch (error) { console.error(error); }
+        } catch (error) { 
+            console.error("Kosa la kuleta shule:", error); 
+        }
     }
 
+    // Anzisha mfumo mtumiaji akiingia
     document.addEventListener('DOMContentLoaded', () => {
         renderMenu();
         if (user.role === 'super_admin') { 
             loadSchoolsForDropdown(); 
-            loadDashboardData(); 
+            loadDashboardData(); // Itajaribu kuleta data (itakuwa 0 kama hajachagua shule)
         } 
         else if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') { 
             loadDashboardData(); 

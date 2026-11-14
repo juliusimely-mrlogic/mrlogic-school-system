@@ -150,7 +150,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 4. API YA WALIMU (IMEBORESHWA KABISA: Kuzalisha Username na Kuunda Akaunti)
+// 4. API YA WALIMU (Inazalisha Username)
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -161,13 +161,12 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/teachers', authenticateToken, async (req, res) => {
-    const { full_name, gender, phone } = req.body; // Email imeondolewa
+    const { full_name, gender, phone } = req.body; 
     const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     
     const client = await pool.connect();
     try {
-        // 1. Tengeneza Username (Mfano: John Magesa -> johnmagesa)
         let nameParts = full_name.trim().toLowerCase().split(/\s+/);
         let firstName = nameParts[0] || '';
         let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
@@ -177,7 +176,6 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         let username = baseUsername;
         let counter = 1;
         
-        // Kagua kama username ipo, kama ipo ongeza namba
         let checkUser = await client.query('SELECT * FROM users WHERE username = $1', [username]);
         while (checkUser.rows.length > 0) {
             username = baseUsername + counter;
@@ -186,12 +184,9 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         }
 
         await client.query('BEGIN');
-
-        // 2. Ingiza kwenye table ya teachers
         const query = `INSERT INTO teachers (full_name, gender, phone, username, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
         const result = await client.query(query, [full_name, gender, phone, username, user.school_id]);
 
-        // 3. Unda akaunti ya kuingia (Default password: password123)
         const salt = await bcrypt.genSalt(10); 
         const hashedPassword = await bcrypt.hash('password123', salt);
         await client.query(`INSERT INTO users (full_name, username, password_hash, role, school_id) VALUES ($1, $2, $3, $4, $5)`, 
@@ -201,7 +196,6 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         res.status(201).json({ ...result.rows[0], username });
     } catch (error) { 
         await client.query('ROLLBACK');
-        console.error("Kosa la kusajili mwalimu:", error);
         res.status(500).json({ error: "Imeshindikana. Hakikisha column 'username' ipo kwenye table ya teachers." }); 
     } finally {
         client.release();
