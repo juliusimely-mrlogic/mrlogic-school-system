@@ -294,14 +294,13 @@ app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API MPYA: KUPATA TAARIFA ZA AWAMU ZA MWANAFUNZI MMOJA
+// API YA MUHTASARI WA AWAMU ZA MWANAFUNZI
 app.get('/api/fees/student-summary/:student_id', authenticateToken, async (req, res) => {
     const { student_id } = req.params;
     const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // Pata taarifa za mwanafunzi na ada inayotakiwa
         const studentRes = await pool.query(`
             SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee
             FROM students s
@@ -312,7 +311,6 @@ app.get('/api/fees/student-summary/:student_id', authenticateToken, async (req, 
         if (studentRes.rows.length === 0) return res.status(404).json({ error: "Mwanafunzi hajapatikana" });
         const studentData = studentRes.rows[0];
 
-        // Pata historia ya malipo (Awamu) kwa mpangilio wa tarehe
         const feesRes = await pool.query(`
             SELECT id, amount, date_paid
             FROM fees
@@ -346,7 +344,7 @@ app.get('/api/fees/student-summary/:student_id', authenticateToken, async (req, 
     }
 });
 
-// API YA RISITI (Bado ipo kama ilivyo)
+// API YA RISITI
 app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;

@@ -25,7 +25,6 @@
         .text-success { color: #10b981; font-weight: bold; }
         .btn-details { padding: 5px 10px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;}
         .btn-receipt { padding: 5px 10px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;}
-        .btn-delete { padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;}
 
         /* CSS MAALUM KWA AJILI YA MODAL (Awamu) */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
@@ -47,11 +46,24 @@
         @media print {
             @page { size: portrait; margin: 10mm; }
             body * { visibility: hidden; }
-            #receiptModal, #receipt-content, #receipt-content * { visibility: visible; }
-            #receiptModal { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; }
+            
+            /* Ficha modals zote kwa default wakati wa print */
+            .modal { display: none !important; }
+
+            /* Kama Installment Modal ipo wazi, ionyeshe kwenye print */
+            #installmentModal[style*="display: block"] #installment-content,
+            #installmentModal[style*="display: block"] #installment-content * { visibility: visible; }
+            #installmentModal[style*="display: block"] { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; }
+
+            /* Kama Receipt Modal ipo wazi, ionyeshe kwenye print */
+            #receiptModal[style*="display: block"] #receipt-content,
+            #receiptModal[style*="display: block"] #receipt-content * { visibility: visible; }
+            #receiptModal[style*="display: block"] { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; }
+
+            .close, .btn-print-modal, .btn-print-modal-awamu { display: none !important; }
             .modal-content { margin: 0; padding: 0; width: 100%; max-width: 100%; border: none; box-shadow: none; }
-            .close, .btn-print-modal { display: none !important; }
             .receipt-box { border: 2px solid #000; }
+            .summary-box { border: 1px solid #000; }
         }
     </style>
 </head>
@@ -116,48 +128,64 @@
     <div id="installmentModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeInstallmentModal()">&times;</span>
-            <h2 style="color: #1e3a8a; margin-top: 0;">Historia ya Malipo (Awamu)</h2>
-            <h3 id="modal-student-name" style="margin-bottom: 5px;">Jina la Mwanafunzi</h3>
-            <p id="modal-student-stream" style="color: #666; margin-top: 0;">Darasa</p>
-
-            <!-- Maelezo ya Jumla -->
-            <div class="summary-box">
-                <div>
-                    <h4>ADA INAYOTAKIWA</h4>
-                    <p id="modal-expected-fee" style="color: #1e3a8a;">0</p>
+            
+            <!-- Sehemu inayochapishwa -->
+            <div id="installment-content">
+                <h2 style="color: #1e3a8a; margin-top: 0; text-align: center;">TAARIFA YA MALIPO YA ADA</h2>
+                <hr style="border: 1px dashed #ccc; margin-bottom: 20px;">
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <h3 id="modal-student-name" style="margin: 0;">Jina la Mwanafunzi</h3>
+                        <p id="modal-student-stream" style="color: #666; margin: 5px 0;">Darasa</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0;"><strong>Tarehe ya Taarifa:</strong> <span id="modal-date"></span></p>
+                    </div>
                 </div>
-                <div>
-                    <h4>JUMLA ILIYOLIPWA</h4>
-                    <p id="modal-total-paid" style="color: #10b981;">0</p>
-                </div>
-                <div>
-                    <h4>DENI LILILOBAKI</h4>
-                    <p id="modal-balance" style="color: #ef4444;">0</p>
-                </div>
-            </div>
 
-            <!-- Ujumbe wa Pongezi au Deni -->
-            <div id="congrats-message" class="congrats-msg">
-                🎉 Pongezi sana! Mwanafunzi amekamilisha malipo yote ya ada kwa mwaka huu.
-            </div>
-            <div id="debt-message" class="debt-msg">
-                Mwanafunzi bado ana deni. Tafadhali kamilisha malipo.
-            </div>
+                <!-- Maelezo ya Jumla -->
+                <div class="summary-box">
+                    <div>
+                        <h4>ADA INAYOTAKIWA</h4>
+                        <p id="modal-expected-fee" style="color: #1e3a8a;">0</p>
+                    </div>
+                    <div>
+                        <h4>JUMLA ILIYOLIPWA</h4>
+                        <p id="modal-total-paid" style="color: #10b981;">0</p>
+                    </div>
+                    <div>
+                        <h4>DENI LILILOBAKI</h4>
+                        <p id="modal-balance" style="color: #ef4444;">0</p>
+                    </div>
+                </div>
 
-            <!-- Jedwali la Awamu -->
-            <table class="installment-table">
-                <thead>
-                    <tr>
-                        <th>Awamu</th>
-                        <th>Tarehe ya Malipo</th>
-                        <th>Kiasi (Tsh)</th>
-                        <th>Risiti</th>
-                    </tr>
-                </thead>
-                <tbody id="installment-table-body">
-                    <tr><td colspan="4" style="text-align: center;">Inapakia...</td></tr>
-                </tbody>
-            </table>
+                <!-- Ujumbe wa Pongezi au Deni -->
+                <div id="congrats-message" class="congrats-msg">
+                    🎉 Pongezi sana! Mwanafunzi amekamilisha malipo yote ya ada kwa mwaka huu.
+                </div>
+                <div id="debt-message" class="debt-msg">
+                    Mwanafunzi bado ana deni. Tafadhali kamilisha malipo.
+                </div>
+
+                <!-- Jedwali la Awamu -->
+                <table class="installment-table">
+                    <thead>
+                        <tr>
+                            <th>Awamu</th>
+                            <th>Tarehe ya Malipo</th>
+                            <th>Kiasi (Tsh)</th>
+                            <th>Risiti</th>
+                        </tr>
+                    </thead>
+                    <tbody id="installment-table-body">
+                        <tr><td colspan="4" style="text-align: center;">Inapakia...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Mwisho wa sehemu inayochapishwa -->
+
+            <button class="btn-print-modal-awamu" onclick="window.print()" style="width: 100%; margin-top: 20px; padding: 12px; background: #10b981; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px;">Chapisha Taarifa Hii (Print)</button>
         </div>
     </div>
 
@@ -218,7 +246,7 @@
                     <p>Imezalishwa na MR-LOGIC School System</p>
                 </div>
             </div>
-            <button class="btn-print-modal" onclick="window.print()" style="width: 100%; margin-top: 15px; padding: 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Chapisha Risiti (Print)</button>
+            <button class="btn-print-modal" onclick="window.print()" style="width: 100%; margin-top: 15px; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Chapisha Risiti Hii (Print)</button>
         </div>
     </div>
 

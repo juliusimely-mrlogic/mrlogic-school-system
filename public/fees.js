@@ -94,9 +94,8 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
             statusMsg.style.color = "green";
             document.getElementById('feeForm').reset();
             document.getElementById('payment-date').value = date_paid;
-            loadBalances(); // Sasisha jedwali la madeni
+            loadBalances(); 
             
-            // Fungua risiti moja kwa moja
             showReceipt(data.id);
             
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
@@ -119,6 +118,11 @@ async function openInstallmentModal(studentId) {
     const tableBody = document.getElementById('installment-table-body');
     
     tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Inapakia data...</td></tr>`;
+    
+    // Weka tarehe ya leo kwenye taarifa
+    const today = new Date().toLocaleDateString('sw-TZ');
+    document.getElementById('modal-date').innerText = today;
+
     modal.style.display = 'block';
 
     try {
