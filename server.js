@@ -55,7 +55,6 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API YA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -138,7 +137,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kupata takwimu" }); }
 });
 
-// API ZA WALIMU NA MAJUKUMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -166,29 +164,15 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
     } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params; const { full_name, gender, phone, designation } = req.body; const user = req.user;
-    try {
-        let query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3, designation=$4 WHERE id=$5`; let params = [full_name, gender, phone, designation, id];
-        if (user.role !== 'super_admin') { query += ` AND school_id=$6`; params.push(user.school_id); }
-        const result = await pool.query(query + ` RETURNING *`, params);
-        if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
-        res.json(result.rows[0]);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
 app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     const { id } = req.params; const user = req.user;
     try {
         let query = `DELETE FROM teachers WHERE id=$1`; let params = [id];
         if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
-        const result = await pool.query(query, params);
-        if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
-        res.json({ message: "Amefutwa" });
+        await pool.query(query, params); res.json({ message: "Amefutwa" });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API ZA WANAFUNZI, MADARASA, MASOMO NA MITIHANI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM students`; let params = [], conditions = [];
@@ -202,36 +186,21 @@ app.get('/api/students', authenticateToken, async (req, res) => {
 
 app.post('/api/students', authenticateToken, async (req, res) => {
     const { full_name, gender, stream_id, admission_number } = req.body; const user = req.user;
-    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
         const result = await pool.query(`INSERT INTO students (full_name, gender, stream_id, admission_number, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`, [full_name, gender, stream_id, admission_number, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-app.delete('/api/students/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params; const user = req.user;
-    try {
-        let query = `DELETE FROM students WHERE id=$1`; let params = [id];
-        if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
-        const result = await pool.query(query, params);
-        if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
-        res.json({ message: "Amefutwa" });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
 app.get('/api/streams', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user; let query = `SELECT * FROM streams`; let params = [];
-        if (user.role === 'super_admin') { if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); } } 
-        else { if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); query += ` WHERE school_id = $1`; params.push(user.school_id); }
-        const result = await pool.query(query + ` ORDER BY name ASC`, params); res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    const user = req.user; let query = `SELECT * FROM streams`; let params = [];
+    if (user.role === 'super_admin') { if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); } } 
+    else { query += ` WHERE school_id = $1`; params.push(user.school_id); }
+    const result = await pool.query(query + ` ORDER BY name ASC`, params); res.json(result.rows);
 });
 
 app.post('/api/streams', authenticateToken, async (req, res) => {
     const { name, fee_amount } = req.body; const user = req.user;
-    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
         const result = await pool.query(`INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`, [name, fee_amount || 0, user.school_id]);
         res.status(201).json(result.rows[0]);
@@ -239,17 +208,12 @@ app.post('/api/streams', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/subjects', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user; let query = `SELECT * FROM subjects`; let params = [];
-        if (user.role === 'super_admin') { if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); } } 
-        else { if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); query += ` WHERE school_id = $1`; params.push(user.school_id); }
-        const result = await pool.query(query + ` ORDER BY name ASC`, params); res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    const user = req.user; let query = `SELECT * FROM subjects WHERE school_id = $1`;
+    const result = await pool.query(query + ` ORDER BY name ASC`, [user.school_id]); res.json(result.rows);
 });
 
 app.post('/api/subjects', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
-    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
         const result = await pool.query(`INSERT INTO subjects (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id]);
         res.status(201).json(result.rows[0]);
@@ -257,24 +221,18 @@ app.post('/api/subjects', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/exams', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user; let query = `SELECT id, name, is_locked FROM exams`; let params = [];
-        if (user.role === 'super_admin') { if (req.query.school_id) { query += ` WHERE school_id = $1`; params.push(req.query.school_id); } } 
-        else { if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); query += ` WHERE school_id = $1`; params.push(user.school_id); }
-        const result = await pool.query(query + ` ORDER BY id DESC`, params); res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    const user = req.user; let query = `SELECT id, name, is_locked FROM exams WHERE school_id = $1`;
+    const result = await pool.query(query + ` ORDER BY id DESC`, [user.school_id]); res.json(result.rows);
 });
 
 app.post('/api/exams', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
-    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
         const result = await pool.query(`INSERT INTO exams (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA ALAMA, MAHUDHURIO NA KUPANGA
 app.get('/api/results/existing', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, stream_id } = req.query; const user = req.user;
     try {
@@ -294,69 +252,22 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-app.get('/api/results/excel-template', async (req, res) => {
+app.get('/api/fees/balances', authenticateToken, async (req, res) => {
+    const user = req.user;
     try {
-        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
-        const subjectsRes = await pool.query(`SELECT name FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [decoded.school_id]);
-        const headers = ['Jina la Mwanafunzi', 'Jinsia', ...subjectsRes.rows.map(s => s.name)];
-        const ws = xlsx.utils.aoa_to_sheet([headers, ['Mfano: John Doe', 'M', ...headers.slice(2).map(()=>70)]]);
-        const wb = xlsx.utils.book_new(); xlsx.utils.book_append_sheet(wb, ws, "Template");
-        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        res.setHeader('Content-Disposition', `attachment; filename="Template_Alama.xlsx"`); res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.send(buf);
-    } catch (error) { res.status(500).send("Imeshindikana."); }
-});
-
-app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), async (req, res) => {
-    const { exam_id, stream_id } = req.body; const user = req.user;
-    try {
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const data = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
-        const subjectMap = {}; subjectsRes.rows.forEach(s => subjectMap[s.name.toLowerCase()] = s.id);
-        let successCount = 0; const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            for (let row of data) {
-                const studentName = row['Jina la Mwanafunzi']?.trim(), gender = row['Jinsia']?.trim().toUpperCase() || 'M';
-                if (!studentName || studentName === 'Mfano: John Doe') continue; 
-                const studentRes = await client.query(`SELECT id FROM students WHERE LOWER(full_name) = LOWER($1) AND gender = $2 AND stream_id = $3 AND school_id = $4`, [studentName, gender, stream_id, user.school_id]);
-                if (studentRes.rows.length === 0) continue; const studentId = studentRes.rows[0].id;
-                for (let subjectName in row) {
-                    if (subjectMap[subjectName.toLowerCase()]) {
-                        let score = parseFloat(row[subjectName]); if (!isNaN(score)) {
-                            if (score < 0) score = 0; if (score > 100) score = 100;
-                            await client.query('DELETE FROM results WHERE student_id = $1 AND exam_id = $2 AND subject_id = $3', [studentId, exam_id, subjectMap[subjectName.toLowerCase()]]);
-                            await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [studentId, exam_id, subjectMap[subjectName.toLowerCase()], score, user.school_id]);
-                        }
-                    }
-                } successCount++;
-            } await client.query('COMMIT'); res.json({ message: `Imefanikiwa ${successCount} wanafunzi.` });
-        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+        const result = await pool.query(`SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee, COALESCE(SUM(f.amount), 0) as total_paid FROM students s LEFT JOIN streams st ON s.stream_id = st.id LEFT JOIN fees f ON s.id = f.student_id WHERE s.school_id = $1 GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`, [user.school_id]);
+        res.json(result.rows.map(row => ({ ...row, balance: parseFloat(row.expected_fee) - parseFloat(row.total_paid) })));
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-app.get('/api/assignments', authenticateToken, async (req, res) => {
-    const user = req.user; let query = `SELECT ta.*, t.full_name as teacher_name, st.name as stream_name, sub.name as subject_name FROM teacher_assignments ta JOIN teachers t ON ta.teacher_id = t.id JOIN streams st ON ta.stream_id = st.id JOIN subjects sub ON ta.subject_id = sub.id WHERE ta.school_id = $1`;
-    try { const result = await pool.query(query, [user.school_id]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.post('/api/assignments', authenticateToken, async (req, res) => {
-    const { teacher_id, stream_id, subject_id } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.post('/api/attendance', authenticateToken, async (req, res) => {
-    const { records, date } = req.body; const user = req.user;
-    const client = await pool.connect();
+app.post('/api/fees', authenticateToken, async (req, res) => {
+    const { student_id, amount, date_paid } = req.body; const user = req.user;
     try {
-        await client.query('BEGIN'); await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id]);
-        for (let r of records) { await client.query('INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)', [r.student_id, date, r.status, user.school_id]); }
-        await client.query('COMMIT'); res.json({ message: "Yamehifadhiwa" });
-    } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
+        const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id]);
+        res.status(201).json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// RIPOTI
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     try {
@@ -374,22 +285,6 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
         }).sort((a, b) => b.average - a.average);
         reportData.forEach((r, i) => r.position = i + 1);
         res.json({ subjects: subjectsRes.rows, reportData });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.get('/api/fees/balances', authenticateToken, async (req, res) => {
-    const user = req.user;
-    try {
-        const result = await pool.query(`SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee, COALESCE(SUM(f.amount), 0) as total_paid FROM students s LEFT JOIN streams st ON s.stream_id = st.id LEFT JOIN fees f ON s.id = f.student_id WHERE s.school_id = $1 GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`, [user.school_id]);
-        res.json(result.rows.map(row => ({ ...row, balance: parseFloat(row.expected_fee) - parseFloat(row.total_paid) })));
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.post('/api/fees', authenticateToken, async (req, res) => {
-    const { student_id, amount, date_paid } = req.body; const user = req.user;
-    try {
-        const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id]);
-        res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 

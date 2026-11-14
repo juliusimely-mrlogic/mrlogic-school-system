@@ -1,261 +1,335 @@
-const userStr = localStorage.getItem('user');
-const token = localStorage.getItem('token');
+// ==========================================
+// 1. LOGIN & AUTH
+// ==========================================
+async function login() {
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    const msg = document.getElementById('login-msg');
+    msg.textContent = "Inapakia...";
 
-if (!token || !userStr) {
-    window.location.replace('/login.html');
-} else {
-    let user;
-    try { user = JSON.parse(userStr); } catch (e) { localStorage.clear(); window.location.replace('/login.html'); }
-
-    if (document.getElementById('user-name')) {
-        document.getElementById('user-name').innerText = user.full_name || user.name || "Mtumiaji";
-    }
-
-    let feesChartInstance = null;
-    let genderOverallChartInstance = null;
-    let genderStreamChartInstance = null;
-    let examResultsChartInstance = null;
-
-    function renderMenu() {
-        const menuContainer = document.getElementById('menu-container');
-        if(!menuContainer) return;
-        let html = '';
-
-        if (user.role === 'super_admin' || user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
-            html += `
-                <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi</h3><p>Simamia wanafunzi</p></div>
-                <div class="menu-card border-red" onclick="window.location.href='/teachers.html'"><h3>Walimu</h3><p>Walimu na Majukumu</p></div>
-                <div class="menu-card border-purple" onclick="window.location.href='/academics.html'"><h3>Mipangilio ya Masomo</h3><p>Madarasa, Masomo & Mitihani</p></div>
-                <div class="menu-card border-red" onclick="window.location.href='/assignments.html'"><h3>Kupanga Walimu</h3><p>Gawa Masomo kwa Walimu</p></div>
-                <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama za mitihani</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo ya darasa zima</p></div>
-                <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card ya mwanafunzi</p></div>
-                <div class="menu-card border-teal" onclick="window.location.href='/top-students.html'" style="border-left-color: #14b8a6;"><h3>Wanafunzi Bora & Wabovu</h3><p>Top 50 na Bottom 50</p></div>
-                <div class="menu-card border-indigo" onclick="window.location.href='/cluster-reports.html'" style="border-left-color: #6366f1;"><h3>Makundi ya Masomo</h3><p>Sayansi, Biashara, Sanaa</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/notifications.html'"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
-            `;
-        }
-        if (user.role === 'super_admin' || user.role === 'school_manager') {
-            html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
-        }
+    try {
+        const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
         
-        // KADI MPYA: Wanafunzi Waliofeli
-        if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
-            html += `<div class="menu-card" onclick="window.location.href='/failed-students.html'" style="border-left-color: #ef4444;"><h3>Wanafunzi Waliofeli</h3><p>Jumla ya F na Orodha</p></div>`;
-        }
-
-        if (user.role === 'super_admin') {
-            html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
-            html += `<div class="menu-card border-blue" onclick="window.location.href='/schools.html'"><h3>Shule</h3><p>Sajili na Simamia Shule</p></div>`;
-        }
-        if (user.role === 'teacher') {
-            html += `
-                <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
-                <div class="menu-card border-orange" onclick="window.location.href='/attendance.html'"><h3>Mahudhurio</h3><p>Weka mahudhurio</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo</p></div>
-                <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card</p></div>
-                <div class="menu-card border-blue" onclick="window.location.href='/notifications.html'"><h3>Taarifa</h3><p>Angalia taarifa</p></div>
-            `;
-        }
-        menuContainer.innerHTML = html;
-    }
-
-    window.logout = function() { localStorage.clear(); window.location.replace('/login.html'); }
-
-    function renderCharts(data) {
-        if (feesChartInstance) feesChartInstance.destroy();
-        if (genderOverallChartInstance) genderOverallChartInstance.destroy();
-        if (genderStreamChartInstance) genderStreamChartInstance.destroy();
-        if (examResultsChartInstance) examResultsChartInstance.destroy();
-
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false, 
-            animation: { duration: 800 }, 
-        };
-
-        const ctxFees = document.getElementById('feesChart').getContext('2d');
-        feesChartInstance = new Chart(ctxFees, {
-            type: 'bar',
-            data: {
-                labels: ['Makadirio', 'Iliyokusanywa', 'Deni'],
-                datasets: [{
-                    data: [Number(data.totalExpectedFees), Number(data.totalCollectedFees), Number(data.totalOutstandingFees)],
-                    backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-
-        const maleOverall = Number(data.overallGender.M);
-        const femaleOverall = Number(data.overallGender.F);
-
-        const ctxGenderOverall = document.getElementById('genderOverallChart').getContext('2d');
-        genderOverallChartInstance = new Chart(ctxGenderOverall, {
-            type: 'doughnut',
-            data: {
-                labels: ['Me (M)', 'Ke (F)'],
-                datasets: [{
-                    data: [maleOverall, femaleOverall],
-                    backgroundColor: ['#3b82f6', '#ec4899'],
-                    borderWidth: 2,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                ...commonOptions,
-                cutout: '65%', 
-                plugins: { 
-                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } 
-                }
-            }
-        });
-
-        const ctxExamResults = document.getElementById('examResultsChart').getContext('2d');
-        examResultsChartInstance = new Chart(ctxExamResults, {
-            type: 'bar',
-            data: {
-                labels: ['Div I', 'Div II', 'Div III', 'Div IV', 'Div 0', 'INC', 'ABS'],
-                datasets: [{
-                    data: [
-                        Number(data.examStats.div1), Number(data.examStats.div2), Number(data.examStats.div3), 
-                        Number(data.examStats.div4), Number(data.examStats.div0), Number(data.examStats.inc), Number(data.examStats.abs)
-                    ],
-                    backgroundColor: ['#10b981', '#14b8a6', '#3b82f6', '#6366f1', '#374151', '#f59e0b', '#6b7280'],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
-        });
-
-        const ctxGenderStream = document.getElementById('genderStreamChart').getContext('2d');
-        
-        const streamLabels = data.streamGenderStats.map(s => s.stream_name);
-        const maleData = data.streamGenderStats.map(s => Number(s.male));
-        const femaleData = data.streamGenderStats.map(s => Number(s.female));
-
-        genderStreamChartInstance = new Chart(ctxGenderStream, {
-            type: 'bar',
-            data: {
-                labels: streamLabels,
-                datasets: [
-                    { label: 'Me (M)', data: maleData, backgroundColor: '#3b82f6', borderRadius: 2 },
-                    { label: 'Ke (F)', data: femaleData, backgroundColor: '#ec4899', borderRadius: 2 }
-                ]
-            },
-            options: {
-                ...commonOptions,
-                plugins: { 
-                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } 
-                },
-                scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
-                }
-            }
-        });
-    }
-
-    async function loadDashboardData() {
-        let url = '/api/dashboard/stats';
-        
-        if (user.role === 'super_admin') {
-            const selectElement = document.getElementById('school-select');
-            if (selectElement) {
-                const selectedSchool = selectElement.value;
-                if (selectedSchool) { 
-                    url += `?school_id=${selectedSchool}`; 
-                } else {
-                    ['students','teachers','classes','expected-fees','collected-fees','outstanding-fees','div1','div2','div3','div4','div0','inc','pass','abs'].forEach(id => {
-                        document.getElementById(`stat-${id}`).innerText = id.includes('fees') ? 'Tsh 0' : '0';
-                    });
-                    if (feesChartInstance) feesChartInstance.destroy();
-                    if (genderOverallChartInstance) genderOverallChartInstance.destroy();
-                    if (genderStreamChartInstance) genderStreamChartInstance.destroy();
-                    if (examResultsChartInstance) examResultsChartInstance.destroy();
-                    return; 
-                }
-            }
-        }
-
-        try {
-            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.status === 401) { localStorage.clear(); window.location.replace('/login.html'); return; }
-            if (!response.ok) return;
-            
-            const data = await response.json();
-            
-            document.getElementById('stat-students').innerText = data.totalStudents;
-            document.getElementById('stat-teachers').innerText = data.totalTeachers;
-            document.getElementById('stat-classes').innerText = data.totalClasses;
-
-            document.getElementById('stat-expected-fees').innerText = 'Tsh ' + Number(data.totalExpectedFees).toLocaleString();
-            document.getElementById('stat-collected-fees').innerText = 'Tsh ' + Number(data.totalCollectedFees).toLocaleString();
-            document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + Number(data.totalOutstandingFees).toLocaleString();
-
-            document.getElementById('stat-div1').innerText = data.examStats.div1;
-            document.getElementById('stat-div2').innerText = data.examStats.div2;
-            document.getElementById('stat-div3').innerText = data.examStats.div3;
-            document.getElementById('stat-div4').innerText = data.examStats.div4;
-            document.getElementById('stat-div0').innerText = data.examStats.div0;
-            document.getElementById('stat-inc').innerText = data.examStats.inc;
-            document.getElementById('stat-pass').innerText = data.examStats.pass;
-            document.getElementById('stat-abs').innerText = data.examStats.abs;
-
-            renderCharts(data);
-
-            if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
-                document.getElementById('dropdown-container').style.display = 'none';
-                document.getElementById('static-school-container').style.display = 'block';
-                document.getElementById('static-school-name').innerText = data.schoolName;
-            }
-        } catch (error) { 
-            console.error("Kosa la kuleta takwimu:", error); 
-        }
-    }
-
-    async function loadSchoolsForDropdown() {
-        if (user.role !== 'super_admin') return;
-        
-        document.getElementById('dropdown-container').style.display = 'block';
-        document.getElementById('static-school-container').style.display = 'none';
-        
-        try {
-            const response = await fetch('/api/schools', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!response.ok) return;
-            const schools = await response.json();
-            
-            const select = document.getElementById('school-select');
-            schools.forEach(school => {
-                const option = document.createElement('option');
-                option.value = school.id; 
-                option.text = school.name; 
-                select.appendChild(option);
-            });
-        } catch (error) { 
-            console.error("Kosa la kuleta shule:", error); 
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        renderMenu();
-        if (user.role === 'super_admin') { 
-            loadSchoolsForDropdown(); 
-            loadDashboardData(); 
-        } 
-        else if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') { 
-            loadDashboardData(); 
-        }
-    });
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        showApp();
+    } catch (err) { msg.textContent = err.message; }
 }
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+}
+
+function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+    navigate('dashboard');
+}
+
+// ==========================================
+// 2. ROUTER & GLOBAL VARIABLES
+// ==========================================
+const token = localStorage.getItem('token');
+const authHeaders = { 'Authorization': `Bearer ${token}` };
+const content = document.getElementById('content-area');
+
+function navigate(page) {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const navEl = document.getElementById('nav-' + page);
+    if (navEl) navEl.classList.add('active');
+
+    if (page === 'dashboard') renderDashboard();
+    else if (page === 'wanafunzi') renderWanafunzi();
+    else if (page === 'walimu') renderWalimu();
+    else if (page === 'ada') renderAda();
+    else if (page === 'alama') renderAlama();
+    else if (page === 'broadsheet') renderBroadsheet();
+    else if (page === 'mipangilio') renderMipangilio();
+}
+
+// ==========================================
+// 3. RENDER: DASHBOARD
+// ==========================================
+async function renderDashboard() {
+    content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
+    try {
+        const res = await fetch('/api/dashboard/stats', { headers: authHeaders });
+        const d = await res.json();
+        
+        content.innerHTML = `
+            <h2>Takwimu za ${d.schoolName}</h2>
+            <div class="grid-3">
+                <div class="stat-card" style="background:#2563eb;"><h3>WANAFUNZI</h3><p class="val">${d.totalStudents}</p></div>
+                <div class="stat-card" style="background:#dc2626;"><h3>WALIMU</h3><p class="val">${d.totalTeachers}</p></div>
+                <div class="stat-card" style="background:#9333ea;"><h3>MADARASA</h3><p class="val">${d.totalClasses}</p></div>
+            </div>
+            <div class="grid-3">
+                <div class="stat-card" style="background:#ea580c;"><h3>MAKADIRIO YA ADA</h3><p class="val">Tsh ${parseInt(d.totalExpectedFees).toLocaleString()}</p></div>
+                <div class="stat-card" style="background:#16a34a;"><h3>ADA ILIYOKUSANYWA</h3><p class="val">Tsh ${parseInt(d.totalCollectedFees).toLocaleString()}</p></div>
+                <div class="stat-card" style="background:#dc2626;"><h3>MADENI</h3><p class="val">Tsh ${parseInt(d.totalOutstandingFees).toLocaleString()}</p></div>
+            </div>
+            <div class="card">
+                <h3>Nafasi ya Shule (Halmashauri)</h3>
+                <h1 style="font-size:48px; color:#1e3a8a; margin:0;">${d.districtRank || '-'}</h1>
+                <p>Kati ya shule ${d.totalSchoolsInDistrict || 0}</p>
+            </div>
+        `;
+    } catch (e) { content.innerHTML = `<h2 style="color:red;">Kosa: ${e.message}</h2>`; }
+}
+
+// ==========================================
+// 4. RENDER: WANAFUNZI
+// ==========================================
+async function renderWanafunzi() {
+    content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
+    const [r1, r2] = await Promise.all([fetch('/api/students', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
+    const students = await r1.json();
+    const streams = await r2.json();
+    const streamOptions = streams.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Sajili Mwanafunzi Mpya</h3>
+            <form onsubmit="event.preventDefault(); addStudent();" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="s_name" placeholder="Jina Kamili" required>
+                <select id="s_gender"><option value="M">Me</option><option value="F">Ke</option></select>
+                <input type="text" id="s_adm" placeholder="Namba ya Usajili" required>
+                <select id="s_stream" required><option value="">Chagua Darasa</option>${streamOptions}</select>
+                <button type="submit" class="btn-primary">Sajili</button>
+            </form>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th>Jina</th><th>Darasa</th><th>Jinsia</th><th>Namba</th></tr></thead>
+                <tbody>
+                    ${students.map(s => `<tr><td>${s.full_name}</td><td>${streams.find(x => x.id === s.stream_id)?.name || '-'}</td><td>${s.gender}</td><td>${s.admission_number}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function addStudent() {
+    const payload = { full_name: document.getElementById('s_name').value, gender: document.getElementById('s_gender').value, admission_number: document.getElementById('s_adm').value, stream_id: document.getElementById('s_stream').value };
+    await fetch('/api/students', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    renderWanafunzi(); // Reload
+}
+
+// ==========================================
+// 5. RENDER: WALIMU
+// ==========================================
+async function renderWalimu() {
+    content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
+    const res = await fetch('/api/teachers', { headers: authHeaders });
+    const teachers = await res.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Sajili Mwalimu</h3>
+            <form onsubmit="event.preventDefault(); addTeacher();" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="t_name" placeholder="Jina Kamili" required>
+                <select id="t_gender"><option value="M">Me</option><option value="F">Ke</option></select>
+                <input type="text" id="t_phone" placeholder="Simu" required>
+                <select id="t_desig"><option value="Mwalimu">Mwalimu</option><option value="Mtaaluma">Mtaaluma</option><option value="Mhasibu">Mhasibu</option><option value="Makamu">Makamu</option></select>
+                <button type="submit" class="btn-primary">Sajili</button>
+            </form>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th>Jina</th><th>Jukumu</th><th>Simu</th><th>Username</th></tr></thead>
+                <tbody>
+                    ${teachers.map(t => `<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function addTeacher() {
+    const payload = { full_name: document.getElementById('t_name').value, gender: document.getElementById('t_gender').value, phone: document.getElementById('t_phone').value, designation: document.getElementById('t_desig').value };
+    await fetch('/api/teachers', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    renderWalimu();
+}
+
+// ==========================================
+// 6. RENDER: ADA (Fees)
+// ==========================================
+async function renderAda() {
+    content.innerHTML = `<h2>Inapakia Ada...</h2>`;
+    const [r1, r2] = await Promise.all([fetch('/api/fees/balances', { headers: authHeaders }), fetch('/api/students', { headers: authHeaders })]);
+    const fees = await r1.json();
+    const students = await r2.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Weka Malipo ya Ada</h3>
+            <form onsubmit="event.preventDefault(); addFee();" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="f_stud" required><option value="">Chagua Mwanafunzi</option>${students.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('')}</select>
+                <input type="number" id="f_amt" placeholder="Kiasi (Tsh)" required>
+                <input type="date" id="f_date" required>
+                <button type="submit" class="btn-primary">Weka</button>
+            </form>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th>Jina</th><th>Darasa</th><th>Makadirio</th><th>Iliyolipwa</th><th>Deni</th></tr></thead>
+                <tbody>
+                    ${fees.map(f => `<tr><td>${f.full_name}</td><td>${f.stream_name}</td><td>Tsh ${parseInt(f.expected_fee).toLocaleString()}</td><td style="color:green;">Tsh ${parseInt(f.total_paid).toLocaleString()}</td><td style="color:red; font-weight:bold;">Tsh ${parseInt(f.balance).toLocaleString()}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function addFee() {
+    const payload = { student_id: document.getElementById('f_stud').value, amount: document.getElementById('f_amt').value, date_paid: document.getElementById('f_date').value };
+    await fetch('/api/fees', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    renderAda();
+}
+
+// ==========================================
+// 7. RENDER: ALAMA (Exams)
+// ==========================================
+async function renderAlama() {
+    content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
+    const [e, s, st] = await Promise.all([fetch('/api/exams', { headers: authHeaders }), fetch('/api/subjects', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
+    const exams = await e.json(), subjects = await s.json(), streams = await st.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Kuingiza Alama (Kwa Mkono)</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <select id="a_exam">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="a_subj">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="a_stream">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
+            </div>
+            <table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table>
+            <button class="btn-primary" style="margin-top:10px; display:none;" id="save_marks_btn" onclick="saveMarks()">Hifadhi Alama</button>
+        </div>
+    `;
+}
+
+async function loadMarks() {
+    const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value, st = document.getElementById('a_stream').value;
+    const [r1, r2] = await Promise.all([fetch(`/api/students?stream_id=${st}`, { headers: authHeaders }), fetch(`/api/results/existing?exam_id=${ex}&subject_id=${sub}&stream_id=${st}`, { headers: authHeaders })]);
+    const studs = await r1.json(), res = await r2.json();
+    const map = {}; res.forEach(r => map[r.student_id] = r.score);
+    
+    document.getElementById('marks_table').innerHTML = studs.map(x => `<tr><td>${x.full_name}</td><td><input type="number" class="mark-input" data-id="${x.id}" value="${map[x.id] || ''}" style="width:80px;"></td></tr>`).join('');
+    document.getElementById('save_marks_btn').style.display = 'block';
+}
+
+async function saveMarks() {
+    const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value;
+    const marks = [...document.querySelectorAll('.mark-input')].map(i => ({ student_id: i.dataset.id, score: i.value }));
+    await fetch('/api/results', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ exam_id: ex, subject_id: sub, marks }) });
+    alert('Alama zimehifadhiwa!');
+}
+
+// ==========================================
+// 8. RENDER: BROADSHEET
+// ==========================================
+async function renderBroadsheet() {
+    content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
+    const [e, st] = await Promise.all([fetch('/api/exams', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
+    const exams = await e.json(), streams = await st.json();
+    
+    content.innerHTML = `
+        <div class="card">
+            <h3>Chagua Mtihani na Darasa</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <select id="b_exam">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="b_stream">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <button class="btn-primary" onclick="loadBroadsheet()">Pakia</button>
+            </div>
+            <div style="overflow-x:auto;" id="broadsheet_result"></div>
+        </div>
+    `;
+}
+
+async function loadBroadsheet() {
+    const ex = document.getElementById('b_exam').value, st = document.getElementById('b_stream').value;
+    const res = await fetch(`/api/reports/broadsheet?exam_id=${ex}&stream_id=${st}`, { headers: authHeaders });
+    const d = await res.json();
+    
+    document.getElementById('broadsheet_result').innerHTML = `
+        <table>
+            <thead><tr><th>NAFASI</th><th>JINA</th>${d.subjects.map(s => `<th>${s.name.substring(0,3)}</th>`).join('')}<th>WASTANI</th><th>DIV</th></tr></thead>
+            <tbody>
+                ${d.reportData.map(r => `<tr><td>${r.position}</td><td>${r.full_name}</td>${d.subjects.map(s => `<td>${r.scores[s.id]?.score || '-'}</td>`).join('')}<td>${r.average}</td><td>${r.division}</td></tr>`).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// ==========================================
+// 9. RENDER: MIPANGILIO (Settings)
+// ==========================================
+async function renderMipangilio() {
+    content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
+    const [s, su, e] = await Promise.all([fetch('/api/streams', { headers: authHeaders }), fetch('/api/subjects', { headers: authHeaders }), fetch('/api/exams', { headers: authHeaders })]);
+    const streams = await s.json(), subjects = await su.json(), exams = await e.json();
+    
+    content.innerHTML = `
+        <div class="grid-3">
+            <div class="card">
+                <h3>Madarasa (Streams)</h3>
+                <form onsubmit="event.preventDefault(); addStream();" style="margin-bottom:10px;">
+                    <input type="text" id="set_sname" placeholder="Jina la Darasa" required>
+                    <input type="number" id="set_sfee" placeholder="Ada (Tsh)" required>
+                    <button type="submit" class="btn-primary">Ongeza</button>
+                </form>
+                <ul>${streams.map(x => `<li>${x.name} (Tsh ${parseInt(x.fee_amount).toLocaleString()})</li>`).join('')}</ul>
+            </div>
+            <div class="card">
+                <h3>Masomo (Subjects)</h3>
+                <form onsubmit="event.preventDefault(); addSubject();" style="margin-bottom:10px;">
+                    <input type="text" id="set_subname" placeholder="Jina la Somo" required>
+                    <button type="submit" class="btn-primary">Ongeza</button>
+                </form>
+                <ul>${subjects.map(x => `<li>${x.name}</li>`).join('')}</ul>
+            </div>
+            <div class="card">
+                <h3>Mitihani (Exams)</h3>
+                <form onsubmit="event.preventDefault(); addExam();" style="margin-bottom:10px;">
+                    <input type="text" id="set_exname" placeholder="Jina la Mtihani" required>
+                    <button type="submit" class="btn-primary">Ongeza</button>
+                </form>
+                <ul>${exams.map(x => `<li>${x.name}</li>`).join('')}</ul>
+            </div>
+        </div>
+    `;
+}
+
+async function addStream() {
+    await fetch('/api/streams', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('set_sname').value, fee_amount: document.getElementById('set_sfee').value }) });
+    renderMipangilio();
+}
+async function addSubject() {
+    await fetch('/api/subjects', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('set_subname').value }) });
+    renderMipangilio();
+}
+async function addExam() {
+    await fetch('/api/exams', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('set_exname').value }) });
+    renderMipangilio();
+}
+
+// ==========================================
+// 10. INITIALIZATION
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('token')) {
+        showApp();
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app-screen').style.display = 'none';
+    }
+});
