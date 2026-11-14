@@ -40,7 +40,7 @@ async function loadTeachers() {
                     <td>${teacher.full_name}</td>
                     <td>${jinsia}</td>
                     <td>${phone}</td>
-                    <td>${username}</td>
+                    <td style="font-weight:bold; color:#1e3a8a;">${username}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="editTeacher(${teacher.id}, '${teacher.full_name}', '${teacher.gender}', '${teacher.phone || ''}')">Rekebisha</button>
                         <button class="action-btn btn-delete" onclick="deleteTeacher(${teacher.id})">Futa</button>
@@ -119,14 +119,14 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
 
         if (response.ok) {
             if(!isEditing && data.username) {
-                statusMsg.innerText = `✅ Mwalimu amesajiliwa! Username yake ni: ${data.username}`;
+                statusMsg.innerHTML = `✅ Mwalimu amesajiliwa!<br>Username yake ni: <strong>${data.username}</strong> (Password: password123)`;
             } else {
                 statusMsg.innerText = isEditing ? "✅ Marekebisho yamehifadhiwa!" : "✅ Mwalimu amesajiliwa!";
             }
             statusMsg.style.color = "green";
             cancelEdit();
             loadTeachers();
-            setTimeout(() => { statusMsg.innerText = ""; }, 7000); // Subiri muda mrefu kidogo ili aone username
+            setTimeout(() => { statusMsg.innerText = ""; }, 8000); 
         } else {
             statusMsg.innerText = `❌ Kosa: ${data.error}`;
             statusMsg.style.color = "red";
