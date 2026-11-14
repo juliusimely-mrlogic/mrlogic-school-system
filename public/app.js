@@ -49,7 +49,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHBOARD (Ina Halmashauri kwa Super Admin)
+// 1. DASHBOARD (Ina Halmashauri na Malipo ya Mfumo)
 // ==========================================
 async function renderDashboard() {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -82,21 +82,22 @@ async function renderDashboard() {
         const res = await fetch('/api/dashboard/stats' + targetSchoolQuery, { headers: authHeaders });
         const d = await res.json();
         
-        // Vuta Takwimu za Halmashauri (Kama ni Super Admin)
-        let districtStatsHtml = '';
+        // Vuta Takwimu za Halmashauri na Malipo (Kama ni Super Admin)
+        let superAdminHtml = '';
         if (user && user.role === 'super_admin') {
+            // 1. Halmashauri
             try {
                 const distRes = await fetch('/api/super-admin/district-stats', { headers: authHeaders });
                 if (distRes.ok) {
                     const districts = await distRes.json();
-                    districtStatsHtml = `
-                        <h2 style="margin-top:40px; color:#1e3a8a;">Takwimu za Halmashauri Zote (Super Admin)</h2>
+                    superAdminHtml += `
+                        <h2 style="margin-top:40px; color:#1e3a8a;">Takwimu za Halmashauri Zote</h2>
                         <div class="district-container">
                             ${districts.map(dist => `
                                 <div class="district-card">
                                     <div class="district-header">
                                         <h3>Halmashauri ya ${dist.district}</h3>
-                                        <p>Shule: <strong>${dist.totalSchools}</strong> | Wanafunzi: <strong>${d.totalStudents !== undefined ? dist.totalStudents : 0}</strong></p>
+                                        <p>Shule: <strong>${dist.totalSchools}</strong> | Wanafunzi: <strong>${dist.totalStudents}</strong></p>
                                     </div>
                                     <ul class="school-list">
                                         ${dist.schools.map(sch => `
@@ -111,7 +112,55 @@ async function renderDashboard() {
                         </div>
                     `;
                 }
-            } catch (e) { console.error("Kosa kupata data za halmashauri", e); }
+            } catch (e) { console.error(e); }
+
+            // 2. Malipo ya Mfumo
+            try {
+                const payRes = await fetch('/api/super-admin/system-payments', { headers: authHeaders });
+                if (payRes.ok) {
+                    const pd = await payRes.json();
+                    superAdminHtml += `
+                        <h2 style="margin-top:40px; color:#1e3a8a;">Kadi ya Malipo ya Mfumo</h2>
+                        <div class="grid-3">
+                            <div class="stat-card" style="background:#3b82f6;"><h3>MAKADIRIO YA MAKUSANYO</h3><p class="val">Tsh ${parseInt(pd.totalExpected).toLocaleString()}</p></div>
+                            <div class="stat-card" style="background:#16a34a;"><h3>ILIYOKUSANYWA</h3><p class="val">Tsh ${parseInt(pd.totalCollected).toLocaleString()}</p></div>
+                            <div class="stat-card" style="background:#dc2626;"><h3>MADENI</h3><p class="val">Tsh ${parseInt(pd.totalOutstanding).toLocaleString()}</p></div>
+                        </div>
+                        <div class="payment-grid">
+                            <div class="payment-box">
+                                <h4 style="color:#16a34a;">Shule Zilizolipia (${pd.paidSchools.length})</h4>
+                                <ul class="list-group">
+                                    ${pd.paidSchools.map(sch => `
+                                        <li class="list-item">
+                                            <span><strong>${sch.name}</strong> <br><small style="color:#6b7280;">${sch.district || 'Hakuna Halmashauri'}</small></span>
+                                            <div>
+                                                <span class="badge-paid">Tsh ${parseInt(sch.system_fee).toLocaleString()}</span>
+                                                <button class="btn-sm" style="background:#dc2626; margin-left:5px;" onclick="togglePayment(${sch.id})">Badilisha</button>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                    ${pd.paidSchools.length === 0 ? '<p style="text-align:center; color:#6b7280;">Hakuna shule iliyolipia bado.</p>' : ''}
+                                </ul>
+                            </div>
+                            <div class="payment-box">
+                                <h4 style="color:#dc2626;">Shule Hazijalipia (${pd.unpaidSchools.length})</h4>
+                                <ul class="list-group">
+                                    ${pd.unpaidSchools.map(sch => `
+                                        <li class="list-item">
+                                            <span><strong>${sch.name}</strong> <br><small style="color:#6b7280;">${sch.district || 'Hakuna Halmashauri'}</small></span>
+                                            <div>
+                                                <span class="badge-unpaid">Tsh ${parseInt(sch.system_fee).toLocaleString()}</span>
+                                                <button class="btn-sm" style="background:#16a34a; margin-left:5px;" onclick="togglePayment(${sch.id})">Weka Amelipa</button>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                    ${pd.unpaidSchools.length === 0 ? '<p style="text-align:center; color:#6b7280;">Shule zote zimelipia!</p>' : ''}
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) { console.error(e); }
         }
 
         content.innerHTML = `
@@ -137,13 +186,22 @@ async function renderDashboard() {
                 <div class="chart-box"><canvas id="genderChart"></canvas></div>
             </div>
             
-            ${districtStatsHtml}
+            ${superAdminHtml}
         `;
 
         new Chart(document.getElementById('feesChart'), { type: 'bar', data: { labels: ['Makadirio', 'Iliyokusanywa', 'Deni'], datasets: [{ data: [d.totalExpectedFees, d.totalCollectedFees, d.totalOutstandingFees], backgroundColor: ['#f97316', '#22c55e', '#ef4444'] }] }, options: { plugins: { title: { display: true, text: 'Mchanganuo wa Fedha' } } } });
         new Chart(document.getElementById('genderChart'), { type: 'doughnut', data: { labels: ['Me', 'Ke'], datasets: [{ data: [d.overallGender.M, d.overallGender.F], backgroundColor: ['#0ea5e9', '#ec4899'] }] }, options: { plugins: { title: { display: true, text: 'Jumla ya Jinsia' } } } });
 
     } catch (e) { content.innerHTML = `<h2 style="color:red;">Kosa: ${e.message}</h2>`; }
+}
+
+async function togglePayment(schoolId) {
+    if(!confirm('Je, una uhakika unataka kubadilisha hali ya malipo ya shule hii?')) return;
+    try {
+        const res = await fetch(`/api/super-admin/toggle-payment/${schoolId}`, { method: 'PUT', headers: authHeaders });
+        if(!res.ok) throw new Error("Imeshindikana");
+        renderDashboard(); // Reload dashboard to reflect changes
+    } catch (error) { alert(error.message); }
 }
 
 // ==========================================

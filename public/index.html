@@ -44,7 +44,7 @@
     .grid-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .chart-box { background: white; padding: 15px; border-radius: 8px; }
 
-    /* ================= KADI ZA HALMASHAURI (SUPER ADMIN) ================= */
+    /* KADI ZA HALMASHAURI */
     .district-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
     .district-card { background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; border-top: 4px solid #8b5cf6; display: flex; flex-direction: column; }
     .district-header { background: #f8fafc; padding: 15px; border-bottom: 1px solid #e2e8f0; }
@@ -55,6 +55,17 @@
     .school-item:last-child { border-bottom: none; }
     .school-name { font-weight: 500; color: #334155; font-size: 14px; }
     .school-students { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+
+    /* KADI ZA MALIPO YA MFUMO */
+    .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    .payment-box { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .payment-box h4 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .list-group { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; }
+    .list-item { padding: 10px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; }
+    .list-item:last-child { border-bottom: none; }
+    .badge-paid { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-unpaid { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; color: white; }
   </style>
 </head>
 <body>
