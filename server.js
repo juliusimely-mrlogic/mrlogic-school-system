@@ -207,7 +207,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. API YA MADARASA (IMEBORESHWA KUZUIA MAJINA KUJIRUDIA)
+// 6. API YA MADARASA (IMEBORESHWA: PUT na DELETE)
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -221,16 +221,36 @@ app.post('/api/streams', authenticateToken, async (req, res) => {
     const { name, fee_amount } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
-        // KAGUA KAMA JINA LA DARASA LIPO TAYARI
         const check = await pool.query('SELECT id FROM streams WHERE name ILIKE $1 AND school_id = $2', [name, user.school_id]);
-        if (check.rows.length > 0) {
-            return res.status(400).json({ error: "Darasa lenye jina hili limeshasajiliwa." });
-        }
+        if (check.rows.length > 0) return res.status(400).json({ error: "Darasa lenye jina hili limeshasajiliwa." });
 
         const query = `INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`;
         const result = await pool.query(query, [name, fee_amount || 0, user.school_id]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.put('/api/streams/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params; const { name, fee_amount } = req.body; const user = req.user;
+    try {
+        let query = `UPDATE streams SET name=$1, fee_amount=$2 WHERE id=$3`; let params = [name, fee_amount, id];
+        if (user.role !== 'super_admin') { query += ` AND school_id=$4`; params.push(user.school_id); }
+        query += ` RETURNING *`; 
+        const result = await pool.query(query, params);
+        if (result.rowCount === 0) return res.status(404).json({ error: "Darasa haijapatikana" });
+        res.json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kuboresha darasa." }); }
+});
+
+app.delete('/api/streams/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params; const user = req.user;
+    try {
+        let query = `DELETE FROM streams WHERE id=$1`; let params = [id];
+        if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
+        const result = await pool.query(query, params);
+        if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
+        res.json({ message: "Darasa limefutwa" });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta. Kuna data inategemea darasa hili." }); }
 });
 
 // 7. API YA MALIPO
