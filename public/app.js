@@ -15,6 +15,7 @@ if (!token || !userStr) {
     let feesChartInstance = null;
     let genderOverallChartInstance = null;
     let genderStreamChartInstance = null;
+    let examResultsChartInstance = null;
 
     function renderMenu() {
         const menuContainer = document.getElementById('menu-container');
@@ -60,32 +61,34 @@ if (!token || !userStr) {
     // KAZI YA KUCHORA MICHORO (CHARTS)
     // ==========================================
     function renderCharts(data) {
-        // 1. Futa charts za zamani kama zipo
+        // Futa charts za zamani
         if (feesChartInstance) feesChartInstance.destroy();
         if (genderOverallChartInstance) genderOverallChartInstance.destroy();
         if (genderStreamChartInstance) genderStreamChartInstance.destroy();
+        if (examResultsChartInstance) examResultsChartInstance.destroy();
 
-        // 2. Chart ya Fedha (Bar Chart)
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false, // Inaruhusu canvas kushika max-height tuliyoweka
+            plugins: { legend: { display: false } }
+        };
+
+        // 1. Chart ya Fedha (Bar)
         const ctxFees = document.getElementById('feesChart').getContext('2d');
         feesChartInstance = new Chart(ctxFees, {
             type: 'bar',
             data: {
                 labels: ['Makadirio', 'Iliyokusanywa', 'Deni'],
                 datasets: [{
-                    label: 'Kiasi (Tsh)',
                     data: [data.totalExpectedFees, data.totalCollectedFees, data.totalOutstandingFees],
                     backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
                     borderWidth: 1
                 }]
             },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
+            options: commonOptions
         });
 
-        // 3. Chart ya Jinsia Overall (Doughnut)
+        // 2. Chart ya Jinsia Overall (Doughnut)
         const ctxGenderOverall = document.getElementById('genderOverallChart').getContext('2d');
         genderOverallChartInstance = new Chart(ctxGenderOverall, {
             type: 'doughnut',
@@ -98,15 +101,32 @@ if (!token || !userStr) {
                 }]
             },
             options: {
-                responsive: true,
-                plugins: { legend: { position: 'bottom' } }
+                ...commonOptions,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
             }
+        });
+
+        // 3. Chart ya Ufaulu (Bar au Pie)
+        const ctxExamResults = document.getElementById('examResultsChart').getContext('2d');
+        examResultsChartInstance = new Chart(ctxExamResults, {
+            type: 'bar', // Badilisha kuwa 'pie' kama unataka
+            data: {
+                labels: ['Div I', 'Div II', 'Div III', 'Div IV', 'Div 0', 'INC', 'ABS'],
+                datasets: [{
+                    data: [
+                        data.examStats.div1, data.examStats.div2, data.examStats.div3, 
+                        data.examStats.div4, data.examStats.div0, data.examStats.inc, data.examStats.abs
+                    ],
+                    backgroundColor: ['#10b981', '#14b8a6', '#3b82f6', '#6366f1', '#374151', '#f59e0b', '#6b7280'],
+                    borderWidth: 1
+                }]
+            },
+            options: commonOptions
         });
 
         // 4. Chart ya Jinsia kwa Kila Darasa (Stacked Bar Chart)
         const ctxGenderStream = document.getElementById('genderStreamChart').getContext('2d');
         
-        // Tayarisha Labels (Majina ya Madarasa) na Data (M na F)
         const streamLabels = data.streamGenderStats.map(s => s.stream_name);
         const maleData = data.streamGenderStats.map(s => s.male);
         const femaleData = data.streamGenderStats.map(s => s.female);
@@ -116,21 +136,14 @@ if (!token || !userStr) {
             data: {
                 labels: streamLabels,
                 datasets: [
-                    {
-                        label: 'Me (M)',
-                        data: maleData,
-                        backgroundColor: '#3b82f6',
-                    },
-                    {
-                        label: 'Ke (F)',
-                        data: femaleData,
-                        backgroundColor: '#ec4899',
-                    }
+                    { label: 'Me', data: maleData, backgroundColor: '#3b82f6' },
+                    { label: 'Ke', data: femaleData, backgroundColor: '#ec4899' }
                 ]
             },
             options: {
                 responsive: true,
-                plugins: { legend: { position: 'top' } },
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
                 scales: {
                     x: { stacked: true },
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
@@ -151,15 +164,13 @@ if (!token || !userStr) {
                     url += `?school_id=${selectedSchool}`; 
                 } else {
                     // Weka sifuri na futa charts kama hakuna shule iliyochaguliwa
-                    document.getElementById('stat-students').innerText = '0';
-                    document.getElementById('stat-teachers').innerText = '0';
-                    document.getElementById('stat-classes').innerText = '0';
-                    document.getElementById('stat-expected-fees').innerText = 'Tsh 0';
-                    document.getElementById('stat-collected-fees').innerText = 'Tsh 0';
-                    document.getElementById('stat-outstanding-fees').innerText = 'Tsh 0';
+                    ['students','teachers','classes','expected-fees','collected-fees','outstanding-fees','div1','div2','div3','div4','div0','inc','pass','abs'].forEach(id => {
+                        document.getElementById(`stat-${id}`).innerText = id.includes('fees') ? 'Tsh 0' : '0';
+                    });
                     if (feesChartInstance) feesChartInstance.destroy();
                     if (genderOverallChartInstance) genderOverallChartInstance.destroy();
                     if (genderStreamChartInstance) genderStreamChartInstance.destroy();
+                    if (examResultsChartInstance) examResultsChartInstance.destroy();
                     return; 
                 }
             }
@@ -167,12 +178,7 @@ if (!token || !userStr) {
 
         try {
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            
-            if (response.status === 401) { 
-                localStorage.clear(); 
-                window.location.replace('/login.html'); 
-                return; 
-            }
+            if (response.status === 401) { localStorage.clear(); window.location.replace('/login.html'); return; }
             if (!response.ok) return;
             
             const data = await response.json();
@@ -186,6 +192,16 @@ if (!token || !userStr) {
             document.getElementById('stat-expected-fees').innerText = 'Tsh ' + data.totalExpectedFees.toLocaleString();
             document.getElementById('stat-collected-fees').innerText = 'Tsh ' + data.totalCollectedFees.toLocaleString();
             document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + data.totalOutstandingFees.toLocaleString();
+
+            // Sasisha Kadi za Matokeo
+            document.getElementById('stat-div1').innerText = data.examStats.div1;
+            document.getElementById('stat-div2').innerText = data.examStats.div2;
+            document.getElementById('stat-div3').innerText = data.examStats.div3;
+            document.getElementById('stat-div4').innerText = data.examStats.div4;
+            document.getElementById('stat-div0').innerText = data.examStats.div0;
+            document.getElementById('stat-inc').innerText = data.examStats.inc;
+            document.getElementById('stat-pass').innerText = data.examStats.pass;
+            document.getElementById('stat-abs').innerText = data.examStats.abs;
 
             // Chora Michoro
             renderCharts(data);

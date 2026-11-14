@@ -48,7 +48,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI (IMEBORESHWA KWA TAKWIMU ZA KINA)
+// 2. API YA TAKWIMU ZA DASHIBODI (Imeboreshwa kwa Takwimu za Matokeo)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -58,14 +58,15 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             return res.json({ 
                 schoolName: "Chagua Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, 
                 totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0,
-                overallGender: { M: 0, F: 0 }, streamGenderStats: []
+                overallGender: { M: 0, F: 0 }, streamGenderStats: [],
+                examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }
             });
         }
 
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
         const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
-        // Pata Takwimu za Msingi
+        // --- Takwimu za Msingi ---
         const [studentsRes, teachersRes, classesRes] = await Promise.all([
             pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
             pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
@@ -76,34 +77,29 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const totalTeachers = parseInt(teachersRes.rows[0].count);
         const totalClasses = classesRes.rows.length;
 
-        // Hesabu Makadirio ya Ada (Jumla ya Ada ya Wanafunzi wote kwa mwaka huu)
+        // --- Takwimu za Fedha ---
         let totalExpectedFees = 0;
         studentsRes.rows.forEach(student => {
             const stream = classesRes.rows.find(s => s.id === student.stream_id);
-            if (stream) {
-                totalExpectedFees += parseFloat(stream.fee_amount || 0);
-            }
+            if (stream) totalExpectedFees += parseFloat(stream.fee_amount || 0);
         });
 
-        // Hesabu Fedha Zilizokusanywa (Mwaka Huu Pekee)
         const currentYear = new Date().getFullYear();
         const collectedRes = await pool.query(`
             SELECT COALESCE(SUM(amount), 0) as total 
-            FROM fees 
-            WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2
+            FROM fees WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2
         `, [targetSchoolId, currentYear]);
         
         const totalCollectedFees = parseFloat(collectedRes.rows[0].total);
         const totalOutstandingFees = totalExpectedFees - totalCollectedFees;
 
-        // Hesabu Jinsia (Overall)
+        // --- Takwimu za Jinsia ---
         const overallGender = { M: 0, F: 0 };
         studentsRes.rows.forEach(s => {
             if (s.gender === 'M') overallGender.M++;
             if (s.gender === 'F') overallGender.F++;
         });
 
-        // Hesabu Jinsia kwa Kila Darasa (Stream)
         const streamGenderStats = classesRes.rows.map(stream => {
             const streamStudents = studentsRes.rows.filter(s => s.stream_id === stream.id);
             return {
@@ -112,6 +108,48 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                 female: streamStudents.filter(s => s.gender === 'F').length
             };
         });
+
+        // --- Takwimu za Matokeo (Div I, II, III, IV, 0, INC, PASS, ABS) ---
+        let examStats = { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 };
+        
+        // Pata mtihani wa mwisho uliowekwa kwenye shule hii
+        const latestExamRes = await pool.query(`SELECT id FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1`, [targetSchoolId]);
+        
+        if (latestExamRes.rows.length > 0) {
+            const examId = latestExamRes.rows[0].id;
+            
+            // Pata jumla ya masomo yaliyofanyika kwenye mtihani huu
+            const subjRes = await pool.query(`SELECT COUNT(DISTINCT subject_id) as total FROM results WHERE exam_id = $1 AND school_id = $2`, [examId, targetSchoolId]);
+            const totalSubjects = parseInt(subjRes.rows[0].total);
+
+            if (totalSubjects > 0) {
+                // Pata alama za kila mwanafunzi kwa mtihani huu
+                const resultsRes = await pool.query(`
+                    SELECT s.id, COALESCE(SUM(r.score), 0) as total_marks, COUNT(r.score) as subjects_done
+                    FROM students s
+                    LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1
+                    WHERE s.school_id = $2
+                    GROUP BY s.id
+                `, [examId, targetSchoolId]);
+
+                resultsRes.rows.forEach(row => {
+                    if (row.subjects_done == 0) {
+                        examStats.abs++; // Hajafanya mtihani wowote
+                    } else if (row.subjects_done < totalSubjects) {
+                        examStats.inc++; // Hakamilisha masomo yote
+                    } else {
+                        const avg = parseFloat(row.total_marks) / totalSubjects;
+                        if (avg >= 75) examStats.div1++;
+                        else if (avg >= 65) examStats.div2++;
+                        else if (avg >= 45) examStats.div3++;
+                        else if (avg >= 30) examStats.div4++;
+                        else examStats.div0++;
+
+                        if (avg >= 30) examStats.pass++;
+                    }
+                });
+            }
+        }
 
         res.json({
             schoolName: schoolName,
@@ -123,6 +161,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             totalOutstandingFees: totalOutstandingFees,
             overallGender: overallGender,
             streamGenderStats: streamGenderStats,
+            examStats: examStats,
             role: user.role
         });
 
@@ -393,45 +432,25 @@ app.get('/api/fees/student-summary/:student_id', authenticateToken, async (req, 
     try {
         const studentRes = await pool.query(`
             SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee
-            FROM students s
-            LEFT JOIN streams st ON s.stream_id = st.id
+            FROM students s LEFT JOIN streams st ON s.stream_id = st.id
             WHERE s.id = $1 AND s.school_id = $2
         `, [student_id, user.school_id]);
 
         if (studentRes.rows.length === 0) return res.status(404).json({ error: "Mwanafunzi hajapatikana" });
         const studentData = studentRes.rows[0];
 
-        const feesRes = await pool.query(`
-            SELECT id, amount, date_paid
-            FROM fees
-            WHERE student_id = $1
-            ORDER BY date_paid ASC, id ASC
-        `, [student_id]);
+        const feesRes = await pool.query(`SELECT id, amount, date_paid FROM fees WHERE student_id = $1 ORDER BY date_paid ASC, id ASC`, [student_id]);
 
         let total_paid = 0;
         const installments = feesRes.rows.map((fee, index) => {
             total_paid += parseFloat(fee.amount);
-            return {
-                id: fee.id,
-                awamu: index + 1,
-                amount: parseFloat(fee.amount),
-                date_paid: fee.date_paid
-            };
+            return { id: fee.id, awamu: index + 1, amount: parseFloat(fee.amount), date_paid: fee.date_paid };
         });
 
         const balance = parseFloat(studentData.expected_fee) - total_paid;
+        res.json({ student: studentData, installments: installments, total_paid: total_paid, balance: balance });
 
-        res.json({
-            student: studentData,
-            installments: installments,
-            total_paid: total_paid,
-            balance: balance
-        });
-
-    } catch (error) { 
-        console.error("Kosa la kuleta muhtasari:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta muhtasari wa malipo" }); 
-    }
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta muhtasari wa malipo" }); }
 });
 
 app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
@@ -445,8 +464,7 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
                    s.full_name as student_name, s.admission_number, 
                    st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee,
                    sch.name as school_name
-            FROM fees f
-            JOIN students s ON f.student_id = s.id
+            FROM fees f JOIN students s ON f.student_id = s.id
             LEFT JOIN streams st ON s.stream_id = st.id
             JOIN schools sch ON f.school_id = sch.id
             WHERE f.id = $1 AND f.school_id = $2
@@ -667,4 +685,4 @@ app.delete('/api/assignments/:id', authenticateToken, async (req, res) => {
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on server on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
