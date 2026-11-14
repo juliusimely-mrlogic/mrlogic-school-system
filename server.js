@@ -55,12 +55,51 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// ==========================================
+// API MPYA: TAKWIMU ZA HALMASHAURI (SUPER ADMIN)
+// ==========================================
+app.get('/api/super-admin/district-stats', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ error: "Hauna ruhusa kuona takwimu hizi." });
+    }
+    try {
+        const query = `
+            SELECT sc.district, sc.id as school_id, sc.name as school_name, COUNT(st.id) as student_count
+            FROM schools sc
+            LEFT JOIN students st ON sc.id = st.school_id
+            GROUP BY sc.district, sc.id, sc.name
+            ORDER BY sc.district ASC, sc.name ASC
+        `;
+        const result = await pool.query(query);
+        
+        // Panga data kwa Halmashauri
+        const districts = {};
+        result.rows.forEach(row => {
+            const distName = row.district ? row.district.trim() : 'Hakuna Halmashauri';
+            if (!districts[distName]) {
+                districts[distName] = { district: distName, totalSchools: 0, totalStudents: 0, schools: [] };
+            }
+            if (row.school_id) {
+                districts[distName].totalSchools += 1;
+                districts[distName].totalStudents += parseInt(row.student_count);
+                districts[distName].schools.push({
+                    id: row.school_id,
+                    name: row.school_name,
+                    studentCount: parseInt(row.student_count)
+                });
+            }
+        });
+        res.json(Object.values(districts));
+    } catch (error) {
+        console.error("District Stats Error:", error);
+        res.status(500).json({ error: "Imeshindikana kupata takwimu za halmashauri" });
+    }
+});
+
 // API YA SHULE ZOTE (Kwa ajili ya Dropdown)
 app.get('/api/schools', authenticateToken, async (req, res) => {
-    try { 
-        const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); 
-        res.json(result.rows); 
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } 
+    catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
 // API YA DASHIBODI
@@ -69,14 +108,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const user = req.user;
         let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
         
-        // KINGA: Kama targetSchoolId haipo, chukua shule ya kwanza kwenye database
         if (!targetSchoolId) {
             const firstSchool = await pool.query('SELECT id FROM schools LIMIT 1');
-            if (firstSchool.rows.length > 0) {
-                targetSchoolId = firstSchool.rows[0].id;
-            } else {
-                return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, districtRank: "-", totalSchoolsInDistrict: 0 });
-            }
+            if (firstSchool.rows.length > 0) targetSchoolId = firstSchool.rows[0].id;
+            else return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, districtRank: "-", totalSchoolsInDistrict: 0 });
         }
 
         let schoolName = "Shule Haijulikani", districtName = null;

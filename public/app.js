@@ -49,7 +49,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// DASHBOARD NA DROPDOWN YA SHULE
+// 1. DASHBOARD (Ina Halmashauri kwa Super Admin)
 // ==========================================
 async function renderDashboard() {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -58,20 +58,18 @@ async function renderDashboard() {
     let schoolSelectorHtml = '';
     let targetSchoolQuery = '';
 
-    // Kama ni Super Admin, mpe Dropdown ya kuchagua shule
     if (user && user.role === 'super_admin') {
         const resS = await fetch('/api/schools', { headers: authHeaders });
         const schools = await resS.json();
         
-        // Chukua ID ya shule iliyochaguliwa kama ipo, au tumia ya kwanza
         let selectedId = document.getElementById('school-selector')?.value;
         if (!selectedId && schools.length > 0) selectedId = schools[0].id;
         
         if (selectedId) targetSchoolQuery = `?school_id=${selectedId}`;
 
         schoolSelectorHtml = `
-            <div style="margin-bottom: 20px;">
-                <label style="font-weight:bold; margin-right:10px;">Chagua Shule:</label>
+            <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; display: inline-block;">
+                <label style="font-weight:bold; margin-right:10px;">Chagua Shule (Kwa Takwimu za Chini):</label>
                 <select id="school-selector" onchange="renderDashboard()" style="padding:10px; border-radius:5px;">
                     ${schools.map(s => `<option value="${s.id}" ${s.id == selectedId ? 'selected' : ''}>${s.name}</option>`).join('')}
                 </select>
@@ -80,9 +78,42 @@ async function renderDashboard() {
     }
 
     try {
+        // Vuta Takwimu za Shule (Dashibodi ya Kawaida)
         const res = await fetch('/api/dashboard/stats' + targetSchoolQuery, { headers: authHeaders });
         const d = await res.json();
         
+        // Vuta Takwimu za Halmashauri (Kama ni Super Admin)
+        let districtStatsHtml = '';
+        if (user && user.role === 'super_admin') {
+            try {
+                const distRes = await fetch('/api/super-admin/district-stats', { headers: authHeaders });
+                if (distRes.ok) {
+                    const districts = await distRes.json();
+                    districtStatsHtml = `
+                        <h2 style="margin-top:40px; color:#1e3a8a;">Takwimu za Halmashauri Zote (Super Admin)</h2>
+                        <div class="district-container">
+                            ${districts.map(dist => `
+                                <div class="district-card">
+                                    <div class="district-header">
+                                        <h3>Halmashauri ya ${dist.district}</h3>
+                                        <p>Shule: <strong>${dist.totalSchools}</strong> | Wanafunzi: <strong>${d.totalStudents !== undefined ? dist.totalStudents : 0}</strong></p>
+                                    </div>
+                                    <ul class="school-list">
+                                        ${dist.schools.map(sch => `
+                                            <li class="school-item">
+                                                <span class="school-name">${sch.name}</span>
+                                                <span class="school-students">${sch.studentCount} wanafunzi</span>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (e) { console.error("Kosa kupata data za halmashauri", e); }
+        }
+
         content.innerHTML = `
             ${schoolSelectorHtml}
             <h2>Takwimu za ${d.schoolName}</h2>
@@ -105,6 +136,8 @@ async function renderDashboard() {
                 <div class="chart-box"><canvas id="feesChart"></canvas></div>
                 <div class="chart-box"><canvas id="genderChart"></canvas></div>
             </div>
+            
+            ${districtStatsHtml}
         `;
 
         new Chart(document.getElementById('feesChart'), { type: 'bar', data: { labels: ['Makadirio', 'Iliyokusanywa', 'Deni'], datasets: [{ data: [d.totalExpectedFees, d.totalCollectedFees, d.totalOutstandingFees], backgroundColor: ['#f97316', '#22c55e', '#ef4444'] }] }, options: { plugins: { title: { display: true, text: 'Mchanganuo wa Fedha' } } } });
@@ -114,7 +147,7 @@ async function renderDashboard() {
 }
 
 // ==========================================
-// WANAFUNZI
+// 2. WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
     content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
@@ -150,7 +183,7 @@ async function addStudent() {
 async function delStudent(id) { if(confirm('Futa mwanafunzi huyu?')) { await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders }); renderWanafunzi(); } }
 
 // ==========================================
-// WALIMU
+// 3. WALIMU
 // ==========================================
 async function renderWalimu() {
     content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
@@ -186,7 +219,7 @@ async function addTeacher() {
 async function delTeacher(id) { if(confirm('Futa mwalimu huyu?')) { await fetch('/api/teachers/' + id, { method: 'DELETE', headers: authHeaders }); renderWalimu(); } }
 
 // ==========================================
-// ADA
+// 4. ADA
 // ==========================================
 async function renderAda() {
     content.innerHTML = `<h2>Inapakia Ada...</h2>`;
@@ -220,7 +253,7 @@ async function addFee() {
 }
 
 // ==========================================
-// ALAMA
+// 5. ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -258,7 +291,7 @@ async function saveMarks() {
 }
 
 // ==========================================
-// BROADSHEET
+// 6. BROADSHEET
 // ==========================================
 async function renderBroadsheet() {
     content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
@@ -291,7 +324,7 @@ async function loadBroadsheet() {
 }
 
 // ==========================================
-// MAHUDHURIO
+// 7. MAHUDHURIO
 // ==========================================
 async function renderMahudhurio() {
     content.innerHTML = `<h2>Inapakia Mahudhurio...</h2>`;
@@ -329,7 +362,7 @@ async function saveAttendance() {
 }
 
 // ==========================================
-// KUPANGA WALIMU
+// 8. KUPANGA WALIMU
 // ==========================================
 async function renderKupanga() {
     content.innerHTML = `<h2>Inapakia Kupanga Walimu...</h2>`;
@@ -361,7 +394,7 @@ async function addAssignment() {
 }
 
 // ==========================================
-// RIPOTI (BORA & WABOVU)
+// 9. RIPOTI (BORA & WABOVU)
 // ==========================================
 async function renderRipoti() {
     content.innerHTML = `<h2>Inapakia Ripoti...</h2>`;
@@ -395,7 +428,7 @@ async function loadRipoti() {
 }
 
 // ==========================================
-// MIPANGILIO
+// 10. MIPANGILIO
 // ==========================================
 async function renderMipangilio() {
     content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
