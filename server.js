@@ -74,7 +74,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API MPYA: MFUMO WA TAARIFA (NOTIFICATIONS)
+// API MPYA: MFUMO WA TAARIFA (NOTIFICATIONS) - IMEREKEBISHWA
 // ==========================================
 app.get('/api/notifications', authenticateToken, async (req, res) => {
     try {
@@ -106,7 +106,11 @@ app.post('/api/notifications', authenticateToken, async (req, res) => {
         const query = `INSERT INTO notifications (title, message, sender_name, target_role, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
         const result = await pool.query(query, [title, message, user.name, target_role || 'all', user.school_id]);
         res.status(201).json(result.rows[0]);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana kutuma taarifa." }); }
+    } catch (error) { 
+        // HAPA NDIPO TUNAWEKA KIOSA CHA KUTUAMBIA KOSA
+        console.error("Kosa la kutuma taarifa kutoka DB:", error.message);
+        res.status(500).json({ error: "Imeshindikana kutuma taarifa." }); 
+    }
 });
 
 app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
@@ -122,7 +126,7 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta taarifa." }); }
 });
 
-// (API ZINGINE ZOTE KAMA WANAFUNZI, WALIMU, MALIPO, N.K. ZINABAKI KAMA ZILIVYO)
+// (API zingine za Wanafunzi, Walimu, Malipo zipo kama zilivyo)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
