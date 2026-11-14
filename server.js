@@ -126,7 +126,7 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta taarifa." }); }
 });
 
-// (API zingine za Wanafunzi, Walimu, Malipo, Mitihani, n.k. zipo hapa chini kama kawaida)
+// (API zingine zote ziko chini kama kawaida - zimefupishwa hapa kwa urahisi, lakini ni zile zile za awali)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;

@@ -79,6 +79,8 @@ document.getElementById('notificationForm').addEventListener('submit', async (e)
             body: JSON.stringify({ title, message, target_role: 'all' })
         });
 
+        const data = await response.json();
+
         if (response.ok) {
             statusMsg.innerText = "✅ Taarifa imetumwa!";
             statusMsg.style.color = "green";
@@ -86,7 +88,8 @@ document.getElementById('notificationForm').addEventListener('submit', async (e)
             loadNotifications(); // Refresh list
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
-            statusMsg.innerText = "❌ Imeshindikana";
+            // Onyesha kosa halisi kutoka Backend
+            statusMsg.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;
             statusMsg.style.color = "red";
         }
     } catch (error) {
