@@ -202,20 +202,18 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API MPYA: KUPATA TOP 50 NA BOTTOM 50
+// API YA TOP 50 NA BOTTOM 50 (IMEBORESHWA: Kupanga kwa Wastani)
 app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
-    const { exam_id, stream_id, type } = req.query; // type = 'best' au 'worst'
+    const { exam_id, stream_id, type } = req.query; 
     const user = req.user;
     
     if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // 1. Pata masomo yote ya shule
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
         const subjects = subjectsRes.rows;
 
-        // 2. Pata wanafunzi (kuchujwa kwa stream kama imechaguliwa)
         let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
         let studentParams = [user.school_id];
         if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
@@ -223,7 +221,6 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
         const studentsRes = await pool.query(studentQuery, studentParams);
         const students = studentsRes.rows;
 
-        // 3. Pata alama zote za mtihani huu
         const resultsRes = await pool.query(`
             SELECT student_id, subject_id, score 
             FROM results 
@@ -231,7 +228,6 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
         `, [exam_id, user.school_id]);
         const results = resultsRes.rows;
 
-        // 4. Chakarata (Process) data
         const reportData = students.map(student => {
             let totalScore = 0;
             let subjectsCount = 0;
@@ -266,19 +262,16 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
             };
         });
 
-        // 5. Panga (Sort) kulingana na aina
+        // MPANGILIO MPYA: Tunapanga kwa Wastani (Average)
         if (type === 'worst') {
-            // Wabovu: Pointi nyingi kwanza, alama ndogo kwanza
-            reportData.sort((a, b) => b.points - a.points || a.total_score - b.total_score);
+            // Wabovu: Wastani mdogo kwanza
+            reportData.sort((a, b) => a.average - b.average || a.total_score - b.total_score);
         } else {
-            // Bora: Pointi chache kwanza, alama nyingi kwanza
-            reportData.sort((a, b) => a.points - b.points || b.total_score - a.total_score);
+            // Bora: Wastani mkubwa kwanza
+            reportData.sort((a, b) => b.average - a.average || b.total_score - a.total_score);
         }
 
-        // 6. Chukua 50 tu (au chini yake kama hawafiki 50)
         const top50 = reportData.slice(0, 50);
-
-        // 7. Ongeza Rank
         top50.forEach((row, index) => { row.rank = index + 1; });
 
         res.json({ subjects, reportData: top50 });

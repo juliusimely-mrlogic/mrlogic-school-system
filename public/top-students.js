@@ -50,7 +50,6 @@ async function loadTopStudents() {
         return;
     }
 
-    // Weka vichwa vya print
     const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
     const streamName = document.getElementById('stream-select').options[document.getElementById('stream-select').selectedIndex].text;
     const typeName = document.getElementById('type-select').options[document.getElementById('type-select').selectedIndex].text;
@@ -95,11 +94,9 @@ async function loadTopStudents() {
 
         let tableRows = '';
         data.reportData.forEach(row => {
-            // Tengeneza muundo wa NECTA kwa masomo: PHY-"A", KISW-"C"
             let subjectsStr = '';
             Object.keys(row.subjects_detail).forEach(subName => {
                 const sub = row.subjects_detail[subName];
-                // Chukua herufi 3 za mwanzo za somo (mfano Physics -> PHY)
                 const code = subName.substring(0, 3).toUpperCase();
                 subjectsStr += `<span class="subject-badge">${code}-"${sub.grade}"</span> `;
             });
