@@ -204,7 +204,209 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. API YA WANAFUNZI
+// API MPYA: KUPATA WANAFUNZI WOTE WALIOPATA F KWENYE MASOMO YOTE
+app.get('/api/reports/all-f-students', authenticateToken, async (req, res) => {
+    const { exam_id } = req.query; 
+    const user = req.user;
+    
+    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        // 1. Pata masomo yote
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
+        const subjects = subjectsRes.rows;
+
+        // 2. Pata wanafunzi wote
+        const studentsRes = await pool.query(`SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`, [user.school_id]);
+        const students = studentsRes.rows;
+
+        // 3. Pata alama zote
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        const results = resultsRes.rows;
+
+        // 4. Hesabu jumla ya F zote shule nzima
+        let totalFsInSchool = 0;
+        results.forEach(r => { if (parseFloat(r.score) < 30) totalFsInSchool++; });
+
+        // 5. Chakarata (Process) data
+        let fStudentsData = [];
+        
+        students.forEach(student => {
+            const studentResults = results.filter(r => r.student_id === student.id);
+            if (studentResults.length === 0) return; // Ruka ABS (hawakufanya mtihani)
+
+            let allAreF = true;
+            let subjectsDetail = [];
+            let totalScore = 0;
+
+            studentResults.forEach(r => {
+                const score = parseFloat(r.score);
+                totalScore += score;
+                if (score >= 30) { allAreF = false; } // Kama kuna D, C, B, A, basi si F zote
+                
+                const subName = subjects.find(sub => sub.id === r.subject_id)?.name || 'SUB';
+                subjectsDetail.push({ code: subName.substring(0,3).toUpperCase(), grade: getGradeAndPoints(score).grade });
+            });
+
+            if (allAreF && subjectsDetail.length > 0) {
+                const average = parseFloat((totalScore / studentResults.length).toFixed(2));
+                fStudentsData.push({
+                    id: student.id,
+                    name: student.full_name,
+                    gender: student.gender,
+                    stream_name: student.stream_name || 'Hajapewa',
+                    average: average,
+                    subjects: subjectsDetail
+                });
+            }
+        });
+
+        // 6. Panga kwa wastani (Ascending: Mdogo kwenda Mkubwa)
+        fStudentsData.sort((a, b) => a.average - b.average);
+        fStudentsData.forEach((s, idx) => s.rank = idx + 1);
+
+        res.json({ totalFsInSchool, reportData: fStudentsData });
+
+    } catch (error) { 
+        console.error("All F Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
+    }
+});
+
+// API YA TOP 50 WANAFUNZI (Zote)
+app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
+    const { exam_id, stream_id, type } = req.query; 
+    const user = req.user;
+    
+    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
+        const subjects = subjectsRes.rows;
+
+        let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
+        let studentParams = [user.school_id];
+        if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
+        
+        const studentsRes = await pool.query(studentQuery, studentParams);
+        const students = studentsRes.rows;
+
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        const results = resultsRes.rows;
+
+        const reportData = students.map(student => {
+            let totalScore = 0, subjectsCount = 0, totalPoints = 0;
+            const scoresDetail = {};
+
+            subjects.forEach(sub => {
+                const result = results.find(r => r.student_id === student.id && r.subject_id === sub.id);
+                if (result) {
+                    const score = parseFloat(result.score);
+                    const { grade, points } = getGradeAndPoints(score);
+                    scoresDetail[sub.name] = { score, grade, points };
+                    totalScore += score;
+                    totalPoints += points;
+                    subjectsCount++;
+                }
+            });
+
+            const average = subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0;
+            const division = subjectsCount > 0 ? getDivision(totalPoints) : '-';
+
+            return {
+                student_id: student.id, full_name: student.full_name, gender: student.gender,
+                stream_name: student.stream_name || 'Hajapewa', total_score: totalScore,
+                average: average, points: totalPoints, division: division, subjects_detail: scoresDetail
+            };
+        });
+
+        if (type === 'worst') {
+            reportData.sort((a, b) => a.average - b.average || a.total_score - b.total_score);
+        } else {
+            reportData.sort((a, b) => b.average - a.average || b.total_score - a.total_score);
+        }
+
+        const top50 = reportData.slice(0, 50);
+        top50.forEach((row, index) => { row.rank = index + 1; });
+
+        res.json({ subjects, reportData: top50 });
+    } catch (error) { 
+        console.error("Top Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
+    }
+});
+
+// API YA TOP 40 KWA MAKUNDI YA MASOMO
+app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res) => {
+    const { exam_id, stream_id, cluster } = req.query; 
+    const user = req.user;
+    
+    if (!exam_id || !cluster) return res.status(400).json({ error: "Chagua Mtihani na Kundi la Masomo" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        const allSubjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
+        const allSubjects = allSubjectsRes.rows;
+        
+        let clusterKeywords = [];
+        if (cluster === 'science') clusterKeywords = ['PHY', 'CHEM', 'BIO', 'MATH', 'AGR'];
+        else if (cluster === 'business') clusterKeywords = ['BOOK', 'COMM', 'BUS', 'MATH', 'ACC'];
+        else if (cluster === 'arts') clusterKeywords = ['HIST', 'KISW', 'ENGL', 'GEO', 'LIT'];
+
+        const subjects = allSubjects.filter(sub => 
+            clusterKeywords.some(keyword => sub.name.toUpperCase().includes(keyword))
+        );
+
+        if (subjects.length === 0) return res.json({ subjects: [], reportData: [] });
+
+        let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
+        let studentParams = [user.school_id];
+        if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
+        
+        const studentsRes = await pool.query(studentQuery, studentParams);
+        const students = studentsRes.rows;
+
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        const results = resultsRes.rows;
+
+        const reportData = students.map(student => {
+            let totalScore = 0, subjectsCount = 0;
+            const scoresDetail = {};
+
+            subjects.forEach(sub => {
+                const result = results.find(r => r.student_id === student.id && r.subject_id === sub.id);
+                if (result) {
+                    const score = parseFloat(result.score);
+                    const { grade } = getGradeAndPoints(score);
+                    scoresDetail[sub.name] = { score, grade };
+                    totalScore += score;
+                    subjectsCount++;
+                }
+            });
+
+            const average = subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0;
+
+            return {
+                student_id: student.id, full_name: student.full_name, gender: student.gender,
+                stream_name: student.stream_name || 'Hajapewa', average: average, subjects_detail: scoresDetail
+            };
+        });
+
+        reportData.sort((a, b) => b.average - a.average);
+        
+        const top40 = reportData.slice(0, 40);
+        top40.forEach((row, index) => { row.rank = index + 1; });
+
+        res.json({ subjects, reportData: top40 });
+    } catch (error) { 
+        console.error("Cluster Top Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
+    }
+});
+
+// API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -281,7 +483,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 4. API YA WALIMU
+// API YA WALIMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -355,7 +557,7 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 5. API YA MAHUDHURIO
+// API YA MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -370,7 +572,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. API YA MADARASA
+// API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -416,7 +618,7 @@ app.delete('/api/streams/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 7. API YA MALIPO NA RISITI
+// API YA MALIPO NA RISITI
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
@@ -515,7 +717,7 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta risiti" }); }
 });
 
-// 8. API YA MASOMO NA MITIHANI
+// API YA MASOMO NA MITIHANI
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM subjects`; let params = [];
@@ -554,7 +756,7 @@ app.post('/api/exams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA KUFUNGA MATOKEO (Mtaaluma Mkuu au Super Admin Pekee)
+// API YA KUFUNGA MATOKEO
 app.put('/api/exams/:id/lock', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
@@ -567,13 +769,12 @@ app.put('/api/exams/:id/lock', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufunga matokeo." }); }
 });
 
-// API YA KUHIFADHI ALAMA (Inakagua kama mtihani umefungwa)
+// API YA KUHIFADHI ALAMA
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     
     try {
-        // Kagua kama mtihani umefungwa
         const examStatus = await pool.query('SELECT is_locked FROM exams WHERE id = $1', [exam_id]);
         if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) {
             return res.status(403).json({ error: "Matokeo yamefungwa. Huwezi kuongeza au kubadilisha alama." });
@@ -598,7 +799,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API MPYA: KUPATA EXCEL YA ALAMA ZOTE
+// API YA KUPATA EXCEL
 app.get('/api/reports/export-excel/:exam_id', authenticateToken, async (req, res) => {
     const { exam_id } = req.params;
     const user = req.user;
@@ -634,17 +835,15 @@ app.get('/api/reports/export-excel/:exam_id', authenticateToken, async (req, res
     }
 });
 
-// 9. RIPOTI (BROADSHEET NA MWANAFUNZI)
+// RIPOTI (BROADSHEET NA MWANAFUNZI)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     
     try {
-        // 1. Pata Wanafunzi wa Stream hii
         const studentsRes = await pool.query(`SELECT id, full_name, gender FROM students WHERE stream_id = $1 AND school_id = $2 ORDER BY full_name ASC`, [stream_id, user.school_id]);
         
-        // 2. Pata Masomo ambayo yamefanyika kwenye mtihani huu kwa stream hii (Badala ya kuchukua masomo yote ya shule)
         const subjectsRes = await pool.query(`
             SELECT DISTINCT sub.id, sub.name 
             FROM subjects sub
@@ -656,11 +855,9 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
 
         const subjects = subjectsRes.rows;
 
-        // 3. Pata Alama zote
         const resultsRes = await pool.query(`SELECT r.student_id, r.subject_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3`, [exam_id, stream_id, user.school_id]);
         const results = resultsRes.rows;
         
-        // 4. Chakarata data
         const reportData = studentsRes.rows.map(student => {
             let totalScore = 0, subjectsCount = 0, totalPoints = 0; 
             const scores = {};
@@ -675,7 +872,7 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
                     totalPoints += points;
                     subjectsCount++; 
                 } else { 
-                    scores[sub.id] = { score: null, grade: 'X' }; // Mwanafunzi hakufanya somo hili
+                    scores[sub.id] = { score: null, grade: 'X' };
                 }
             });
             return { 
@@ -694,11 +891,9 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
         let currentPosition = 1;
         for (let i = 0; i < reportData.length; i++) { if (i > 0 && reportData[i].average < reportData[i-1].average) { currentPosition = i + 1; } reportData[i].position = currentPosition; }
         
-        // Pata jina la stream
         const streamRes = await pool.query('SELECT name FROM streams WHERE id = $1', [stream_id]);
         const streamName = streamRes.rows.length > 0 ? streamRes.rows[0].name : 'Stream';
         
-        // Pata kama imefungwa
         const examRes = await pool.query('SELECT is_locked FROM exams WHERE id = $1', [exam_id]);
         const is_locked = examRes.rows.length > 0 ? examRes.rows[0].is_locked : false;
 

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wanafunzi Wote F - MR-LOGIC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
+        .container { padding: 30px; max-width: 100%; overflow-x: auto; }
+        
+        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); align-items: flex-end;}
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        
+        .btn-load { padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; height: 42px; }
+        .btn-print { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; height: 42px; margin-left: 10px;}
+
+        .stat-card { padding: 20px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; background-color: #ef4444;}
+        .stat-card h4 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; }
+        .stat-card h2 { margin: 0; font-size: 32px; }
+
+        .print-header { text-align: center; margin-bottom: 20px; display: none; }
+        .print-header h2 { margin: 0; color: #1e3a8a; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 13px; }
+        th, td { padding: 10px; text-align: center; border: 1px solid #e5e7eb; }
+        th { background-color: #1e3a8a; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px;}
+        td:nth-child(2) { text-align: left; font-weight: bold; }
+        td:nth-child(6) { text-align: left; font-size: 12px; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        
+        .pos-col { background-color: #fef08a; font-weight: bold; }
+        .subject-badge { display: inline-block; margin: 2px; padding: 2px 6px; border-radius: 4px; background: #fee2e2; color: #991b1b; font-weight: bold; font-size: 11px; border: 1px solid #f87171;}
+
+        @media print {
+            @page { size: portrait; margin: 10mm; }
+            body { background: white; }
+            .navbar, .controls, .stat-card { display: none !important; }
+            .container { padding: 0; overflow: visible; }
+            .print-header { display: block !important; margin-bottom: 10px; }
+            table { box-shadow: none; border-radius: 0; font-size: 11px; }
+            th { background-color: #ddd !important; color: black !important; border: 1px solid #000; }
+            td { border: 1px solid #000; }
+            tr:nth-child(even) { background-color: transparent; }
+            .pos-col { background-color: transparent !important; }
+            .subject-badge { background: transparent; border: 1px solid #000; color: black; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="/index.html">&larr; Rudi Dashibodi</a>
+            <span style="font-size: 20px; font-weight: bold;">Wanafunzi Wote F</span>
+        </div>
+        <div>
+            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="form-group">
+                <label>Chagua Mtihani:</label>
+                <select id="exam-select"></select>
+            </div>
+            <button class="btn-load" onclick="loadFStudents()">Pakia Wanafunzi</button>
+            <button class="btn-print" onclick="window.print()" id="btn-print" style="display:none;">Chapisha (Print)</button>
+        </div>
+
+        <div class="stat-card" id="total-f-card" style="display: none;">
+            <h4>Jumla ya Alama F Shule Nzima</h4>
+            <h2 id="total-f-count">0</h2>
+        </div>
+
+        <div class="print-header">
+            <h2>ORODHA YA WANAFUNZI WALIOPATA F KWENYE MASOMO YOTE</h2>
+            <p>Shule: <span id="print-school-name"></span> | Mtihani: <span id="print-exam-name"></span></p>
+        </div>
+
+        <div id="report-container">
+            <p style="text-align: center; color: #666;">Chagua mtihani kisha bonyeza "Pakia Wanafunzi".</p>
+        </div>
+    </div>
+
+    <script src="f-grades.js"></script>
+</body>
+</html>
