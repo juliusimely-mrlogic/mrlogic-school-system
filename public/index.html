@@ -34,8 +34,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
     th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
     th { background: #f9fafb; font-weight: 600; }
-    input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .btn-primary { background: #2563eb; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px; }
+    .btn-primary { background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn-green { background: #16a34a; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .stat-card { padding: 20px; border-radius: 8px; color: white; text-align: center; }
@@ -66,6 +66,10 @@
     .badge-paid { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-unpaid { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; color: white; }
+
+    /* Fomu ya Kusajili Shule */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; color: #4b5563; }
   </style>
 </head>
 <body>
@@ -91,6 +95,8 @@
     <div class="main-wrapper">
       <div class="sidebar">
         <a onclick="navigate('dashboard')" class="nav-link active" id="nav-dashboard">📊 Dashibodi</a>
+        <!-- Kitufe hiki kitaonekana kwa Super Admin pekee kupitia app.js -->
+        <a onclick="navigate('kusajili_shule')" class="nav-link" id="nav-kusajili_shule" style="display: none;">🏫 Kusajili Shule</a>
         <a onclick="navigate('wanafunzi')" class="nav-link" id="nav-wanafunzi">👨‍🎓 Wanafunzi</a>
         <a onclick="navigate('walimu')" class="nav-link" id="nav-walimu">👨‍🏫 Walimu</a>
         <a onclick="navigate('ada')" class="nav-link" id="nav-ada">💰 Ada & Malipo</a>

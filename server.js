@@ -56,6 +56,32 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
+// API YA KUSAJILI SHULE MPYA
+// ==========================================
+app.post('/api/schools', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa ya kusajili shule." });
+    const { name, region, district, level, supervisor, second_master, academic_master, center_number, manager } = req.body;
+    try {
+        const check = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
+        if (check.rows.length > 0) return res.status(400).json({ error: "Shule yenye jina hili imeshasajiliwa." });
+
+        const query = `
+            INSERT INTO schools (name, region, district, level, supervisor, second_master, academic_master, center_number, manager, system_fee, is_paid) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 500000, false) RETURNING *
+        `;
+        const result = await pool.query(query, [name, region, district, level, supervisor, second_master, academic_master, center_number, manager]);
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Imeshindikana kusajili shule. Hakikisha column zote zipo kwenye database." });
+    }
+});
+
+app.get('/api/schools', authenticateToken, async (req, res) => {
+    try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
 // API MPYA: MALIPO YA MFUMO (SUPER ADMIN)
 // ==========================================
 app.get('/api/super-admin/system-payments', authenticateToken, async (req, res) => {
@@ -82,11 +108,10 @@ app.get('/api/super-admin/system-payments', authenticateToken, async (req, res) 
         res.json({ schools, paidSchools, unpaidSchools, totalExpected, totalCollected, totalOutstanding });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Imeshindikana kupata data za malipo ya mfumo. Hakikisha column 'system_fee' na 'is_paid' zipo kwenye table ya schools." });
+        res.status(500).json({ error: "Imeshindikana kupata data za malipo." });
     }
 });
 
-// API YA KUBADILISHA HALI YA MALIPO (SUPER ADMIN)
 app.put('/api/super-admin/toggle-payment/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { id } = req.params;
@@ -95,7 +120,7 @@ app.put('/api/super-admin/toggle-payment/:id', authenticateToken, async (req, re
         if (result.rowCount === 0) return res.status(404).json({ error: "Shule haijapatikana." });
         res.json({ message: "Hali ya malipo imebadilishwa.", school: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ error: "Imeshindikana kubadilisha hali ya malipo." });
+        res.status(500).json({ error: "Imeshindikana." });
     }
 });
 
@@ -117,10 +142,6 @@ app.get('/api/super-admin/district-stats', authenticateToken, async (req, res) =
         });
         res.json(Object.values(districts));
     } catch (error) { res.status(500).json({ error: "Imeshindikana" }); }
-});
-
-app.get('/api/schools', authenticateToken, async (req, res) => {
-    try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {

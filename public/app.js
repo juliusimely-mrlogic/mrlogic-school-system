@@ -24,6 +24,15 @@ function logout() {
 function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'flex';
+    
+    const user = JSON.parse(localStorage.getItem('user'));
+    // Onyesha kitufe cha Kusajili Shule kama ni Super Admin
+    if (user && user.role === 'super_admin') {
+        document.getElementById('nav-kusajili_shule').style.display = 'block';
+    } else {
+        document.getElementById('nav-kusajili_shule').style.display = 'none';
+    }
+
     navigate('dashboard');
 }
 
@@ -37,6 +46,7 @@ function navigate(page) {
     if (navEl) navEl.classList.add('active');
 
     if (page === 'dashboard') renderDashboard();
+    else if (page === 'kusajili_shule') renderKusajiliShule();
     else if (page === 'wanafunzi') renderWanafunzi();
     else if (page === 'walimu') renderWalimu();
     else if (page === 'ada') renderAda();
@@ -49,7 +59,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHBOARD (Ina Halmashauri na Malipo ya Mfumo)
+// 1. DASHBOARD
 // ==========================================
 async function renderDashboard() {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -78,14 +88,12 @@ async function renderDashboard() {
     }
 
     try {
-        // Vuta Takwimu za Shule (Dashibodi ya Kawaida)
         const res = await fetch('/api/dashboard/stats' + targetSchoolQuery, { headers: authHeaders });
         const d = await res.json();
         
-        // Vuta Takwimu za Halmashauri na Malipo (Kama ni Super Admin)
         let superAdminHtml = '';
         if (user && user.role === 'super_admin') {
-            // 1. Halmashauri
+            // Halmashauri
             try {
                 const distRes = await fetch('/api/super-admin/district-stats', { headers: authHeaders });
                 if (distRes.ok) {
@@ -114,7 +122,7 @@ async function renderDashboard() {
                 }
             } catch (e) { console.error(e); }
 
-            // 2. Malipo ya Mfumo
+            // Malipo
             try {
                 const payRes = await fetch('/api/super-admin/system-payments', { headers: authHeaders });
                 if (payRes.ok) {
@@ -200,12 +208,135 @@ async function togglePayment(schoolId) {
     try {
         const res = await fetch(`/api/super-admin/toggle-payment/${schoolId}`, { method: 'PUT', headers: authHeaders });
         if(!res.ok) throw new Error("Imeshindikana");
-        renderDashboard(); // Reload dashboard to reflect changes
+        renderDashboard();
     } catch (error) { alert(error.message); }
 }
 
 // ==========================================
-// 2. WANAFUNZI
+// 2. KUSAJILI SHULE (SUPER ADMIN)
+// ==========================================
+async function renderKusajiliShule() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'super_admin') {
+        content.innerHTML = `<h2 style="color:red;">Hauna ruhusa kufikia ukurasa huu.</h2>`;
+        return;
+    }
+
+    content.innerHTML = `<h2>Inapakia...</h2>`;
+    const res = await fetch('/api/schools', { headers: authHeaders });
+    const schools = await res.json();
+
+    content.innerHTML = `
+        <div class="card">
+            <h3>Kadi ya Kusajili Shule Mpya</h3>
+            <form onsubmit="event.preventDefault(); addSchool();">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Jina la Shule:</label>
+                        <input type="text" id="sch_name" required placeholder="Mfano: Nyang'homango Secondary">
+                    </div>
+                    <div class="form-group">
+                        <label>Namba ya Mtihani (Centre Number):</label>
+                        <input type="text" id="sch_center" required placeholder="Mfano: S0513">
+                    </div>
+                    <div class="form-group">
+                        <label>Mkoa (Region):</label>
+                        <input type="text" id="sch_region" required placeholder="Mfano: Mara">
+                    </div>
+                    <div class="form-group">
+                        <label>Halmashauri (District):</label>
+                        <input type="text" id="sch_district" required placeholder="Mfano: Bunda">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngazi (Level):</label>
+                        <select id="sch_level" required>
+                            <option value="">Chagua Ngazi</option>
+                            <option value="Primary">Primary (Msingi)</option>
+                            <option value="O-Level">O-Level (Sekondari O-Level)</option>
+                            <option value="Advanced Level">Advanced Level (Sekondari A-Level)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Jina la School Supervisor:</label>
+                        <input type="text" id="sch_supervisor" required placeholder="Jina Kamili">
+                    </div>
+                    <div class="form-group">
+                        <label>Makamu Mkuu wa Shule:</label>
+                        <input type="text" id="sch_second_master" required placeholder="Jina Kamili">
+                    </div>
+                    <div class="form-group">
+                        <label>Mtaaluma Mkuu wa Shule:</label>
+                        <input type="text" id="sch_academic_master" required placeholder="Jina Kamili">
+                    </div>
+                    <div class="form-group">
+                        <label>Meneja wa Shule (Kama ni ya Binafsi):</label>
+                        <input type="text" id="sch_manager" placeholder="Jina la Meneja (Acha tupu kama ni ya Serikali)">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top:15px; width:100%;">Sajili Shule</button>
+            </form>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+            <h3>Orodha ya Shule Zilizosajiliwa (${schools.length})</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Jina la Shule</th>
+                        <th>Ngazi</th>
+                        <th>Mkoa</th>
+                        <th>Halmashauri</th>
+                        <th>Centre No.</th>
+                        <th>Supervisor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${schools.map(s => `
+                        <tr>
+                            <td><strong>${s.name}</strong></td>
+                            <td>${s.level || '-'}</td>
+                            <td>${s.region || '-'}</td>
+                            <td>${s.district || '-'}</td>
+                            <td>${s.center_number || '-'}</td>
+                            <td>${s.supervisor || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function addSchool() {
+    const payload = {
+        name: document.getElementById('sch_name').value,
+        center_number: document.getElementById('sch_center').value,
+        region: document.getElementById('sch_region').value,
+        district: document.getElementById('sch_district').value,
+        level: document.getElementById('sch_level').value,
+        supervisor: document.getElementById('sch_supervisor').value,
+        second_master: document.getElementById('sch_second_master').value,
+        academic_master: document.getElementById('sch_academic_master').value,
+        manager: document.getElementById('sch_manager').value || null
+    };
+
+    try {
+        const res = await fetch('/api/schools', {
+            method: 'POST',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Imeshindikana kusajili");
+        alert("Shule imesajiliwa kikamilifu!");
+        renderKusajiliShule(); // Reload page
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+// ==========================================
+// 3. WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
     content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
@@ -216,10 +347,10 @@ async function renderWanafunzi() {
         <div class="card">
             <h3>Sajili Mwanafunzi Mpya</h3>
             <form onsubmit="event.preventDefault(); addStudent();" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <input type="text" id="s_name" placeholder="Jina Kamili" required>
-                <select id="s_gender"><option value="M">Me</option><option value="F">Ke</option></select>
-                <input type="text" id="s_adm" placeholder="Namba ya Usajili" required>
-                <select id="s_stream" required><option value="">Chagua Darasa</option>${streams.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
+                <input type="text" id="s_name" placeholder="Jina Kamili" required style="flex:1;">
+                <select id="s_gender" style="flex:1;"><option value="M">Me</option><option value="F">Ke</option></select>
+                <input type="text" id="s_adm" placeholder="Namba ya Usajili" required style="flex:1;">
+                <select id="s_stream" required style="flex:1;"><option value="">Chagua Darasa</option>${streams.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
                 <button type="submit" class="btn-primary">Sajili</button>
             </form>
         </div>
@@ -241,7 +372,7 @@ async function addStudent() {
 async function delStudent(id) { if(confirm('Futa mwanafunzi huyu?')) { await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders }); renderWanafunzi(); } }
 
 // ==========================================
-// 3. WALIMU
+// 4. WALIMU
 // ==========================================
 async function renderWalimu() {
     content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
@@ -252,10 +383,10 @@ async function renderWalimu() {
         <div class="card">
             <h3>Sajili Mwalimu</h3>
             <form onsubmit="event.preventDefault(); addTeacher();" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <input type="text" id="t_name" placeholder="Jina Kamili" required>
-                <select id="t_gender"><option value="M">Me</option><option value="F">Ke</option></select>
-                <input type="text" id="t_phone" placeholder="Simu" required>
-                <select id="t_desig"><option value="Mwalimu">Mwalimu</option><option value="Mtaaluma">Mtaaluma</option><option value="Mhasibu">Mhasibu</option><option value="Makamu">Makamu</option></select>
+                <input type="text" id="t_name" placeholder="Jina Kamili" required style="flex:1;">
+                <select id="t_gender" style="flex:1;"><option value="M">Me</option><option value="F">Ke</option></select>
+                <input type="text" id="t_phone" placeholder="Simu" required style="flex:1;">
+                <select id="t_desig" style="flex:1;"><option value="Mwalimu">Mwalimu</option><option value="Mtaaluma">Mtaaluma</option><option value="Mhasibu">Mhasibu</option><option value="Makamu">Makamu</option></select>
                 <button type="submit" class="btn-primary">Sajili</button>
             </form>
         </div>
@@ -277,7 +408,7 @@ async function addTeacher() {
 async function delTeacher(id) { if(confirm('Futa mwalimu huyu?')) { await fetch('/api/teachers/' + id, { method: 'DELETE', headers: authHeaders }); renderWalimu(); } }
 
 // ==========================================
-// 4. ADA
+// 5. ADA
 // ==========================================
 async function renderAda() {
     content.innerHTML = `<h2>Inapakia Ada...</h2>`;
@@ -288,9 +419,9 @@ async function renderAda() {
         <div class="card">
             <h3>Weka Malipo ya Ada</h3>
             <form onsubmit="event.preventDefault(); addFee();" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <select id="f_stud" required><option value="">Chagua Mwanafunzi</option>${students.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('')}</select>
-                <input type="number" id="f_amt" placeholder="Kiasi (Tsh)" required>
-                <input type="date" id="f_date" required>
+                <select id="f_stud" required style="flex:1;"><option value="">Chagua Mwanafunzi</option>${students.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('')}</select>
+                <input type="number" id="f_amt" placeholder="Kiasi (Tsh)" required style="flex:1;">
+                <input type="date" id="f_date" required style="flex:1;">
                 <button type="submit" class="btn-primary">Weka</button>
             </form>
         </div>
@@ -311,7 +442,7 @@ async function addFee() {
 }
 
 // ==========================================
-// 5. ALAMA
+// 6. ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -321,10 +452,10 @@ async function renderAlama() {
     content.innerHTML = `
         <div class="card">
             <h3>Kuingiza Alama (Kwa Mkono)</h3>
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <select id="a_exam">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="a_subj">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="a_stream">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                <select id="a_exam" style="flex:1;">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="a_subj" style="flex:1;">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="a_stream" style="flex:1;">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
                 <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
             </div>
             <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
@@ -349,7 +480,7 @@ async function saveMarks() {
 }
 
 // ==========================================
-// 6. BROADSHEET
+// 7. BROADSHEET
 // ==========================================
 async function renderBroadsheet() {
     content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
@@ -382,7 +513,7 @@ async function loadBroadsheet() {
 }
 
 // ==========================================
-// 7. MAHUDHURIO
+// 8. MAHUDHURIO
 // ==========================================
 async function renderMahudhurio() {
     content.innerHTML = `<h2>Inapakia Mahudhurio...</h2>`;
@@ -420,7 +551,7 @@ async function saveAttendance() {
 }
 
 // ==========================================
-// 8. KUPANGA WALIMU
+// 9. KUPANGA WALIMU
 // ==========================================
 async function renderKupanga() {
     content.innerHTML = `<h2>Inapakia Kupanga Walimu...</h2>`;
@@ -431,9 +562,9 @@ async function renderKupanga() {
         <div class="card">
             <h3>Gawa Somo kwa Mwalimu</h3>
             <form onsubmit="event.preventDefault(); addAssignment();" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <select id="as_teacher" required><option value="">Chagua Mwalimu</option>${teachers.map(x => `<option value="${x.id}">${x.full_name}</option>`).join('')}</select>
-                <select id="as_stream" required><option value="">Chagua Darasa</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="as_subject" required><option value="">Chagua Somo</option>${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="as_teacher" required style="flex:1;"><option value="">Chagua Mwalimu</option>${teachers.map(x => `<option value="${x.id}">${x.full_name}</option>`).join('')}</select>
+                <select id="as_stream" required style="flex:1;"><option value="">Chagua Darasa</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="as_subject" required style="flex:1;"><option value="">Chagua Somo</option>${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
                 <button type="submit" class="btn-primary">Gawa</button>
             </form>
         </div>
@@ -452,7 +583,7 @@ async function addAssignment() {
 }
 
 // ==========================================
-// 9. RIPOTI (BORA & WABOVU)
+// 10. RIPOTI (BORA & WABOVU)
 // ==========================================
 async function renderRipoti() {
     content.innerHTML = `<h2>Inapakia Ripoti...</h2>`;
@@ -462,10 +593,10 @@ async function renderRipoti() {
     content.innerHTML = `
         <div class="card">
             <h3>Chagua Mtihani na Aina ya Ripoti</h3>
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <select id="r_exam">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="r_stream"><option value="">Madarasa Yote</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="r_type"><option value="top">Wanafunzi Bora (Top 50)</option><option value="worst">Wanafunzi Wabovu (Bottom 50)</option></select>
+            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                <select id="r_exam" style="flex:1;">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="r_stream" style="flex:1;"><option value="">Madarasa Yote</option>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                <select id="r_type" style="flex:1;"><option value="top">Wanafunzi Bora (Top 50)</option><option value="worst">Wanafunzi Wabovu (Bottom 50)</option></select>
                 <button class="btn-primary" onclick="loadRipoti()">Pakia</button>
             </div>
             <div style="overflow-x:auto;" id="ripoti_result"></div>
@@ -486,7 +617,7 @@ async function loadRipoti() {
 }
 
 // ==========================================
-// 10. MIPANGILIO
+// 11. MIPANGILIO
 // ==========================================
 async function renderMipangilio() {
     content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
