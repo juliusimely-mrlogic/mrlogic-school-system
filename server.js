@@ -115,7 +115,7 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API ZA DATA MSINGI (WANAFUNZI, MADARASA, MASOMO, MITIHANI)
+// API ZA DATA MSINGI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT id, full_name, gender, stream_id, admission_number FROM students`; let params = [], conditions = [];
@@ -154,6 +154,27 @@ app.get('/api/exams', authenticateToken, async (req, res) => {
         else { if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); query += ` WHERE school_id = $1`; params.push(user.school_id); }
         query += ` ORDER BY id DESC`; const result = await pool.query(query, params); res.json(result.rows);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
+// API MPYA: KUVUTA ALAMA ZILIZOSHAHIFADHIWA
+// ==========================================
+app.get('/api/results/existing', authenticateToken, async (req, res) => {
+    const { exam_id, subject_id, stream_id } = req.query;
+    const user = req.user;
+    if (!exam_id || !subject_id || !stream_id) return res.status(400).json({ error: "Chagua Mtihani, Somo na Darasa." });
+    try {
+        const result = await pool.query(`
+            SELECT r.student_id, r.score 
+            FROM results r 
+            JOIN students s ON r.student_id = s.id 
+            WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4
+        `, [exam_id, subject_id, stream_id, user.school_id]);
+        res.json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Imeshindikana kuleta alama zilizopo." });
+    }
 });
 
 // API YA KUHIFADHI ALAMA KWA MKONO (POST)

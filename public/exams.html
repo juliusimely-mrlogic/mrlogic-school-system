@@ -186,11 +186,17 @@
 
         if(!examId || !subjectId || !streamId) { showAlert("Chagua Mtihani, Somo na Darasa.", "danger"); return; }
 
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Inapakia wanafunzi...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Inapakia wanafunzi na alama...</td></tr>';
         
         try {
-            const studentsRes = await fetch(`/api/students?stream_id=${streamId}`, { headers: authHeaders });
+            // Vuta Wanafunzi NA Alama zilizopo kwa pamoja
+            const [studentsRes, existingResultsRes] = await Promise.all([
+                fetch(`/api/students?stream_id=${streamId}`, { headers: authHeaders }),
+                fetch(`/api/results/existing?exam_id=${examId}&subject_id=${subjectId}&stream_id=${streamId}`, { headers: authHeaders })
+            ]);
+            
             const students = await studentsRes.json();
+            const existingResults = await existingResultsRes.json();
             
             if(students.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Hakuna wanafunzi kwenye darasa hili.</td></tr>';
@@ -198,13 +204,20 @@
                 return;
             }
 
+            // Tengeneza ramani ya alama zilizopo (Student ID -> Score)
+            const scoreMap = {};
+            existingResults.forEach(r => { scoreMap[r.student_id] = r.score; });
+
             tbody.innerHTML = '';
             students.forEach((st, i) => {
+                // Kama mwanafunzi ana alama, weka kwenye sanduku, kama hana acha tupu
+                const savedScore = scoreMap[st.id] !== undefined ? scoreMap[st.id] : '';
+                
                 tbody.innerHTML += `
                     <tr>
                         <td>${i + 1}</td>
                         <td><strong>${st.full_name}</strong></td>
-                        <td><input type="number" class="score-input" data-student-id="${st.id}" min="0" max="100" placeholder="0-100"></td>
+                        <td><input type="number" class="score-input" data-student-id="${st.id}" min="0" max="100" placeholder="0-100" value="${savedScore}"></td>
                     </tr>
                 `;
             });
