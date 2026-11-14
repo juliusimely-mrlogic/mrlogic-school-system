@@ -89,42 +89,6 @@ app.get('/api/students', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta wanafunzi" }); }
 });
 
-// API MPYA: EXPORT WANAFUNZI KWENDA EXCEL
-app.get('/api/students/export', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user;
-        let query = `
-            SELECT s.full_name as "Jina Kamili", s.admission_number as "Namba ya Usajili", s.gender as "Jinsia", 
-                   COALESCE(st.name, 'Hajapewa') as "Darasa", s.parent_phone as "Namba ya Mzazi" 
-            FROM students s LEFT JOIN streams st ON s.stream_id = st.id
-        `;
-        let params = [];
-        
-        if (user.role === 'super_admin') { 
-            if (req.query.school_id) { query += ` WHERE s.school_id = $1`; params.push(req.query.school_id); } 
-        } else { 
-            if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" }); 
-            query += ` WHERE s.school_id = $1`; params.push(user.school_id); 
-        }
-        query += ` ORDER BY s.full_name ASC`;
-
-        const result = await pool.query(query, params);
-        
-        // Tengeneza Excel
-        const ws = xlsx.utils.json_to_sheet(result.rows);
-        const wb = xlsx.utils.book_new();
-        xlsx.utils.book_append_sheet(wb, ws, "Wanafunzi");
-        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-        res.setHeader('Content-Disposition', 'attachment; filename="Wanafunzi.xlsx"');
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.send(buf);
-    } catch (error) {
-        console.error("Kosa la export wanafunzi:", error);
-        res.status(500).json({ error: "Imeshindikana kutengeneza faili la Excel" });
-    }
-});
-
 app.post('/api/students', authenticateToken, async (req, res) => {
     const { full_name, gender, stream_id, admission_number, parent_phone } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Mtumiaji hana shule" });
@@ -186,7 +150,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 4. API YA WALIMU
+// 4. API YA WALIMU (IMEBORESHWA: Kuzalisha Username na Kuunda Akaunti)
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -197,20 +161,51 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/teachers', authenticateToken, async (req, res) => {
-    const { full_name, gender, phone, email } = req.body; const user = req.user;
+    const { full_name, gender, phone } = req.body; // Email imeondolewa
+    const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+    
     try {
-        const query = `INSERT INTO teachers (full_name, gender, phone, email, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
-        const result = await pool.query(query, [full_name, gender, phone, email, user.school_id]);
-        res.status(201).json(result.rows[0]);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+        // 1. Tengeneza Username (Mfano: John Magesa -> johnmagesa)
+        let nameParts = full_name.trim().split(' ');
+        let firstName = nameParts[0] || '';
+        let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+        let baseUsername = (firstName + lastName).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!baseUsername) baseUsername = "teacher";
+        
+        let username = baseUsername;
+        let counter = 1;
+        
+        // Kagua kama username ipo, kama ipo ongeza namba
+        let checkUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        while (checkUser.rows.length > 0) {
+            username = baseUsername + counter;
+            counter++;
+            checkUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        }
+
+        // 2. Ingiza kwenye table ya teachers
+        const query = `INSERT INTO teachers (full_name, gender, phone, username, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+        const result = await pool.query(query, [full_name, gender, phone, username, user.school_id]);
+
+        // 3. Unda akaunti ya kuingia (Default password: password123)
+        const salt = await bcrypt.genSalt(10); 
+        const hashedPassword = await bcrypt.hash('password123', salt);
+        await pool.query(`INSERT INTO users (full_name, username, password_hash, role, school_id) VALUES ($1, $2, $3, $4, $5)`, 
+            [full_name, username, hashedPassword, 'teacher', user.school_id]);
+
+        res.status(201).json({ ...result.rows[0], username });
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ error: "Imeshindikana. Hakikisha column 'username' ipo kwenye table ya teachers." }); 
+    }
 });
 
 app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params; const { full_name, gender, phone, email } = req.body; const user = req.user;
+    const { id } = req.params; const { full_name, gender, phone } = req.body; const user = req.user;
     try {
-        let query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3, email=$4 WHERE id=$5`; let params = [full_name, gender, phone, email, id];
-        if (user.role !== 'super_admin') { query += ` AND school_id=$6`; params.push(user.school_id); }
+        let query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3 WHERE id=$4`; let params = [full_name, gender, phone, id];
+        if (user.role !== 'super_admin') { query += ` AND school_id=$5`; params.push(user.school_id); }
         query += ` RETURNING *`; const result = await pool.query(query, params);
         if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
         res.json(result.rows[0]);
@@ -299,47 +294,6 @@ app.get('/api/fees', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API MPYA: EXPORT MALIPO/MADENI KWENDA EXCEL
-app.get('/api/fees/export', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user;
-        let query = `
-            SELECT s.full_name as "Jina la Mwanafunzi", s.admission_number as "Namba ya Usajili", 
-                   COALESCE(st.name, 'Hajapewa') as "Darasa", 
-                   COALESCE(st.fee_amount, 0) as "Ada Inayotakiwa", 
-                   COALESCE(SUM(f.amount), 0) as "Jumla Iliyolipwa", 
-                   (COALESCE(st.fee_amount, 0) - COALESCE(SUM(f.amount), 0)) as "Salio / Deni"
-            FROM students s 
-            LEFT JOIN streams st ON s.stream_id = st.id 
-            LEFT JOIN fees f ON s.id = f.student_id
-        `;
-        let params = [];
-        
-        if (user.role === 'super_admin') { 
-            if (req.query.school_id) { query += ` WHERE s.school_id = $1`; params.push(req.query.school_id); } 
-        } else { 
-            if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); 
-            query += ` WHERE s.school_id = $1`; params.push(user.school_id); 
-        }
-        
-        query += ` GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`;
-
-        const result = await pool.query(query, params);
-        
-        const ws = xlsx.utils.json_to_sheet(result.rows);
-        const wb = xlsx.utils.book_new();
-        xlsx.utils.book_append_sheet(wb, ws, "Madeni_Na_Malipo");
-        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-        res.setHeader('Content-Disposition', 'attachment; filename="Madeni_Na_Malipo.xlsx"');
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.send(buf);
-    } catch (error) {
-        console.error("Kosa la export madeni:", error);
-        res.status(500).json({ error: "Imeshindikana kutengeneza faili la Excel" });
-    }
-});
-
 app.post('/api/fees', authenticateToken, async (req, res) => {
     const { student_id, amount, date_paid } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -371,7 +325,6 @@ app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA MUHTASARI WA AWAMU ZA MWANAFUNZI
 app.get('/api/fees/student-summary/:student_id', authenticateToken, async (req, res) => {
     const { student_id } = req.params;
     const user = req.user;
@@ -490,9 +443,21 @@ app.post('/api/exams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// API YA KUHIFADHI ALAMA (IMEBORESHWA: Kuzuia Alama > 100)
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+    
+    // Kagua kama kuna alama iliyozidi 100
+    for (let record of marks) {
+        if (record.score !== '' && record.score !== null) {
+            const scoreVal = parseFloat(record.score);
+            if (scoreVal < 0 || scoreVal > 100) {
+                return res.status(400).json({ error: "Alama hazipaswi kuzidi 100 au kuwa chini ya 0." });
+            }
+        }
+    }
+
     try {
         const client = await pool.connect();
         try {

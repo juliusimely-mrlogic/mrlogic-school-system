@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDropdownData() {
     try {
-        // Pakia Mitihani
         const examsRes = await fetch('/api/exams', { headers: { 'Authorization': `Bearer ${token}` } });
         const exams = await examsRes.json();
         const examSelect = document.getElementById('exam-select');
@@ -25,7 +24,6 @@ async function loadDropdownData() {
             examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
 
-        // Pakia Masomo (Backend itachuja kama ni Mwalimu)
         const subjectsRes = await fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } });
         const subjects = await subjectsRes.json();
         const subjectSelect = document.getElementById('subject-select');
@@ -34,7 +32,6 @@ async function loadDropdownData() {
             subjectSelect.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
         });
 
-        // Pakia Madarasa (Backend itachuja kama ni Mwalimu)
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
@@ -80,7 +77,7 @@ async function loadStudentsForMarks() {
                     <td>${index + 1}</td>
                     <td>${student.full_name}</td>
                     <td>
-                        <input type="number" name="score_${student.id}" min="0" max="100" placeholder="0 - 100">
+                        <input type="number" name="score_${student.id}" placeholder="">
                     </td>
                 </tr>
             `;
@@ -112,6 +109,30 @@ document.getElementById('marksForm').addEventListener('submit', async (e) => {
 
     const marksData = [];
     const inputs = document.querySelectorAll('input[type="number"]');
+    let hasError = false;
+
+    // Kagua alama kabla ya kutuma
+    inputs.forEach(input => {
+        if (input.value !== '') {
+            const val = parseFloat(input.value);
+            if (val < 0 || val > 100) {
+                input.style.border = '2px solid red';
+                hasError = true;
+            } else {
+                input.style.border = '1px solid #ccc';
+            }
+        } else {
+            input.style.border = '1px solid #ccc';
+        }
+    });
+
+    if (hasError) {
+        alert("Tafadhali ingiza alama kati ya 0 na 100 pekee.");
+        statusMsg.innerText = "";
+        return;
+    }
+
+    // Kusanya alama
     inputs.forEach(input => {
         const studentId = input.name.split('_')[1]; 
         if (input.value !== '') {

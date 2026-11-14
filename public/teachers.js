@@ -31,8 +31,8 @@ async function loadTeachers() {
         let html = '';
         teachers.forEach((teacher, index) => {
             const phone = teacher.phone || teacher.phone_number || 'Hajajaza';
-            const email = teacher.email || 'Hajajaza';
             const jinsia = teacher.gender || 'Hajajaza';
+            const username = teacher.username || 'Bado';
 
             html += `
                 <tr>
@@ -40,9 +40,9 @@ async function loadTeachers() {
                     <td>${teacher.full_name}</td>
                     <td>${jinsia}</td>
                     <td>${phone}</td>
-                    <td>${email}</td>
+                    <td>${username}</td>
                     <td>
-                        <button class="action-btn btn-edit" onclick="editTeacher(${teacher.id}, '${teacher.full_name}', '${teacher.gender}', '${teacher.phone || ''}', '${teacher.email || ''}')">Rekebisha</button>
+                        <button class="action-btn btn-edit" onclick="editTeacher(${teacher.id}, '${teacher.full_name}', '${teacher.gender}', '${teacher.phone || ''}')">Rekebisha</button>
                         <button class="action-btn btn-delete" onclick="deleteTeacher(${teacher.id})">Futa</button>
                     </td>
                 </tr>
@@ -54,14 +54,13 @@ async function loadTeachers() {
     }
 }
 
-function editTeacher(id, full_name, gender, phone, email) {
+function editTeacher(id, full_name, gender, phone) {
     isEditing = true;
     document.getElementById('form-title').innerText = "Rekebisha Taarifa za Mwalimu";
     document.getElementById('teacher_id').value = id;
     document.getElementById('full_name').value = full_name;
     document.getElementById('gender').value = gender;
     document.getElementById('phone').value = phone;
-    document.getElementById('email').value = email;
     
     document.getElementById('btn-submit').innerText = "Hifadhi Marekebisho";
     document.getElementById('btn-cancel').style.display = 'inline-block';
@@ -100,8 +99,7 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
     const payload = {
         full_name: document.getElementById('full_name').value,
         gender: document.getElementById('gender').value,
-        phone: document.getElementById('phone').value,
-        email: document.getElementById('email').value
+        phone: document.getElementById('phone').value
     };
 
     const id = document.getElementById('teacher_id').value;
@@ -120,11 +118,15 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (response.ok) {
-            statusMsg.innerText = isEditing ? "✅ Marekebisho yamehifadhiwa!" : "✅ Mwalimu amesajiliwa!";
+            if(!isEditing && data.username) {
+                statusMsg.innerText = `✅ Mwalimu amesajiliwa! Username yake ni: ${data.username}`;
+            } else {
+                statusMsg.innerText = isEditing ? "✅ Marekebisho yamehifadhiwa!" : "✅ Mwalimu amesajiliwa!";
+            }
             statusMsg.style.color = "green";
             cancelEdit();
             loadTeachers();
-            setTimeout(() => { statusMsg.innerText = ""; }, 3000);
+            setTimeout(() => { statusMsg.innerText = ""; }, 7000); // Subiri muda mrefu kidogo ili aone username
         } else {
             statusMsg.innerText = `❌ Kosa: ${data.error}`;
             statusMsg.style.color = "red";
