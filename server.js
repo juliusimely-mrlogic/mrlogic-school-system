@@ -48,7 +48,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI (Imeboreshwa kwa Takwimu za Matokeo)
+// 2. API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -94,11 +94,15 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const totalOutstandingFees = totalExpectedFees - totalCollectedFees;
 
         // --- Takwimu za Jinsia ---
-        const overallGender = { M: 0, F: 0 };
+        let maleCount = 0;
+        let femaleCount = 0;
+
         studentsRes.rows.forEach(s => {
-            if (s.gender === 'M') overallGender.M++;
-            if (s.gender === 'F') overallGender.F++;
+            if (s.gender === 'M') maleCount++;
+            if (s.gender === 'F') femaleCount++;
         });
+
+        const overallGender = { M: maleCount, F: femaleCount };
 
         const streamGenderStats = classesRes.rows.map(stream => {
             const streamStudents = studentsRes.rows.filter(s => s.stream_id === stream.id);
@@ -112,18 +116,14 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         // --- Takwimu za Matokeo (Div I, II, III, IV, 0, INC, PASS, ABS) ---
         let examStats = { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 };
         
-        // Pata mtihani wa mwisho uliowekwa kwenye shule hii
         const latestExamRes = await pool.query(`SELECT id FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1`, [targetSchoolId]);
         
         if (latestExamRes.rows.length > 0) {
             const examId = latestExamRes.rows[0].id;
-            
-            // Pata jumla ya masomo yaliyofanyika kwenye mtihani huu
             const subjRes = await pool.query(`SELECT COUNT(DISTINCT subject_id) as total FROM results WHERE exam_id = $1 AND school_id = $2`, [examId, targetSchoolId]);
             const totalSubjects = parseInt(subjRes.rows[0].total);
 
             if (totalSubjects > 0) {
-                // Pata alama za kila mwanafunzi kwa mtihani huu
                 const resultsRes = await pool.query(`
                     SELECT s.id, COALESCE(SUM(r.score), 0) as total_marks, COUNT(r.score) as subjects_done
                     FROM students s
@@ -134,9 +134,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 
                 resultsRes.rows.forEach(row => {
                     if (row.subjects_done == 0) {
-                        examStats.abs++; // Hajafanya mtihani wowote
+                        examStats.abs++;
                     } else if (row.subjects_done < totalSubjects) {
-                        examStats.inc++; // Hakamilisha masomo yote
+                        examStats.inc++;
                     } else {
                         const avg = parseFloat(row.total_marks) / totalSubjects;
                         if (avg >= 75) examStats.div1++;

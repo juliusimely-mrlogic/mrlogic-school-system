@@ -10,11 +10,13 @@
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 30px; max-width: 1400px; margin: auto; }
         
+        h3 { color: #1e3a8a; margin-bottom: 15px; margin-top: 30px; font-size: 18px;}
+
         /* Kadi za Takwimu */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { padding: 15px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
         .stat-card h4 { margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase; opacity: 0.9; }
-        .stat-card h2 { margin: 0; font-size: 24px; }
+        .stat-card h2 { margin: 0; font-size: 22px; }
         
         .bg-blue { background-color: #3b82f6; }
         .bg-red { background-color: #ef4444; }
@@ -28,11 +30,11 @@
         .bg-dark { background-color: #374151; }
         .bg-light-blue { background-color: #0ea5e9; }
 
-        /* CSS kwa ajili ya Charts (Zimepunguzwa ukubwa) */
+        /* CSS kwa ajili ya Charts (Zimepangwa vizuri) */
         .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 450px; margin: 0 auto; width: 100%; }
-        .chart-box h3 { margin-top: 0; text-align: center; color: #1e3a8a; font-size: 14px; margin-bottom: 10px;}
-        .chart-box canvas { max-height: 220px !important; } /* Inafanya chart isiwe ndefu mno */
+        .chart-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 280px; position: relative; display: flex; flex-direction: column; }
+        .chart-box h3 { margin-top: 0; text-align: center; color: #1e3a8a; font-size: 14px; margin-bottom: 15px; flex-shrink: 0;}
+        .chart-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; } /* Wrapper mpya kwa canvas */
 
         .school-selector { margin-bottom: 30px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .school-selector select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; width: 100%; max-width: 400px; }
@@ -48,10 +50,6 @@
         .border-purple { border-left-color: #a855f7; }
         .border-green { border-left-color: #10b981; }
         .border-orange { border-left-color: #f59e0b; }
-
-        @media (max-width: 768px) {
-            .charts-container { grid-template-columns: 1fr; }
-        }
     </style>
 </head>
 <body>
@@ -75,14 +73,15 @@
         </div>
 
         <!-- Kadi za Fedha -->
+        <h3>Takwimu za Fedha</h3>
         <div class="stats-grid">
             <div class="stat-card bg-orange"><h4>Makadirio ya Ada</h4><h2 id="stat-expected-fees">Tsh 0</h2></div>
             <div class="stat-card bg-green"><h4>Ada Iliyokusanywa</h4><h2 id="stat-collected-fees">Tsh 0</h2></div>
             <div class="stat-card bg-red"><h4>Madeni</h4><h2 id="stat-outstanding-fees">Tsh 0</h2></div>
         </div>
 
-        <!-- Kadi za Matokeo (Mpya) -->
-        <h3 style="margin-top: 20px; color: #1e3a8a;">Matokeo ya Mtihani wa Mwisho</h3>
+        <!-- Kadi za Matokeo -->
+        <h3>Matokeo ya Mtihani wa Mwisho</h3>
         <div class="stats-grid">
             <div class="stat-card bg-green"><h4>Div I</h4><h2 id="stat-div1">0</h2></div>
             <div class="stat-card bg-teal"><h4>Div II</h4><h2 id="stat-div2">0</h2></div>
@@ -94,23 +93,32 @@
             <div class="stat-card bg-gray"><h4>ABS</h4><h2 id="stat-abs">0</h2></div>
         </div>
 
-        <!-- Sehemu ya Michoro (Charts) - Zimepunguzwa ukubwa -->
+        <!-- Sehemu ya Michoro (Charts) -->
+        <h3>Michoro ya Takwimu</h3>
         <div class="charts-container">
             <div class="chart-box">
                 <h3>Mchanganuo wa Fedha za Ada</h3>
-                <canvas id="feesChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="feesChart"></canvas>
+                </div>
             </div>
             <div class="chart-box">
                 <h3>Jumla ya Jinsia (Shule Nzima)</h3>
-                <canvas id="genderOverallChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="genderOverallChart"></canvas>
+                </div>
             </div>
             <div class="chart-box">
                 <h3>Mgawanyiko wa Ufaulu (Div I - 0)</h3>
-                <canvas id="examResultsChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="examResultsChart"></canvas>
+                </div>
             </div>
             <div class="chart-box">
                 <h3>Mgawanyiko wa Jinsia kwa Kila Darasa</h3>
-                <canvas id="genderStreamChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="genderStreamChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -125,6 +133,7 @@
             <span class="school-static">Shule: <span id="static-school-name">Inatafuta...</span></span>
         </div>
 
+        <h3>Menyu za Mfumo</h3>
         <div class="menu-grid" id="menu-container">
         </div>
     </div>

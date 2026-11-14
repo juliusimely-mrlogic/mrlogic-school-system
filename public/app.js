@@ -11,7 +11,7 @@ if (!token || !userStr) {
         document.getElementById('user-name').innerText = user.full_name || user.name || "Mtumiaji";
     }
 
-    // Vigeu vya kutunza Chart instances
+    // Vigeu vya kutunza Chart instances ili kuzifuta kabla ya kuchora mpya
     let feesChartInstance = null;
     let genderOverallChartInstance = null;
     let genderStreamChartInstance = null;
@@ -61,7 +61,7 @@ if (!token || !userStr) {
     // KAZI YA KUCHORA MICHORO (CHARTS)
     // ==========================================
     function renderCharts(data) {
-        // Futa charts za zamani
+        // 1. Futa charts za zamani kama zipo kuzuia mrundikano
         if (feesChartInstance) feesChartInstance.destroy();
         if (genderOverallChartInstance) genderOverallChartInstance.destroy();
         if (genderStreamChartInstance) genderStreamChartInstance.destroy();
@@ -69,83 +69,99 @@ if (!token || !userStr) {
 
         const commonOptions = {
             responsive: true,
-            maintainAspectRatio: false, // Inaruhusu canvas kushika max-height tuliyoweka
-            plugins: { legend: { display: false } }
+            maintainAspectRatio: false, 
+            animation: { duration: 800 }, 
         };
 
-        // 1. Chart ya Fedha (Bar)
+        // 2. Chart ya Fedha (Bar)
         const ctxFees = document.getElementById('feesChart').getContext('2d');
         feesChartInstance = new Chart(ctxFees, {
             type: 'bar',
             data: {
                 labels: ['Makadirio', 'Iliyokusanywa', 'Deni'],
                 datasets: [{
-                    data: [data.totalExpectedFees, data.totalCollectedFees, data.totalOutstandingFees],
+                    data: [Number(data.totalExpectedFees), Number(data.totalCollectedFees), Number(data.totalOutstandingFees)],
                     backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
-                    borderWidth: 1
+                    borderRadius: 4
                 }]
             },
-            options: commonOptions
+            options: {
+                ...commonOptions,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
         });
 
-        // 2. Chart ya Jinsia Overall (Doughnut)
+        // 3. Chart ya Jinsia Overall (Doughnut)
+        const maleOverall = Number(data.overallGender.M);
+        const femaleOverall = Number(data.overallGender.F);
+
         const ctxGenderOverall = document.getElementById('genderOverallChart').getContext('2d');
         genderOverallChartInstance = new Chart(ctxGenderOverall, {
             type: 'doughnut',
             data: {
                 labels: ['Me (M)', 'Ke (F)'],
                 datasets: [{
-                    data: [data.overallGender.M, data.overallGender.F],
+                    data: [maleOverall, femaleOverall],
                     backgroundColor: ['#3b82f6', '#ec4899'],
-                    borderWidth: 1
+                    borderWidth: 2,
+                    hoverOffset: 4
                 }]
             },
             options: {
                 ...commonOptions,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+                cutout: '65%', // Inafanya shimo la katikati lionekane vizuri
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } 
+                }
             }
         });
 
-        // 3. Chart ya Ufaulu (Bar au Pie)
+        // 4. Chart ya Ufaulu (Bar)
         const ctxExamResults = document.getElementById('examResultsChart').getContext('2d');
         examResultsChartInstance = new Chart(ctxExamResults, {
-            type: 'bar', // Badilisha kuwa 'pie' kama unataka
+            type: 'bar',
             data: {
                 labels: ['Div I', 'Div II', 'Div III', 'Div IV', 'Div 0', 'INC', 'ABS'],
                 datasets: [{
                     data: [
-                        data.examStats.div1, data.examStats.div2, data.examStats.div3, 
-                        data.examStats.div4, data.examStats.div0, data.examStats.inc, data.examStats.abs
+                        Number(data.examStats.div1), Number(data.examStats.div2), Number(data.examStats.div3), 
+                        Number(data.examStats.div4), Number(data.examStats.div0), Number(data.examStats.inc), Number(data.examStats.abs)
                     ],
                     backgroundColor: ['#10b981', '#14b8a6', '#3b82f6', '#6366f1', '#374151', '#f59e0b', '#6b7280'],
-                    borderWidth: 1
+                    borderRadius: 4
                 }]
             },
-            options: commonOptions
+            options: {
+                ...commonOptions,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
         });
 
-        // 4. Chart ya Jinsia kwa Kila Darasa (Stacked Bar Chart)
+        // 5. Chart ya Jinsia kwa Kila Darasa (Stacked Bar Chart)
         const ctxGenderStream = document.getElementById('genderStreamChart').getContext('2d');
         
         const streamLabels = data.streamGenderStats.map(s => s.stream_name);
-        const maleData = data.streamGenderStats.map(s => s.male);
-        const femaleData = data.streamGenderStats.map(s => s.female);
+        const maleData = data.streamGenderStats.map(s => Number(s.male));
+        const femaleData = data.streamGenderStats.map(s => Number(s.female));
 
         genderStreamChartInstance = new Chart(ctxGenderStream, {
             type: 'bar',
             data: {
                 labels: streamLabels,
                 datasets: [
-                    { label: 'Me', data: maleData, backgroundColor: '#3b82f6' },
-                    { label: 'Ke', data: femaleData, backgroundColor: '#ec4899' }
+                    { label: 'Me (M)', data: maleData, backgroundColor: '#3b82f6', borderRadius: 2 },
+                    { label: 'Ke (F)', data: femaleData, backgroundColor: '#ec4899', borderRadius: 2 }
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                ...commonOptions,
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } 
+                },
                 scales: {
-                    x: { stacked: true },
+                    x: { stacked: true, grid: { display: false } },
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
@@ -189,9 +205,9 @@ if (!token || !userStr) {
             document.getElementById('stat-classes').innerText = data.totalClasses;
 
             // Sasisha Kadi za Fedha
-            document.getElementById('stat-expected-fees').innerText = 'Tsh ' + data.totalExpectedFees.toLocaleString();
-            document.getElementById('stat-collected-fees').innerText = 'Tsh ' + data.totalCollectedFees.toLocaleString();
-            document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + data.totalOutstandingFees.toLocaleString();
+            document.getElementById('stat-expected-fees').innerText = 'Tsh ' + Number(data.totalExpectedFees).toLocaleString();
+            document.getElementById('stat-collected-fees').innerText = 'Tsh ' + Number(data.totalCollectedFees).toLocaleString();
+            document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + Number(data.totalOutstandingFees).toLocaleString();
 
             // Sasisha Kadi za Matokeo
             document.getElementById('stat-div1').innerText = data.examStats.div1;
