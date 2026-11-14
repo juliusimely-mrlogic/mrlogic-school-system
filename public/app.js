@@ -39,6 +39,12 @@ if (!token || !userStr) {
         if (user.role === 'super_admin' || user.role === 'school_manager') {
             html += `<div class="menu-card border-green" onclick="window.location.href='/fees.html'"><h3>Usimamizi wa Ada</h3><p>Angalia malipo na madeni</p></div>`;
         }
+        
+        // KADI MPYA: Nafasi ya Shule (Halmashauri) - Kwa Mkuu na Mtaaluma tu
+        if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
+            html += `<div class="menu-card" onclick="window.location.href='/district-ranking.html'" style="border-left-color: #f59e0b;"><h3>Nafasi ya Shule (Halmashauri)</h3><p>Rank ya shule na Top 20</p></div>`;
+        }
+
         if (user.role === 'super_admin') {
             html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
             html += `<div class="menu-card border-blue" onclick="window.location.href='/schools.html'"><h3>Shule</h3><p>Sajili na Simamia Shule</p></div>`;

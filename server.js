@@ -33,7 +33,16 @@ const getDivision = (points) => {
     return '0';
 };
 
-// API YA LOGIN
+// Function ya kupata Grade ya Shule (GPA)
+const getSchoolGrade = (gpa) => {
+    if (gpa >= 1.0 && gpa <= 1.6) return 'Daraja la Juu (Excellent)';
+    if (gpa >= 1.7 && gpa <= 2.6) return 'Daraja la Pili (Very Good)';
+    if (gpa >= 2.7 && gpa <= 3.5) return 'Daraja la Tatu (Good)';
+    if (gpa >= 3.6 && gpa <= 4.4) return 'Daraja la Nne (Satisfactory)';
+    return 'Fail';
+};
+
+// 1. API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -66,7 +75,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API YA TAKWIMU ZA DASHIBODI
+// 2. API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -195,6 +204,135 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
+// API MPYA: NAFASI YA SHULE KWENYE HALMASHAURI
+app.get('/api/reports/district-ranking', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'school_manager' && req.user.role !== 'mtaaluma_mkuu') {
+        return res.status(403).json({ error: "Hauna ruhusa kuona takwimu hizi." });
+    }
+
+    try {
+        // 1. Pata taarifa za shule na Halmashauri yake
+        const schoolRes = await pool.query('SELECT name, district FROM schools WHERE id = $1', [req.user.school_id]);
+        if (schoolRes.rows.length === 0 || !schoolRes.rows[0].district) {
+            return res.status(400).json({ error: "Shule yako haina jina la Halmashauri kwenye mfumo." });
+        }
+        const district = schoolRes.rows[0].district;
+
+        // 2. Pata Mtihani wa mwisho wa shule hii (Tutatumia huu kwa ajili ya kupima)
+        const examRes = await pool.query('SELECT id FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1', [req.user.school_id]);
+        if (examRes.rows.length === 0) {
+            return res.status(400).json({ error: "Hakuna mtihani uliowekwa kwenye shule yako." });
+        }
+        const examId = examRes.rows[0].id;
+
+        // 3. Pata shule zote zilizopo kwenye halmashauri hiyo
+        const allSchoolsRes = await pool.query('SELECT id, name FROM schools WHERE district = $1', [district]);
+        const schools = allSchoolsRes.rows;
+        const schoolIds = schools.map(s => s.id);
+
+        // 4. Pata wanafunzi wote wa shule hizo
+        const studentsRes = await pool.query('SELECT id, full_name, gender, school_id, stream_id FROM students WHERE school_id = ANY($1)', [schoolIds]);
+        const students = studentsRes.rows;
+        const studentIds = students.map(s => s.id);
+
+        // 5. Pata alama za mtihani huu kwa wanafunzi hao
+        const resultsRes = await pool.query('SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND student_id = ANY($2)', [examId, studentIds]);
+        const results = resultsRes.rows;
+
+        // 6. Pata masomo (Tutatumia masomo ya shule ya mtumiaji kwa ajili ya majina)
+        const subjectsRes = await pool.query('SELECT id, name FROM subjects WHERE school_id = $1', [req.user.school_id]);
+        const subjectsMap = {};
+        subjectsRes.rows.forEach(sub => { subjectsMap[sub.id] = sub.name; });
+
+        // 7. Pata Streams (Madarasa)
+        const streamsRes = await pool.query('SELECT id, name FROM streams WHERE school_id = ANY($1)', [schoolIds]);
+        const streamsMap = {};
+        streamsRes.rows.forEach(st => { streamsMap[st.id] = st.name; });
+
+        // 8. Chakarata (Process) data za GPA kwa kila mwanafunzi
+        let districtStudents = [];
+        students.forEach(student => {
+            const studentResults = results.filter(r => r.student_id === student.id);
+            if (studentResults.length === 0) return; // ABS hawaingii kwenye GPA ya shule
+
+            let totalPoints = 0;
+            let subjectsTaken = 0;
+            let totalScore = 0;
+            let subjectsArray = [];
+
+            studentResults.forEach(r => {
+                const score = parseFloat(r.score);
+                const { grade, points } = getGradeAndPoints(score);
+                totalPoints += points;
+                totalScore += score;
+                subjectsTaken++;
+                const subName = subjectsMap[r.subject_id] || 'SUB';
+                subjectsArray.push({ code: subName.substring(0,3).toUpperCase(), grade: grade });
+            });
+
+            const gpa = subjectsTaken > 0 ? (totalPoints / subjectsTaken) : 5.0;
+            const division = getDivision(totalPoints);
+            const average = subjectsTaken > 0 ? (totalScore / subjectsTaken) : 0;
+
+            districtStudents.push({
+                id: student.id,
+                name: student.full_name,
+                gender: student.gender,
+                school_id: student.school_id,
+                school_name: schools.find(s => s.id === student.school_id).name,
+                stream_id: student.stream_id,
+                stream_name: streamsMap[student.stream_id] || 'Hajapewa',
+                gpa: gpa,
+                division: division,
+                average: average,
+                points: totalPoints,
+                subjects: subjectsArray
+            });
+        });
+
+        // 9. Hesabu GPA ya kila Shule
+        let schoolStats = schools.map(school => {
+            const schoolStudents = districtStudents.filter(s => s.school_id === school.id);
+            let totalGpa = 0;
+            schoolStudents.forEach(s => totalGpa += s.gpa);
+            // Kama shule haina wanafunzi, GPA inakuwa 5.0000 (Fail)
+            const schoolGpa = schoolStudents.length > 0 ? (totalGpa / schoolStudents.length) : 5.0;
+            
+            return {
+                id: school.id,
+                name: school.name,
+                gpa: schoolGpa.toFixed(4),
+                grade: getSchoolGrade(schoolGpa),
+                studentCount: schoolStudents.length
+            };
+        });
+
+        // 10. Panga Shule kwa GPA (Ndogo ni Bora)
+        schoolStats.sort((a, b) => parseFloat(a.gpa) - parseFloat(b.gpa));
+        schoolStats.forEach((s, idx) => s.rank = idx + 1);
+
+        const userSchoolStat = schoolStats.find(s => s.id === req.user.school_id);
+
+        // 11. Pata Wanafunzi 20 Bora wa Halmashauri
+        districtStudents.sort((a, b) => b.average - a.average);
+        const top20 = districtStudents.slice(0, 20);
+        top20.forEach((s, idx) => s.rank = idx + 1);
+
+        res.json({
+            districtName: district,
+            userSchool: userSchoolStat,
+            totalSchools: schoolStats.length,
+            bestSchool: schoolStats[0],
+            worstSchool: schoolStats[schoolStats.length - 1],
+            topStudents: top20
+        });
+
+    } catch (error) { 
+        console.error("District Ranking Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta takwimu za halmashauri" }); 
+    }
+});
+
 // API YA TOP 50 WANAFUNZI (Zote)
 app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, type } = req.query; 
@@ -259,7 +397,7 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     }
 });
 
-// API MPYA: TOP 40 KWA MAKUNDI YA MASOMO (SCIENCE, BUSINESS, ARTS)
+// API YA TOP 40 KWA MAKUNDI YA MASOMO
 app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, cluster } = req.query; 
     const user = req.user;
@@ -268,7 +406,6 @@ app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res)
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
 
     try {
-        // 1. Chuja masomo kulingana na kundi (Cluster)
         const allSubjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
         const allSubjects = allSubjectsRes.rows;
         
@@ -277,16 +414,12 @@ app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res)
         else if (cluster === 'business') clusterKeywords = ['BOOK', 'COMM', 'BUS', 'MATH', 'ACC'];
         else if (cluster === 'arts') clusterKeywords = ['HIST', 'KISW', 'ENGL', 'GEO', 'LIT'];
 
-        // Chuja masomo yanayohusika na huu mkondo
         const subjects = allSubjects.filter(sub => 
             clusterKeywords.some(keyword => sub.name.toUpperCase().includes(keyword))
         );
 
-        if (subjects.length === 0) {
-            return res.json({ subjects: [], reportData: [] });
-        }
+        if (subjects.length === 0) return res.json({ subjects: [], reportData: [] });
 
-        // 2. Pata Wanafunzi
         let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
         let studentParams = [user.school_id];
         if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
@@ -294,11 +427,9 @@ app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res)
         const studentsRes = await pool.query(studentQuery, studentParams);
         const students = studentsRes.rows;
 
-        // 3. Pata Alama za mtihani huu
         const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
         const results = resultsRes.rows;
 
-        // 4. Chakarata (Process) data
         const reportData = students.map(student => {
             let totalScore = 0, subjectsCount = 0;
             const scoresDetail = {};
@@ -322,15 +453,12 @@ app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res)
             };
         });
 
-        // 5. Panga kwa Wastani (Average) - Mkubwa kwanza
         reportData.sort((a, b) => b.average - a.average);
         
-        // 6. Chukua 40 tu
         const top40 = reportData.slice(0, 40);
         top40.forEach((row, index) => { row.rank = index + 1; });
 
         res.json({ subjects, reportData: top40 });
-
     } catch (error) { 
         console.error("Cluster Top Students Error:", error);
         res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
