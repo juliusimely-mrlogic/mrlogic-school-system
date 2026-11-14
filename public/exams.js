@@ -5,6 +5,8 @@ if (!token || !userStr) {
     window.location.replace('/login.html');
 }
 
+let currentExamLocked = false; // Kufuatilia kama mtihani umefungwa
+
 function logout() {
     localStorage.clear();
     window.location.replace('/login.html');
@@ -16,14 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDropdownData() {
     try {
+        // Pakia Mitihani
         const examsRes = await fetch('/api/exams', { headers: { 'Authorization': `Bearer ${token}` } });
         const exams = await examsRes.json();
         const examSelect = document.getElementById('exam-select');
         examSelect.innerHTML = '<option value="">-- Chagua Mtihani --</option>';
         exams.forEach(exam => {
-            examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
+            // Tunahifadhi kama imefungwa kwenye data-attribute
+            examSelect.innerHTML += `<option value="${exam.id}" data-locked="${exam.is_locked}">${exam.name}</option>`;
         });
 
+        // Pakia Masomo
         const subjectsRes = await fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } });
         const subjects = await subjectsRes.json();
         const subjectSelect = document.getElementById('subject-select');
@@ -32,6 +37,7 @@ async function loadDropdownData() {
             subjectSelect.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
         });
 
+        // Pakia Madarasa
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
@@ -47,12 +53,26 @@ async function loadDropdownData() {
 
 async function loadStudentsForMarks() {
     const streamId = document.getElementById('stream-select').value;
+    const examSelect = document.getElementById('exam-select');
     const tableBody = document.getElementById('marks-table-body');
     const btnSubmit = document.getElementById('btn-submit-marks');
+    const lockedWarning = document.getElementById('locked-warning');
 
     if (!streamId) {
         alert("Tafadhali chagua darasa kwanza!");
         return;
+    }
+
+    // Kagua kama mtihani uliochaguliwa umefungwa
+    const selectedOption = examSelect.options[examSelect.selectedIndex];
+    currentExamLocked = selectedOption.getAttribute('data-locked') === 'true';
+
+    if (currentExamLocked) {
+        lockedWarning.style.display = 'block';
+        btnSubmit.style.display = 'none';
+    } else {
+        lockedWarning.style.display = 'none';
+        btnSubmit.style.display = 'block';
     }
 
     tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Inapakia wanafunzi...</td></tr>`;
@@ -77,14 +97,13 @@ async function loadStudentsForMarks() {
                     <td>${index + 1}</td>
                     <td>${student.full_name}</td>
                     <td>
-                        <input type="number" name="score_${student.id}" placeholder="">
+                        <input type="number" name="score_${student.id}" placeholder="" ${currentExamLocked ? 'disabled' : ''}>
                     </td>
                 </tr>
             `;
         });
         
         tableBody.innerHTML = html;
-        btnSubmit.style.display = 'block';
 
     } catch (error) {
         console.error("Kosa la kuleta wanafunzi:", error);
@@ -95,6 +114,11 @@ async function loadStudentsForMarks() {
 document.getElementById('marksForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    if (currentExamLocked) {
+        alert("Huwezi kuwasilisha alama kwa sababu matokeo yamefungwa.");
+        return;
+    }
+
     const exam_id = document.getElementById('exam-select').value;
     const subject_id = document.getElementById('subject-select').value;
     const statusMsg = document.getElementById('status-msg');
