@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ingiza Alama - M-Logic</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f3f4f6; margin: 0; padding: 20px; color: #333; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    
+    .page-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 25px; }
+    .page-header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
+    
+    .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; text-align: center; }
+    .btn-primary { background: #2563eb; color: #fff; width: 100%;}
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #6b7280; color: #fff; }
+    .btn-secondary:hover { background: #4b5563; }
+    .btn-success { background: #059669; color: #fff; width: 100%; margin-top: 10px;}
+    .btn-success:hover { background: #047857; }
+    .btn-download { background: #f59e0b; color: #fff; margin-bottom: 15px; display: block; text-align: center;}
+
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #4b5563; font-size: 14px; }
+    input[type="file"] { width: 100%; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #f8fafc; }
+    select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 15px; }
+
+    .alert { padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; }
+    .alert-success { background: #d1fae5; color: #065f46; }
+    .alert-danger { background: #fee2e2; color: #991b1b; }
+    .alert-warning { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>Kadi ya Kuingiza Alama (Excel)</h1>
+      <a href="/" class="btn btn-secondary">⬅️ Rudi Dashibodi</a>
+    </div>
+
+    <div id="alert-box" class="alert"></div>
+
+    <!-- Sehemu ya Kupakua Template -->
+    <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bfdbfe;">
+        <h3 style="margin-top: 0; color: #1e40af; font-size: 16px;">Hatua ya 1: Pakua Template</h3>
+        <p style="font-size: 14px; color: #3b82f6;">Pakua faili hili, lijaze majina ya wanafunzi na alama zao. <strong>Usibadilishe majina ya masomo.</strong></p>
+        <button id="download-template-btn" class="btn btn-download">📥 Pakua Template ya Excel</button>
+    </div>
+
+    <!-- Sehemu ya Kupakia Matokeo -->
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <h3 style="margin-top: 0; color: #1e40af; font-size: 16px;">Hatua ya 2: Pakia Faili Lililojazwa</h3>
+        
+        <form id="upload-form">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>Chagua Mtihani:</label>
+                    <select id="exam-select" required>
+                        <option value="">-- Inapakia mitihani... --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>Chagua Darasa (Mkondo):</label>
+                    <select id="stream-select" required>
+                        <option value="">-- Inapakia madarasa... --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Chagua Faili la Excel:</label>
+                <input type="file" id="excel-file" accept=".xlsx, .xls" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="upload-btn">📤 Pakia Matokeo kwenye Mfumo</button>
+        </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert("Tafadhali ingia (login) kwanza.");
+        window.location.href = '/';
+        return;
+      }
+
+      const authHeaders = { 'Authorization': `Bearer ${token}` };
+      const examSelect = document.getElementById('exam-select');
+      const streamSelect = document.getElementById('stream-select');
+      const uploadForm = document.getElementById('upload-form');
+      const alertBox = document.getElementById('alert-box');
+
+      function showAlert(message, type = 'success') {
+        alertBox.innerHTML = message.replace(/\n/g, '<br>'); // Inaruhusu mistari mingi kwenye makosa
+        alertBox.className = `alert alert-${type}`;
+        alertBox.style.display = 'block';
+      }
+
+      // 1. Vuta Mitihani na Madarasa
+      try {
+        const [examsRes, streamsRes] = await Promise.all([
+          fetch('/api/exams', { headers: authHeaders }),
+          fetch('/api/streams', { headers: authHeaders })
+        ]);
+
+        const exams = await examsRes.json();
+        const streams = await streamsRes.json();
+
+        exams.forEach(exam => {
+          examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
+        });
+        streams.forEach(stream => {
+          streamSelect.innerHTML += `<option value="${stream.id}">${stream.name}</option>`;
+        });
+      } catch (error) {
+        showAlert("Imeshindwa kupata taarifa za mitihani au madarasa.", "danger");
+      }
+
+      // 2. Kupakua Template
+      document.getElementById('download-template-btn').addEventListener('click', () => {
+        window.location.href = `/api/results/excel-template?token=${token}`; // Inatumia token kwenye URL kwa sababu ya download link
+      });
+
+      // 3. Kupakia Excel
+      uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const examId = examSelect.value;
+        const streamId = streamSelect.value;
+        const fileInput = document.getElementById('excel-file');
+
+        if (!examId || !streamId || fileInput.files.length === 0) {
+            showAlert("Tafadhali chagua mtihani, darasa, na faili la Excel.", "danger");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('exam_id', examId);
+        formData.append('stream_id', streamId);
+        formData.append('file', fileInput.files[0]);
+
+        const uploadBtn = document.getElementById('upload-btn');
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Inapakia... Tafadhali subiri';
+        alertBox.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/results/upload-excel', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }, // Express-multer inahitaji FormData isiwe na Content-Type manual
+                body: formData
+            });
+            
+            const result = await res.json();
+
+            if (!res.ok) throw new Error(result.error || "Imeshindikana kupakia");
+
+            // Kama kuna makosa kwenye baadhi ya wanafunzi (mfano jina halipo)
+            if (result.errors && result.errors.length > 0) {
+                showAlert(`<strong>Imekamilika kwa kiasi!</strong><br>${result.message}<br><br><strong>Makosa:</strong><br>${result.errors.join('<br>')}`, "warning");
+            } else {
+                showAlert(`<strong>Hongera!</strong> ${result.message}`, "success");
+                uploadForm.reset();
+            }
+
+        } catch (error) {
+            showAlert(error.message, "danger");
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '📤 Pakia Matokeo kwenye Mfumo';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
