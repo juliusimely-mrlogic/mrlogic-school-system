@@ -55,14 +55,29 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// ================= APIS ZOTE =================
+// API YA SHULE ZOTE (Kwa ajili ya Dropdown)
+app.get('/api/schools', authenticateToken, async (req, res) => {
+    try { 
+        const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); 
+        res.json(result.rows); 
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
 
-// 1. DASHBOARD
+// API YA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
         let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
-        if (!targetSchoolId) return res.json({ schoolName: "Chagua Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, districtRank: "-", totalSchoolsInDistrict: 0 });
+        
+        // KINGA: Kama targetSchoolId haipo, chukua shule ya kwanza kwenye database
+        if (!targetSchoolId) {
+            const firstSchool = await pool.query('SELECT id FROM schools LIMIT 1');
+            if (firstSchool.rows.length > 0) {
+                targetSchoolId = firstSchool.rows[0].id;
+            } else {
+                return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, districtRank: "-", totalSchoolsInDistrict: 0 });
+            }
+        }
 
         let schoolName = "Shule Haijulikani", districtName = null;
         try {
@@ -134,7 +149,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana" }); }
 });
 
-// 2. WALIMU & MAJUKUMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -170,7 +184,6 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 3. WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM students`; let params = [], conditions = [];
@@ -199,126 +212,80 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 4. MIPANGILIO (Streams, Subjects, Exams)
 app.get('/api/streams', authenticateToken, async (req, res) => {
     const user = req.user; let query = `SELECT * FROM streams WHERE school_id = $1`;
-    const result = await pool.query(query + ` ORDER BY name ASC`, [user.school_id]); res.json(result.rows);
+    const result = await pool.query(query + ` ORDER BY name ASC`, [user.school_id || 1]); res.json(result.rows);
 });
 app.post('/api/streams', authenticateToken, async (req, res) => {
     const { name, fee_amount } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`, [name, fee_amount || 0, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`, [name, fee_amount || 0, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.get('/api/subjects', authenticateToken, async (req, res) => {
-    const user = req.user; const result = await pool.query(`SELECT * FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [user.school_id]); res.json(result.rows);
+    const user = req.user; const result = await pool.query(`SELECT * FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [user.school_id || 1]); res.json(result.rows);
 });
 app.post('/api/subjects', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO subjects (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`INSERT INTO subjects (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.get('/api/exams', authenticateToken, async (req, res) => {
-    const user = req.user; const result = await pool.query(`SELECT id, name, is_locked FROM exams WHERE school_id = $1 ORDER BY id DESC`, [user.school_id]); res.json(result.rows);
+    const user = req.user; const result = await pool.query(`SELECT id, name, is_locked FROM exams WHERE school_id = $1 ORDER BY id DESC`, [user.school_id || 1]); res.json(result.rows);
 });
 app.post('/api/exams', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO exams (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`INSERT INTO exams (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 5. ADA NA MALIPO
 app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     const user = req.user;
     try {
-        const result = await pool.query(`SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee, COALESCE(SUM(f.amount), 0) as total_paid FROM students s LEFT JOIN streams st ON s.stream_id = st.id LEFT JOIN fees f ON s.id = f.student_id WHERE s.school_id = $1 GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`, [user.school_id]);
+        const result = await pool.query(`SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee, COALESCE(SUM(f.amount), 0) as total_paid FROM students s LEFT JOIN streams st ON s.stream_id = st.id LEFT JOIN fees f ON s.id = f.student_id WHERE s.school_id = $1 GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`, [user.school_id || 1]);
         res.json(result.rows.map(row => ({ ...row, balance: parseFloat(row.expected_fee) - parseFloat(row.total_paid) })));
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/fees', authenticateToken, async (req, res) => {
     const { student_id, amount, date_paid } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. ALAMA NA EXCEL
 app.get('/api/results/existing', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, stream_id } = req.query; const user = req.user;
-    try { const result = await pool.query(`SELECT r.student_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4`, [exam_id, subject_id, stream_id, user.school_id]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`SELECT r.student_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4`, [exam_id, subject_id, stream_id, user.school_id || 1]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        await client.query('DELETE FROM results WHERE exam_id = $1 AND subject_id = $2 AND school_id = $3', [exam_id, subject_id, user.school_id]);
-        for (let record of marks) { if (record.score !== '' && record.score !== null) { await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [record.student_id, exam_id, subject_id, record.score, user.school_id]); } }
+        await client.query('DELETE FROM results WHERE exam_id = $1 AND subject_id = $2 AND school_id = $3', [exam_id, subject_id, user.school_id || 1]);
+        for (let record of marks) { if (record.score !== '' && record.score !== null) { await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [record.student_id, exam_id, subject_id, record.score, user.school_id || 1]); } }
         await client.query('COMMIT'); res.json({ message: "Yamehifadhiwa" });
     } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
-app.get('/api/results/excel-template', async (req, res) => {
-    try {
-        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
-        const subjectsRes = await pool.query(`SELECT name FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [decoded.school_id]);
-        const headers = ['Jina la Mwanafunzi', 'Jinsia', ...subjectsRes.rows.map(s => s.name)];
-        const ws = xlsx.utils.aoa_to_sheet([headers, ['Mfano: John Doe', 'M', ...headers.slice(2).map(()=>70)]]);
-        const wb = xlsx.utils.book_new(); xlsx.utils.book_append_sheet(wb, ws, "Template");
-        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        res.setHeader('Content-Disposition', `attachment; filename="Template_Alama.xlsx"`); res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.send(buf);
-    } catch (error) { res.status(500).send("Imeshindikana."); }
-});
-app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), async (req, res) => {
-    const { exam_id, stream_id } = req.body; const user = req.user;
-    try {
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const data = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
-        const subjectMap = {}; subjectsRes.rows.forEach(s => subjectMap[s.name.toLowerCase()] = s.id);
-        let successCount = 0; const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            for (let row of data) {
-                const studentName = row['Jina la Mwanafunzi']?.trim(), gender = row['Jinsia']?.trim().toUpperCase() || 'M';
-                if (!studentName || studentName === 'Mfano: John Doe') continue; 
-                const studentRes = await client.query(`SELECT id FROM students WHERE LOWER(full_name) = LOWER($1) AND gender = $2 AND stream_id = $3 AND school_id = $4`, [studentName, gender, stream_id, user.school_id]);
-                if (studentRes.rows.length === 0) continue; const studentId = studentRes.rows[0].id;
-                for (let subjectName in row) {
-                    if (subjectMap[subjectName.toLowerCase()]) {
-                        let score = parseFloat(row[subjectName]); if (!isNaN(score)) {
-                            if (score < 0) score = 0; if (score > 100) score = 100;
-                            await client.query('DELETE FROM results WHERE student_id = $1 AND exam_id = $2 AND subject_id = $3', [studentId, exam_id, subjectMap[subjectName.toLowerCase()]]);
-                            await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [studentId, exam_id, subjectMap[subjectName.toLowerCase()], score, user.school_id]);
-                        }
-                    }
-                } successCount++;
-            } await client.query('COMMIT'); res.json({ message: `Imefanikiwa ${successCount} wanafunzi.` });
-        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
 
-// 7. MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body; const user = req.user;
     const client = await pool.connect();
     try {
-        await client.query('BEGIN'); await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id]);
-        for (let r of records) { await client.query('INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)', [r.student_id, date, r.status, user.school_id]); }
+        await client.query('BEGIN'); await client.query('DELETE FROM attendance WHERE date = $1 AND school_id = $2', [date, user.school_id || 1]);
+        for (let r of records) { await client.query('INSERT INTO attendance (student_id, date, status, school_id) VALUES ($1, $2, $3, $4)', [r.student_id, date, r.status, user.school_id || 1]); }
         await client.query('COMMIT'); res.json({ message: "Yamehifadhiwa" });
     } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-// 8. KUPANGA WALIMU
 app.get('/api/assignments', authenticateToken, async (req, res) => {
     const user = req.user; let query = `SELECT ta.*, t.full_name as teacher_name, st.name as stream_name, sub.name as subject_name FROM teacher_assignments ta JOIN teachers t ON ta.teacher_id = t.id JOIN streams st ON ta.stream_id = st.id JOIN subjects sub ON ta.subject_id = sub.id WHERE ta.school_id = $1`;
-    try { const result = await pool.query(query, [user.school_id]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(query, [user.school_id || 1]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/assignments', authenticateToken, async (req, res) => {
     const { teacher_id, stream_id, subject_id } = req.body; const user = req.user;
-    try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 9. RIPOTI
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     try {
-        const studentsRes = await pool.query(`SELECT id, full_name FROM students WHERE stream_id = $1 AND school_id = $2`, [stream_id, user.school_id]);
-        const subjectsRes = await pool.query(`SELECT DISTINCT sub.id, sub.name FROM subjects sub JOIN results r ON sub.id = r.subject_id JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3`, [exam_id, stream_id, user.school_id]);
+        const studentsRes = await pool.query(`SELECT id, full_name FROM students WHERE stream_id = $1 AND school_id = $2`, [stream_id, user.school_id || 1]);
+        const subjectsRes = await pool.query(`SELECT DISTINCT sub.id, sub.name FROM subjects sub JOIN results r ON sub.id = r.subject_id JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3`, [exam_id, stream_id, user.school_id || 1]);
         const resultsRes = await pool.query(`SELECT r.student_id, r.subject_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2`, [exam_id, stream_id]);
         const reportData = studentsRes.rows.map(st => {
             let total = 0, points = 0, count = 0; const scores = {};
@@ -337,12 +304,12 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
 app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, type } = req.query; const user = req.user;
     try {
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id || 1]);
         let studentQuery = `SELECT s.id, s.full_name, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
-        let studentParams = [user.school_id];
+        let studentParams = [user.school_id || 1];
         if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
         const studentsRes = await pool.query(studentQuery, studentParams);
-        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id || 1]);
         
         const reportData = studentsRes.rows.map(student => {
             let totalScore = 0, subjectsCount = 0, totalPoints = 0; const scoresDetail = {};

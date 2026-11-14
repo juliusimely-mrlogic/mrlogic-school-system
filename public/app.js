@@ -1,6 +1,3 @@
-// ==========================================
-// 1. AUTHENTICATION & NAVIGATION
-// ==========================================
 async function login() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
@@ -52,15 +49,42 @@ function navigate(page) {
 }
 
 // ==========================================
-// 2. DASHBOARD
+// DASHBOARD NA DROPDOWN YA SHULE
 // ==========================================
 async function renderDashboard() {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
+    const user = JSON.parse(localStorage.getItem('user'));
+    
+    let schoolSelectorHtml = '';
+    let targetSchoolQuery = '';
+
+    // Kama ni Super Admin, mpe Dropdown ya kuchagua shule
+    if (user && user.role === 'super_admin') {
+        const resS = await fetch('/api/schools', { headers: authHeaders });
+        const schools = await resS.json();
+        
+        // Chukua ID ya shule iliyochaguliwa kama ipo, au tumia ya kwanza
+        let selectedId = document.getElementById('school-selector')?.value;
+        if (!selectedId && schools.length > 0) selectedId = schools[0].id;
+        
+        if (selectedId) targetSchoolQuery = `?school_id=${selectedId}`;
+
+        schoolSelectorHtml = `
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight:bold; margin-right:10px;">Chagua Shule:</label>
+                <select id="school-selector" onchange="renderDashboard()" style="padding:10px; border-radius:5px;">
+                    ${schools.map(s => `<option value="${s.id}" ${s.id == selectedId ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+            </div>
+        `;
+    }
+
     try {
-        const res = await fetch('/api/dashboard/stats', { headers: authHeaders });
+        const res = await fetch('/api/dashboard/stats' + targetSchoolQuery, { headers: authHeaders });
         const d = await res.json();
         
         content.innerHTML = `
+            ${schoolSelectorHtml}
             <h2>Takwimu za ${d.schoolName}</h2>
             <div class="grid-3">
                 <div class="stat-card" style="background:#2563eb;"><h3>WANAFUNZI</h3><p class="val">${d.totalStudents}</p></div>
@@ -90,7 +114,7 @@ async function renderDashboard() {
 }
 
 // ==========================================
-// 3. WANAFUNZI
+// WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
     content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
@@ -126,7 +150,7 @@ async function addStudent() {
 async function delStudent(id) { if(confirm('Futa mwanafunzi huyu?')) { await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders }); renderWanafunzi(); } }
 
 // ==========================================
-// 4. WALIMU
+// WALIMU
 // ==========================================
 async function renderWalimu() {
     content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
@@ -162,7 +186,7 @@ async function addTeacher() {
 async function delTeacher(id) { if(confirm('Futa mwalimu huyu?')) { await fetch('/api/teachers/' + id, { method: 'DELETE', headers: authHeaders }); renderWalimu(); } }
 
 // ==========================================
-// 5. ADA
+// ADA
 // ==========================================
 async function renderAda() {
     content.innerHTML = `<h2>Inapakia Ada...</h2>`;
@@ -196,7 +220,7 @@ async function addFee() {
 }
 
 // ==========================================
-// 6. ALAMA
+// ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -234,7 +258,7 @@ async function saveMarks() {
 }
 
 // ==========================================
-// 7. BROADSHEET
+// BROADSHEET
 // ==========================================
 async function renderBroadsheet() {
     content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
@@ -267,7 +291,7 @@ async function loadBroadsheet() {
 }
 
 // ==========================================
-// 8. MAHUDHURIO
+// MAHUDHURIO
 // ==========================================
 async function renderMahudhurio() {
     content.innerHTML = `<h2>Inapakia Mahudhurio...</h2>`;
@@ -305,7 +329,7 @@ async function saveAttendance() {
 }
 
 // ==========================================
-// 9. KUPANGA WALIMU
+// KUPANGA WALIMU
 // ==========================================
 async function renderKupanga() {
     content.innerHTML = `<h2>Inapakia Kupanga Walimu...</h2>`;
@@ -337,7 +361,7 @@ async function addAssignment() {
 }
 
 // ==========================================
-// 10. RIPOTI (BORA & WABOVU)
+// RIPOTI (BORA & WABOVU)
 // ==========================================
 async function renderRipoti() {
     content.innerHTML = `<h2>Inapakia Ripoti...</h2>`;
@@ -371,7 +395,7 @@ async function loadRipoti() {
 }
 
 // ==========================================
-// 11. MIPANGILIO
+// MIPANGILIO
 // ==========================================
 async function renderMipangilio() {
     content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
@@ -421,9 +445,6 @@ async function addExam() {
     renderMipangilio();
 }
 
-// ==========================================
-// 12. INITIALIZATION
-// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('token')) {
         showApp();
