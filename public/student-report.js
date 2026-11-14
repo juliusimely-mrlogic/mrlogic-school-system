@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadInitialData();
 });
 
+// 1. Pakia Mitihani na Madarasa kwenye Dropdown
 async function loadInitialData() {
     try {
         // Pakia Mitihani
@@ -39,6 +40,7 @@ async function loadInitialData() {
     }
 }
 
+// 2. Pakia Wanafunzi Kulingana na Darasa Lililochaguliwa
 async function loadStudentsDropdown() {
     const streamId = document.getElementById('stream-select').value;
     const studentSelect = document.getElementById('student-select');
@@ -65,15 +67,18 @@ async function loadStudentsDropdown() {
     }
 }
 
+// 3. Tengeneza Ripoti
 async function loadReportCard() {
     const exam_id = document.getElementById('exam-select').value;
     const student_id = document.getElementById('student-select').value;
-    const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
-
+    
     if (!exam_id || !student_id) {
         alert("Tafadhali chagua mtihani na mwanafunzi!");
         return;
     }
+
+    // Chukua majina ya mtihani kwa ajili ya kuonyesha
+    const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
 
     try {
         const response = await fetch(`/api/reports/student/${student_id}?exam_id=${exam_id}`, {
@@ -95,7 +100,7 @@ async function loadReportCard() {
         const tableBody = document.querySelector('#subjects-table tbody');
         let html = '';
         data.scores.forEach(score => {
-            // Rangi ya Grade
+            // Rangi ya Grade kwenye screen (Haitatokea kwenye print)
             let gradeColor = 'black';
             if (score.grade === 'A') gradeColor = 'green';
             if (score.grade === 'F') gradeColor = 'red';
@@ -121,6 +126,6 @@ async function loadReportCard() {
 
     } catch (error) {
         console.error("Kosa:", error);
-        alert("Kuna tatizo limetokea wakati wa kuleta ripoti.");
+        alert("Kuna tatizo limetokea wakati wa kuleta ripoti. Hakikisha alama za mwanafunzi huyu zimeingizwa.");
     }
 }

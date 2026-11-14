@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFeesHistory();
 });
 
-// 1. Pakia Wanafunzi kwenye Dropdown
 async function loadStudentsDropdown() {
     const select = document.getElementById('student-select');
     try {
@@ -36,7 +35,6 @@ async function loadStudentsDropdown() {
     } catch (error) { console.error("Kosa la kuleta wanafunzi:", error); }
 }
 
-// 2. Pakia Salio (Balances)
 async function loadBalances() {
     const tableBody = document.getElementById('balances-table-body');
     try {
@@ -51,7 +49,6 @@ async function loadBalances() {
 
         let html = '';
         data.forEach((row, index) => {
-            // Rangi ya Deni (Kama ana deni kubwa kuliko 0, weka nyekundu)
             const balanceColor = row.balance > 0 ? 'text-danger' : 'text-success';
             const balanceText = row.balance > 0 ? `- ${row.balance.toLocaleString()}` : `+ ${Math.abs(row.balance).toLocaleString()} (Ziada)`;
 
@@ -71,7 +68,6 @@ async function loadBalances() {
     } catch (error) { tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
 }
 
-// 3. Pakia Historia ya Malipo
 async function loadFeesHistory() {
     const tableBody = document.getElementById('fees-table-body');
     try {
@@ -103,7 +99,6 @@ async function loadFeesHistory() {
     } catch (error) { tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
 }
 
-// 4. Wasilisha Fomu ya Malipo
 document.getElementById('feeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusMsg = document.getElementById('status-msg');
@@ -128,8 +123,8 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
             statusMsg.style.color = "green";
             document.getElementById('feeForm').reset();
             document.getElementById('payment-date').value = date_paid;
-            loadBalances(); // Refresh salio
-            loadFeesHistory(); // Refresh historia
+            loadBalances();
+            loadFeesHistory();
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
             statusMsg.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;

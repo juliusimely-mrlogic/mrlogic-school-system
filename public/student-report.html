@@ -8,7 +8,6 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
-        .navbar a:hover { background: #2563eb; }
         .container { padding: 30px; max-width: 900px; margin: auto; }
         
         .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -20,7 +19,7 @@
         .btn-print { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
 
         /* Muonekano wa Report Card */
-        .report-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+        .report-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; border: 1px solid #ccc; }
         .report-header { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
         .report-header h1 { margin: 0; color: #1e3a8a; font-size: 24px; text-transform: uppercase; }
         .report-header h3 { margin: 5px 0 0 0; color: #666; }
@@ -28,7 +27,7 @@
         .student-info p { margin: 5px 0; }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
         th { background-color: #f8fafc; color: #1e3a8a; }
         td:nth-child(1) { text-align: left; font-weight: bold; }
         
@@ -37,15 +36,22 @@
         
         .comments-section { margin-top: 30px; }
         .comments-section label { font-weight: bold; display: block; margin-bottom: 5px; }
-        .comments-section textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; height: 80px; box-sizing: border-box; }
+        .comments-section textarea { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 4px; height: 80px; box-sizing: border-box; resize: none; font-family: inherit;}
         
         .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-        .signature-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; }
+        .signature-line { border-top: 1px dotted #000; width: 200px; text-align: center; padding-top: 5px; font-size: 14px;}
 
+        /* CSS MAALUM KWA AJILI YA KUCHAPISHA (A4 Portrait) */
         @media print {
-            .navbar, .controls { display: none; }
-            .container { padding: 0; }
-            .report-card { box-shadow: none; border: none; display: block !important; }
+            @page { size: portrait; margin: 15mm; }
+            body { background: white; }
+            .navbar, .controls { display: none !important; }
+            .container { padding: 0; max-width: 100%; margin: 0; }
+            .report-card { box-shadow: none; border: none; padding: 0; display: block !important; }
+            .report-header h1 { color: black !important; }
+            th { background-color: #ddd !important; color: black !important; }
+            .summary-table .total-row { background-color: transparent !important; }
+            .signatures { margin-top: 70px; }
         }
     </style>
 </head>
@@ -64,21 +70,15 @@
         <div class="controls">
             <div class="form-group">
                 <label>Chagua Mtihani:</label>
-                <select id="exam-select">
-                    <option value="">-- Inapakia... --</option>
-                </select>
+                <select id="exam-select"></select>
             </div>
             <div class="form-group">
                 <label>Chagua Darasa:</label>
-                <select id="stream-select" onchange="loadStudentsDropdown()">
-                    <option value="">-- Inapakia... --</option>
-                </select>
+                <select id="stream-select" onchange="loadStudentsDropdown()"></select>
             </div>
             <div class="form-group">
                 <label>Chagua Mwanafunzi:</label>
-                <select id="student-select">
-                    <option value="">-- Chagua Darasa Kwanza --</option>
-                </select>
+                <select id="student-select"></select>
             </div>
             <button class="btn-load" onclick="loadReportCard()">Tengeneza Ripoti</button>
             <button class="btn-print" onclick="window.print()" id="btn-print" style="display: none;">Chapisha (Print)</button>
@@ -109,9 +109,7 @@
                         <th>DARAJA (GRADE)</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Subjects injected here -->
-                </tbody>
+                <tbody></tbody>
             </table>
 
             <table class="summary-table">

@@ -40,11 +40,22 @@ async function loadBroadsheet() {
     const exam_id = document.getElementById('exam-select').value;
     const stream_id = document.getElementById('stream-select').value;
     const container = document.getElementById('report-container');
+    const btnPrint = document.getElementById('btn-print');
 
     if (!exam_id || !stream_id) {
         alert("Tafadhali chagua mtihani na darasa!");
         return;
     }
+
+    // Chukua majina kwa ajili ya print header
+    const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
+    const streamName = document.getElementById('stream-select').options[document.getElementById('stream-select').selectedIndex].text;
+    document.getElementById('print-exam-name').innerText = examName;
+    document.getElementById('print-stream-name').innerText = streamName;
+    
+    // Njia rahisi ya kupata jina la shule (kutoka kwenye local storage)
+    const user = JSON.parse(userStr);
+    document.getElementById('print-school-name').innerText = user.school_name || "SHULE YAKO";
 
     container.innerHTML = `<p style="text-align: center;">Inatafuta ripoti...</p>`;
 
@@ -59,17 +70,16 @@ async function loadBroadsheet() {
         
         if (data.reportData.length === 0) {
             container.innerHTML = `<p style="text-align: center; color: red;">Hakuna alama zilizowekwa kwa darasa hili kwenye mtihani huu.</p>`;
+            btnPrint.style.display = 'none';
             return;
         }
 
-        // Tengeneza vichwa vya jedwali (Headers) kwa masomo
         let tableHeaders = `<th>NAFASI</th><th>JINA KAMILI</th>`;
         data.subjects.forEach(sub => {
-            tableHeaders += `<th>${sub.name.substring(0, 3).toUpperCase()}</th>`; // Chukua herufi 3 za mwanzo za somo
+            tableHeaders += `<th>${sub.name.substring(0, 3).toUpperCase()}</th>`;
         });
         tableHeaders += `<th>TOTAL</th><th>AVERAGE</th>`;
 
-        // Tengeneza mistari ya wanafunzi
         let tableRows = '';
         data.reportData.forEach(row => {
             let scoresHtml = '';
@@ -89,18 +99,14 @@ async function loadBroadsheet() {
             `;
         });
 
-        const tableHtml = `
+        container.innerHTML = `
             <table>
-                <thead>
-                    <tr>${tableHeaders}</tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
+                <thead><tr>${tableHeaders}</tr></thead>
+                <tbody>${tableRows}</tbody>
             </table>
         `;
 
-        container.innerHTML = tableHtml;
+        btnPrint.style.display = 'inline-block';
 
     } catch (error) {
         console.error("Kosa:", error);
