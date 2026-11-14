@@ -60,7 +60,9 @@
             #receiptModal[style*="display: block"] #receipt-content * { visibility: visible; }
             #receiptModal[style*="display: block"] { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; }
 
-            .close, .btn-print-modal, .btn-print-modal-awamu { display: none !important; }
+            /* FICHA VITUFE VYOTE KWENYE KARATASI */
+            .close, .btn-print-modal, .btn-print-modal-awamu, .btn-receipt, .btn-details, .btn-save, .btn-print { display: none !important; }
+            
             .modal-content { margin: 0; padding: 0; width: 100%; max-width: 100%; border: none; box-shadow: none; }
             .receipt-box { border: 2px solid #000; }
             .summary-box { border: 1px solid #000; }
@@ -175,7 +177,7 @@
                             <th>Awamu</th>
                             <th>Tarehe ya Malipo</th>
                             <th>Kiasi (Tsh)</th>
-                            <th>Risiti</th>
+                            <th class="btn-receipt">Risiti</th> <!-- Kitufe kimefichwa kwenye print -->
                         </tr>
                     </thead>
                     <tbody id="installment-table-body">
