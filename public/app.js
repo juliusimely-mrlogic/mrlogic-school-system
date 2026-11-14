@@ -12,8 +12,9 @@ if (!token || !userStr) {
     }
 
     // Vigeu vya kutunza Chart instances
-    let peopleChartInstance = null;
     let feesChartInstance = null;
+    let genderOverallChartInstance = null;
+    let genderStreamChartInstance = null;
 
     function renderMenu() {
         const menuContainer = document.getElementById('menu-container');
@@ -59,62 +60,80 @@ if (!token || !userStr) {
     // KAZI YA KUCHORA MICHORO (CHARTS)
     // ==========================================
     function renderCharts(data) {
-        // 1. Futa charts za zamani kama zipo (ili kuzuia kujirudia)
-        if (peopleChartInstance) peopleChartInstance.destroy();
+        // 1. Futa charts za zamani kama zipo
         if (feesChartInstance) feesChartInstance.destroy();
+        if (genderOverallChartInstance) genderOverallChartInstance.destroy();
+        if (genderStreamChartInstance) genderStreamChartInstance.destroy();
 
-        // 2. Chart ya Idadi ya Watu (Bar Chart)
-        const ctxPeople = document.getElementById('peopleChart').getContext('2d');
-        peopleChartInstance = new Chart(ctxPeople, {
+        // 2. Chart ya Fedha (Bar Chart)
+        const ctxFees = document.getElementById('feesChart').getContext('2d');
+        feesChartInstance = new Chart(ctxFees, {
             type: 'bar',
             data: {
-                labels: ['Wanafunzi', 'Walimu', 'Madarasa'],
+                labels: ['Makadirio', 'Iliyokusanywa', 'Deni'],
                 datasets: [{
-                    label: 'Idadi',
-                    data: [data.totalStudents, data.totalTeachers, data.totalClasses],
-                    backgroundColor: ['#3b82f6', '#ef4444', '#a855f7'],
+                    label: 'Kiasi (Tsh)',
+                    data: [data.totalExpectedFees, data.totalCollectedFees, data.totalOutstandingFees],
+                    backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
                     borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                scales: { y: { beginAtZero: true } }
             }
         });
 
-        // 3. Chart ya Ada (Doughnut Chart)
-        // Kwa kuwa hatuna kiasi cha "Target", tutatumia kiasi kilicholipwa kama kielelezo
-        // Kama kiasi ni 0, tunaweka 1 ili chart ionekane (isiyo na data)
-        const ctxFees = document.getElementById('feesChart').getContext('2d');
-        const feesValue = data.totalFees > 0 ? data.totalFees : 1; 
-        
-        feesChartInstance = new Chart(ctxFees, {
+        // 3. Chart ya Jinsia Overall (Doughnut)
+        const ctxGenderOverall = document.getElementById('genderOverallChart').getContext('2d');
+        genderOverallChartInstance = new Chart(ctxGenderOverall, {
             type: 'doughnut',
             data: {
-                labels: ['Ada Iliyokusanywa (Tsh)'],
+                labels: ['Me (M)', 'Ke (F)'],
                 datasets: [{
-                    data: [feesValue],
-                    backgroundColor: ['#10b981'],
+                    data: [data.overallGender.M, data.overallGender.F],
+                    backgroundColor: ['#3b82f6', '#ec4899'],
                     borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) { label += ': '; }
-                                if (context.parsed !== null) {
-                                    label += new Intl.NumberFormat('sw-TZ', { style: 'currency', currency: 'TZS' }).format(data.totalFees);
-                                }
-                                return label;
-                            }
-                        }
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // 4. Chart ya Jinsia kwa Kila Darasa (Stacked Bar Chart)
+        const ctxGenderStream = document.getElementById('genderStreamChart').getContext('2d');
+        
+        // Tayarisha Labels (Majina ya Madarasa) na Data (M na F)
+        const streamLabels = data.streamGenderStats.map(s => s.stream_name);
+        const maleData = data.streamGenderStats.map(s => s.male);
+        const femaleData = data.streamGenderStats.map(s => s.female);
+
+        genderStreamChartInstance = new Chart(ctxGenderStream, {
+            type: 'bar',
+            data: {
+                labels: streamLabels,
+                datasets: [
+                    {
+                        label: 'Me (M)',
+                        data: maleData,
+                        backgroundColor: '#3b82f6',
+                    },
+                    {
+                        label: 'Ke (F)',
+                        data: femaleData,
+                        backgroundColor: '#ec4899',
                     }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
         });
@@ -131,13 +150,16 @@ if (!token || !userStr) {
                 if (selectedSchool) { 
                     url += `?school_id=${selectedSchool}`; 
                 } else {
+                    // Weka sifuri na futa charts kama hakuna shule iliyochaguliwa
                     document.getElementById('stat-students').innerText = '0';
                     document.getElementById('stat-teachers').innerText = '0';
                     document.getElementById('stat-classes').innerText = '0';
-                    document.getElementById('stat-fees').innerText = 'Tsh 0';
-                    // Futa charts kama hakuna shule iliyochaguliwa
-                    if (peopleChartInstance) peopleChartInstance.destroy();
+                    document.getElementById('stat-expected-fees').innerText = 'Tsh 0';
+                    document.getElementById('stat-collected-fees').innerText = 'Tsh 0';
+                    document.getElementById('stat-outstanding-fees').innerText = 'Tsh 0';
                     if (feesChartInstance) feesChartInstance.destroy();
+                    if (genderOverallChartInstance) genderOverallChartInstance.destroy();
+                    if (genderStreamChartInstance) genderStreamChartInstance.destroy();
                     return; 
                 }
             }
@@ -155,11 +177,15 @@ if (!token || !userStr) {
             
             const data = await response.json();
             
-            // Sasisha Kadi za Takwimu
+            // Sasisha Kadi za Idadi
             document.getElementById('stat-students').innerText = data.totalStudents;
             document.getElementById('stat-teachers').innerText = data.totalTeachers;
             document.getElementById('stat-classes').innerText = data.totalClasses;
-            document.getElementById('stat-fees').innerText = 'Tsh ' + data.totalFees.toLocaleString();
+
+            // Sasisha Kadi za Fedha
+            document.getElementById('stat-expected-fees').innerText = 'Tsh ' + data.totalExpectedFees.toLocaleString();
+            document.getElementById('stat-collected-fees').innerText = 'Tsh ' + data.totalCollectedFees.toLocaleString();
+            document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + data.totalOutstandingFees.toLocaleString();
 
             // Chora Michoro
             renderCharts(data);
@@ -204,7 +230,7 @@ if (!token || !userStr) {
         renderMenu();
         if (user.role === 'super_admin') { 
             loadSchoolsForDropdown(); 
-            loadDashboardData(); // Itajaribu kuleta data (itakuwa 0 kama hajachagua shule)
+            loadDashboardData(); 
         } 
         else if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') { 
             loadDashboardData(); 

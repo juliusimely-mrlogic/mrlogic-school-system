@@ -48,29 +48,88 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI
+// 2. API YA TAKWIMU ZA DASHIBODI (IMEBORESHWA KWA TAKWIMU ZA KINA)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
         let targetSchoolId = user.role === 'super_admin' ? req.query.school_id : user.school_id;
-        if (!targetSchoolId) return res.json({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalFees: 0, schoolName: "Chagua Shule" });
+        
+        if (!targetSchoolId) {
+            return res.json({ 
+                schoolName: "Chagua Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, 
+                totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0,
+                overallGender: { M: 0, F: 0 }, streamGenderStats: []
+            });
+        }
 
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
         const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
-        const [students, teachers, classes, fees] = await Promise.all([
-            pool.query(`SELECT COUNT(*) FROM students WHERE school_id = $1`, [targetSchoolId]),
+        // Pata Takwimu za Msingi
+        const [studentsRes, teachersRes, classesRes] = await Promise.all([
+            pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
             pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
-            pool.query(`SELECT COUNT(*) FROM streams WHERE school_id = $1`, [targetSchoolId]),
-            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1`, [targetSchoolId])
+            pool.query(`SELECT id, name, fee_amount FROM streams WHERE school_id = $1`, [targetSchoolId])
         ]);
 
-        res.json({
-            schoolName: schoolName, totalStudents: parseInt(students.rows[0].count),
-            totalTeachers: parseInt(teachers.rows[0].count), totalClasses: parseInt(classes.rows[0].count),
-            totalFees: parseFloat(fees.rows[0].total), role: user.role
+        const totalStudents = studentsRes.rows.length;
+        const totalTeachers = parseInt(teachersRes.rows[0].count);
+        const totalClasses = classesRes.rows.length;
+
+        // Hesabu Makadirio ya Ada (Jumla ya Ada ya Wanafunzi wote kwa mwaka huu)
+        let totalExpectedFees = 0;
+        studentsRes.rows.forEach(student => {
+            const stream = classesRes.rows.find(s => s.id === student.stream_id);
+            if (stream) {
+                totalExpectedFees += parseFloat(stream.fee_amount || 0);
+            }
         });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana kupata takwimu" }); }
+
+        // Hesabu Fedha Zilizokusanywa (Mwaka Huu Pekee)
+        const currentYear = new Date().getFullYear();
+        const collectedRes = await pool.query(`
+            SELECT COALESCE(SUM(amount), 0) as total 
+            FROM fees 
+            WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2
+        `, [targetSchoolId, currentYear]);
+        
+        const totalCollectedFees = parseFloat(collectedRes.rows[0].total);
+        const totalOutstandingFees = totalExpectedFees - totalCollectedFees;
+
+        // Hesabu Jinsia (Overall)
+        const overallGender = { M: 0, F: 0 };
+        studentsRes.rows.forEach(s => {
+            if (s.gender === 'M') overallGender.M++;
+            if (s.gender === 'F') overallGender.F++;
+        });
+
+        // Hesabu Jinsia kwa Kila Darasa (Stream)
+        const streamGenderStats = classesRes.rows.map(stream => {
+            const streamStudents = studentsRes.rows.filter(s => s.stream_id === stream.id);
+            return {
+                stream_name: stream.name,
+                male: streamStudents.filter(s => s.gender === 'M').length,
+                female: streamStudents.filter(s => s.gender === 'F').length
+            };
+        });
+
+        res.json({
+            schoolName: schoolName,
+            totalStudents: totalStudents,
+            totalTeachers: totalTeachers,
+            totalClasses: totalClasses,
+            totalExpectedFees: totalExpectedFees,
+            totalCollectedFees: totalCollectedFees,
+            totalOutstandingFees: totalOutstandingFees,
+            overallGender: overallGender,
+            streamGenderStats: streamGenderStats,
+            role: user.role
+        });
+
+    } catch (error) { 
+        console.error("Dashboard Stats Error:", error);
+        res.status(500).json({ error: "Imeshindikana kupata takwimu" }); 
+    }
 });
 
 // 3. API YA WANAFUNZI
@@ -150,7 +209,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 4. API YA WALIMU (Inazalisha Username)
+// 4. API YA WALIMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -608,4 +667,4 @@ app.delete('/api/assignments/:id', authenticateToken, async (req, res) => {
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on server on port ${PORT}`));
