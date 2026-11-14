@@ -23,24 +23,25 @@
         
         .text-danger { color: #ef4444; font-weight: bold; }
         .text-success { color: #10b981; font-weight: bold; }
-        .btn-receipt { padding: 5px 10px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
-        .btn-delete { padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 5px;}
+        .btn-details { padding: 5px 10px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;}
+        .btn-receipt { padding: 5px 10px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;}
+        .btn-delete { padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;}
 
-        /* CSS MAALUM KWA AJILI YA RISITI (Modal) */
+        /* CSS MAALUM KWA AJILI YA MODAL (Awamu) */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 8px; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: black; }
         
-        .receipt-box { border: 2px solid #1e3a8a; padding: 20px; border-radius: 8px; background: white; }
-        .receipt-header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 15px; }
-        .receipt-header h2 { margin: 0; color: #1e3a8a; }
-        .receipt-header p { margin: 5px 0; color: #666; }
-        .receipt-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 15px; }
-        .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .receipt-table th, .receipt-table td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
-        .receipt-table th { background-color: #f8fafc; }
-        .receipt-footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+        .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center; }
+        .summary-box h4 { margin: 0; color: #475569; font-size: 14px; }
+        .summary-box p { margin: 5px 0 0 0; font-size: 20px; font-weight: bold; }
+        
+        .congrats-msg { background: #dcfce7; border-left: 5px solid #10b981; color: #166534; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-weight: bold; text-align: center; display: none;}
+        .debt-msg { background: #fee2e2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-weight: bold; text-align: center; display: none;}
+        
+        .installment-table th { background: #1e3a8a; color: white; }
+        .installment-table td { border: 1px solid #ddd; }
 
         /* CSS MAALUM KWA AJILI YA KUCHAPISHA (A4) */
         @media print {
@@ -102,31 +103,65 @@
                     <th>Ada Inayotakiwa</th>
                     <th>Iliyolipwa</th>
                     <th>Salio / Deni</th>
-                </tr>
-            </thead>
-            <tbody id="balances-table-body">
-                <tr><td colspan="6" style="text-align: center;">Inapakia salio...</td></tr>
-            </tbody>
-        </table>
-
-        <h3>Historia ya Malipo ya Karibuni</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Jina la Mwanafunzi</th>
-                    <th>Kiasi (Tsh)</th>
-                    <th>Tarehe</th>
                     <th>Hatua</th>
                 </tr>
             </thead>
-            <tbody id="fees-table-body">
-                <tr><td colspan="5" style="text-align: center;">Inapakia historia...</td></tr>
+            <tbody id="balances-table-body">
+                <tr><td colspan="7" style="text-align: center;">Inapakia salio...</td></tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Modal ya Risiti -->
+    <!-- Modal ya Awamu za Malipo -->
+    <div id="installmentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeInstallmentModal()">&times;</span>
+            <h2 style="color: #1e3a8a; margin-top: 0;">Historia ya Malipo (Awamu)</h2>
+            <h3 id="modal-student-name" style="margin-bottom: 5px;">Jina la Mwanafunzi</h3>
+            <p id="modal-student-stream" style="color: #666; margin-top: 0;">Darasa</p>
+
+            <!-- Maelezo ya Jumla -->
+            <div class="summary-box">
+                <div>
+                    <h4>ADA INAYOTAKIWA</h4>
+                    <p id="modal-expected-fee" style="color: #1e3a8a;">0</p>
+                </div>
+                <div>
+                    <h4>JUMLA ILIYOLIPWA</h4>
+                    <p id="modal-total-paid" style="color: #10b981;">0</p>
+                </div>
+                <div>
+                    <h4>DENI LILILOBAKI</h4>
+                    <p id="modal-balance" style="color: #ef4444;">0</p>
+                </div>
+            </div>
+
+            <!-- Ujumbe wa Pongezi au Deni -->
+            <div id="congrats-message" class="congrats-msg">
+                🎉 Pongezi sana! Mwanafunzi amekamilisha malipo yote ya ada kwa mwaka huu.
+            </div>
+            <div id="debt-message" class="debt-msg">
+                Mwanafunzi bado ana deni. Tafadhali kamilisha malipo.
+            </div>
+
+            <!-- Jedwali la Awamu -->
+            <table class="installment-table">
+                <thead>
+                    <tr>
+                        <th>Awamu</th>
+                        <th>Tarehe ya Malipo</th>
+                        <th>Kiasi (Tsh)</th>
+                        <th>Risiti</th>
+                    </tr>
+                </thead>
+                <tbody id="installment-table-body">
+                    <tr><td colspan="4" style="text-align: center;">Inapakia...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal ya Risiti (Ile ya Awali) -->
     <div id="receiptModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeReceipt()">&times;</span>

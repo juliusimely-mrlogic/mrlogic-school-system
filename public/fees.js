@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     loadStudentsDropdown();
     loadBalances();
-    loadFeesHistory();
 });
 
 async function loadStudentsDropdown() {
@@ -43,7 +42,7 @@ async function loadBalances() {
         const data = await response.json();
 
         if (data.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Hakuna wanafunzi kwenye mfumo.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center;">Hakuna wanafunzi kwenye mfumo.</td></tr>`;
             return;
         }
 
@@ -60,47 +59,15 @@ async function loadBalances() {
                     <td>${parseFloat(row.expected_fee).toLocaleString()}</td>
                     <td>${parseFloat(row.total_paid).toLocaleString()}</td>
                     <td class="${balanceColor}">${balanceText}</td>
-                </tr>
-            `;
-        });
-        tableBody.innerHTML = html;
-
-    } catch (error) { tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
-}
-
-async function loadFeesHistory() {
-    const tableBody = document.getElementById('fees-table-body');
-    try {
-        const response = await fetch('/api/fees', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!response.ok) throw new Error("Imeshindwa kuleta historia");
-        const fees = await response.json();
-
-        if (fees.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Hakuna malipo yaliyorekodiwa bado.</td></tr>`;
-            return;
-        }
-
-        let html = '';
-        fees.forEach((fee, index) => {
-            const dateObj = new Date(fee.date_paid);
-            const formattedDate = isNaN(dateObj) ? (fee.date_paid || 'Hajajaza') : dateObj.toLocaleDateString('sw-TZ');
-
-            html += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${fee.student_name || 'Mwanafunzi Hayupo'}</td>
-                    <td>${parseFloat(fee.amount).toLocaleString()}</td>
-                    <td>${formattedDate}</td>
                     <td>
-                        <button class="btn-receipt" onclick="showReceipt(${fee.id})">Risiti</button>
-                        <button class="btn-delete" onclick="deleteFee(${fee.id})">Futa</button>
+                        <button class="btn-details" onclick="openInstallmentModal(${row.id})">Angalia Awamu</button>
                     </td>
                 </tr>
             `;
         });
         tableBody.innerHTML = html;
 
-    } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
+    } catch (error) { tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
 }
 
 document.getElementById('feeForm').addEventListener('submit', async (e) => {
@@ -127,10 +94,9 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
             statusMsg.style.color = "green";
             document.getElementById('feeForm').reset();
             document.getElementById('payment-date').value = date_paid;
-            loadBalances();
-            loadFeesHistory();
+            loadBalances(); // Sasisha jedwali la madeni
             
-            // Fungua risiti moja kwa moja baada ya kuhifadhi
+            // Fungua risiti moja kwa moja
             showReceipt(data.id);
             
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
@@ -146,35 +112,87 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
 });
 
 // ==========================================
-// KAZI YA KUFUTA MALIPO (DELETE)
+// KAZI YA KUONYESHA AWAMU (INSTALLMENTS)
 // ==========================================
-async function deleteFee(id) {
-    if (!confirm("Je, una uhakika unataka kufuta malipo haya? Taarifa hii haitaweza kurudishwa.")) return;
+async function openInstallmentModal(studentId) {
+    const modal = document.getElementById('installmentModal');
+    const tableBody = document.getElementById('installment-table-body');
+    
+    tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Inapakia data...</td></tr>`;
+    modal.style.display = 'block';
 
     try {
-        const response = await fetch(`/api/fees/${id}`, {
-            method: 'DELETE',
+        const response = await fetch(`/api/fees/student-summary/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            alert("Malipo yamefutwa kikamilifu.");
-            loadBalances(); // Sasisha madeni
-            loadFeesHistory(); // Sasisha historia
+        if (!response.ok) throw new Error("Imeshindwa kuleta data");
+        const data = await response.json();
+
+        // Weka Maelezo ya Juu
+        document.getElementById('modal-student-name').innerText = data.student.full_name;
+        document.getElementById('modal-student-stream').innerText = data.student.stream_name || 'Hajapewa Darasa';
+        
+        document.getElementById('modal-expected-fee').innerText = parseFloat(data.student.expected_fee).toLocaleString();
+        document.getElementById('modal-total-paid').innerText = data.total_paid.toLocaleString();
+        
+        const balanceText = data.balance > 0 
+            ? `- ${data.balance.toLocaleString()}` 
+            : `+ ${Math.abs(data.balance).toLocaleString()} (Ziada)`;
+        document.getElementById('modal-balance').innerText = balanceText;
+
+        // Onyesha Ujumbe wa Pongezi au Deni
+        const congrats = document.getElementById('congrats-message');
+        const debt = document.getElementById('debt-message');
+        
+        if (data.balance <= 0) {
+            congrats.style.display = 'block';
+            debt.style.display = 'none';
         } else {
-            const data = await response.json();
-            alert(`Kosa: ${data.error}`);
+            congrats.style.display = 'none';
+            debt.style.display = 'block';
         }
+
+        // Jaza Jedwali la Awamu
+        if (data.installments.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Hakuna malipo yaliyofanyika bado.</td></tr>`;
+        } else {
+            let html = '';
+            data.installments.forEach(inst => {
+                const dateObj = new Date(inst.date_paid);
+                const formattedDate = isNaN(dateObj) ? inst.date_paid : dateObj.toLocaleDateString('sw-TZ');
+
+                html += `
+                    <tr>
+                        <td style="font-weight: bold; color: #1e3a8a;">Awamu ya ${inst.awamu}</td>
+                        <td>${formattedDate}</td>
+                        <td>${inst.amount.toLocaleString()}</td>
+                        <td>
+                            <button class="btn-receipt" onclick="showReceipt(${inst.id})">Risiti</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        }
+
     } catch (error) {
-        console.error("Kosa la mtandao:", error);
-        alert("Kosa la mtandao wakati wa kufuta.");
+        console.error(error);
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`;
     }
 }
 
+function closeInstallmentModal() {
+    document.getElementById('installmentModal').style.display = 'none';
+}
+
 // ==========================================
-// KAZI YA KUONYESHA RISITI
+// KAZI YA KUONYESHA RISITI (Ile ya Awali)
 // ==========================================
 async function showReceipt(feeId) {
+    // Ficha modal ya awamu kama ipo wazi
+    document.getElementById('installmentModal').style.display = 'none';
+
     try {
         const response = await fetch(`/api/fees/receipt/${feeId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -183,16 +201,13 @@ async function showReceipt(feeId) {
         if (!response.ok) throw new Error("Imeshindwa kupata risiti");
         const data = await response.json();
 
-        // Weka taarifa kwenye Modal
         document.getElementById('r-school-name').innerText = data.school_name;
         document.getElementById('r-receipt-no').innerText = data.receipt_no;
         
-        // Format Tarehe
         const dateObj = new Date(data.date_paid);
         const formattedDate = isNaN(dateObj) ? data.date_paid : dateObj.toLocaleDateString('sw-TZ');
         document.getElementById('r-date').innerText = formattedDate;
 
-        // Mwaka
         const year = isNaN(dateObj) ? new Date().getFullYear() : dateObj.getFullYear();
         document.getElementById('r-year').innerText = year;
 
@@ -200,18 +215,15 @@ async function showReceipt(feeId) {
         document.getElementById('r-adm-no').innerText = data.admission_number || '-';
         document.getElementById('r-stream').innerText = data.stream_name || 'Hajapewa';
 
-        // Fedha
         document.getElementById('r-amount-paid').innerText = parseFloat(data.amount_paid).toLocaleString();
         document.getElementById('r-total-paid').innerText = parseFloat(data.total_paid).toLocaleString();
         document.getElementById('r-expected-fee').innerText = parseFloat(data.expected_fee).toLocaleString();
         
-        // Salio
         const balanceText = data.balance > 0 
             ? `- ${data.balance.toLocaleString()}` 
             : `+ ${Math.abs(data.balance).toLocaleString()} (Ziada)`;
         document.getElementById('r-balance').innerText = balanceText;
 
-        // Onyesha Modal
         document.getElementById('receiptModal').style.display = 'block';
 
     } catch (error) {
