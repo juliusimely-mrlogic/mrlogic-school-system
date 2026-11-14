@@ -8,22 +8,31 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background: #f3f4f6; margin: 0; padding: 20px; color: #333; }
     .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
     
+    /* Header Styles */
+    .page-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 25px; }
+    .page-header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
+    
+    /* Button Styles */
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #6b7280; color: #fff; }
+    .btn-secondary:hover { background: #4b5563; }
+    
+    /* Form Styles */
     .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
     .form-group { flex: 1; min-width: 200px; }
     label { display: block; margin-bottom: 5px; font-weight: 500; color: #4b5563; font-size: 14px; }
     input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
     
-    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: #fff; }
-    .btn-primary { background: #2563eb; }
-    .btn-primary:hover { background: #1d4ed8; }
-
+    /* Table Styles */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
     th { background: #f9fafb; font-weight: 600; color: #374151; }
     tr:hover { background: #f9fafb; }
 
+    /* Alert Styles */
     .alert { padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; }
     .alert-success { background: #d1fae5; color: #065f46; }
     .alert-danger { background: #fee2e2; color: #991b1b; }
@@ -32,10 +41,16 @@
 <body>
 
   <div class="container">
-    <h1>Usajili wa Walimu</h1>
+    
+    <!-- Kichwa cha Ukurasa na Kitufe cha Kurudi -->
+    <div class="page-header">
+      <h1>Usajili wa Walimu</h1>
+      <a href="/" class="btn btn-secondary">⬅️ Rudi Dashibodi</a>
+    </div>
     
     <div id="alert-box" class="alert"></div>
 
+    <!-- Fomu ya Kusajili -->
     <form id="teacher-form">
       <div class="form-row">
         <div class="form-group">
@@ -73,7 +88,8 @@
       </div>
     </form>
 
-    <h2>Orodha ya Walimu</h2>
+    <!-- Jedwali la Walimu -->
+    <h2 style="color: #374151; font-size: 18px; margin-top: 30px;">Orodha ya Walimu</h2>
     <table>
       <thead>
         <tr>
@@ -93,7 +109,6 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. Chukua Token
       const token = localStorage.getItem('token');
       if (!token) {
         alert("Tafadhali ingia (login) kwanza.");
@@ -117,7 +132,6 @@
         setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
       }
 
-      // 2. Vuta Walimu kutoka Server
       async function loadTeachers() {
         try {
           const res = await fetch('/api/teachers', { headers: authHeaders });
@@ -148,7 +162,6 @@
         }
       }
 
-      // 3. Sajili Mwalimu Mpya
       teacherForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -156,7 +169,7 @@
           full_name: document.getElementById('full_name').value,
           gender: document.getElementById('gender').value,
           phone: document.getElementById('phone').value,
-          designation: document.getElementById('designation').value // <--- Hapa jukumu linatumwa
+          designation: document.getElementById('designation').value
         };
 
         try {
@@ -178,7 +191,6 @@
         }
       });
 
-      // Anzisha mfumo
       loadTeachers();
     });
   </script>
