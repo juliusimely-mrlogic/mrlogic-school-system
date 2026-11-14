@@ -26,7 +26,7 @@ if (!token || !userStr) {
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama za mitihani</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo ya darasa zima</p></div>
                 <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card ya mwanafunzi</p></div>
-                <div class="menu-card border-blue"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/notifications.html'"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
             `;
         }
         if (user.role === 'super_admin' || user.role === 'school_manager') {
@@ -36,8 +36,6 @@ if (!token || !userStr) {
             html += `<div class="menu-card border-purple" onclick="window.location.href='/users.html'"><h3>Watumiaji</h3><p>Sajili Wakuu wa Shule na Walimu</p></div>`;
             html += `<div class="menu-card border-blue" onclick="window.location.href='/schools.html'"><h3>Shule</h3><p>Sajili na Simamia Shule</p></div>`;
         }
-        
-        // KADI ZA MWALIMU
         if (user.role === 'teacher') {
             html += `
                 <div class="menu-card border-blue" onclick="window.location.href='/students.html'"><h3>Wanafunzi Wangu</h3><p>Darasa lako</p></div>
@@ -45,6 +43,7 @@ if (!token || !userStr) {
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo</p></div>
                 <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card</p></div>
+                <div class="menu-card border-blue" onclick="window.location.href='/notifications.html'"><h3>Taarifa</h3><p>Angalia taarifa</p></div>
             `;
         }
         menuContainer.innerHTML = html;
