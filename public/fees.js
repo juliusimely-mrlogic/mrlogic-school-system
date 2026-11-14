@@ -76,7 +76,7 @@ async function loadFeesHistory() {
         const fees = await response.json();
 
         if (fees.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Hakuna malipo yaliyorekodiwa bado.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Hakuna malipo yaliyorekodiwa bado.</td></tr>`;
             return;
         }
 
@@ -91,12 +91,15 @@ async function loadFeesHistory() {
                     <td>${fee.student_name || 'Mwanafunzi Hayupo'}</td>
                     <td>${parseFloat(fee.amount).toLocaleString()}</td>
                     <td>${formattedDate}</td>
+                    <td>
+                        <button class="btn-receipt" onclick="showReceipt(${fee.id})">Risiti</button>
+                    </td>
                 </tr>
             `;
         });
         tableBody.innerHTML = html;
 
-    } catch (error) { tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
+    } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
 }
 
 document.getElementById('feeForm').addEventListener('submit', async (e) => {
@@ -125,6 +128,10 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
             document.getElementById('payment-date').value = date_paid;
             loadBalances();
             loadFeesHistory();
+            
+            // Fungua risiti moja kwa moja baada ya kuhifadhi
+            showReceipt(data.id);
+            
             setTimeout(() => { statusMsg.innerText = ""; }, 3000);
         } else {
             statusMsg.innerText = `❌ Kosa: ${data.error || 'Imeshindikana'}`;
@@ -136,3 +143,56 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
         statusMsg.style.color = "red";
     }
 });
+
+// ==========================================
+// KAZI MPYA: KUONYESHA RISITI
+// ==========================================
+async function showReceipt(feeId) {
+    try {
+        const response = await fetch(`/api/fees/receipt/${feeId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error("Imeshindwa kupata risiti");
+        const data = await response.json();
+
+        // Weka taarifa kwenye Modal
+        document.getElementById('r-school-name').innerText = data.school_name;
+        document.getElementById('r-receipt-no').innerText = data.receipt_no;
+        
+        // Format Tarehe
+        const dateObj = new Date(data.date_paid);
+        const formattedDate = isNaN(dateObj) ? data.date_paid : dateObj.toLocaleDateString('sw-TZ');
+        document.getElementById('r-date').innerText = formattedDate;
+
+        // Mwaka
+        const year = isNaN(dateObj) ? new Date().getFullYear() : dateObj.getFullYear();
+        document.getElementById('r-year').innerText = year;
+
+        document.getElementById('r-student-name').innerText = data.student_name;
+        document.getElementById('r-adm-no').innerText = data.admission_number || '-';
+        document.getElementById('r-stream').innerText = data.stream_name || 'Hajapewa';
+
+        // Fedha
+        document.getElementById('r-amount-paid').innerText = parseFloat(data.amount_paid).toLocaleString();
+        document.getElementById('r-total-paid').innerText = parseFloat(data.total_paid).toLocaleString();
+        document.getElementById('r-expected-fee').innerText = parseFloat(data.expected_fee).toLocaleString();
+        
+        // Salio
+        const balanceText = data.balance > 0 
+            ? `- ${data.balance.toLocaleString()}` 
+            : `+ ${Math.abs(data.balance).toLocaleString()} (Ziada)`;
+        document.getElementById('r-balance').innerText = balanceText;
+
+        // Onyesha Modal
+        document.getElementById('receiptModal').style.display = 'block';
+
+    } catch (error) {
+        console.error(error);
+        alert("Kuna tatizo limetokea wakati wa kuleta risiti.");
+    }
+}
+
+function closeReceipt() {
+    document.getElementById('receiptModal').style.display = 'none';
+}

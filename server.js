@@ -207,7 +207,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. API YA MADARASA (IMEBORESHWA: PUT na DELETE)
+// 6. API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -250,10 +250,10 @@ app.delete('/api/streams/:id', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
         if (result.rowCount === 0) return res.status(404).json({ error: "Hajapatikana" });
         res.json({ message: "Darasa limefutwa" });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta. Kuna data inategemea darasa hili." }); }
+    } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 7. API YA MALIPO
+// 7. API YA MALIPO NA RISITI
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
@@ -281,6 +281,51 @@ app.get('/api/fees/balances', authenticateToken, async (req, res) => {
         const balances = result.rows.map(row => ({ ...row, balance: parseFloat(row.expected_fee) - parseFloat(row.total_paid) }));
         res.json(balances);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// API MPYA: KUPATA TAARIFA ZA RISITI
+app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const user = req.user;
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        // 1. Pata taarifa za malipo na mwanafunzi
+        const feeRes = await pool.query(`
+            SELECT f.id as receipt_no, f.amount as amount_paid, f.date_paid, f.student_id,
+                   s.full_name as student_name, s.admission_number, 
+                   st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee,
+                   sch.name as school_name
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            LEFT JOIN streams st ON s.stream_id = st.id
+            JOIN schools sch ON f.school_id = sch.id
+            WHERE f.id = $1 AND f.school_id = $2
+        `, [id, user.school_id]);
+
+        if (feeRes.rows.length === 0) return res.status(404).json({ error: "Risiti haijapatikana" });
+        const data = feeRes.rows[0];
+
+        // 2. Pata jumla ya malipo yote ya mwanafunzi huyu hadi sasa
+        const totalPaidRes = await pool.query(`
+            SELECT COALESCE(SUM(amount), 0) as total_paid 
+            FROM fees 
+            WHERE student_id = $1
+        `, [data.student_id]);
+
+        const total_paid = parseFloat(totalPaidRes.rows[0].total_paid);
+        const balance = parseFloat(data.expected_fee) - total_paid;
+
+        res.json({
+            ...data,
+            total_paid: total_paid,
+            balance: balance
+        });
+
+    } catch (error) {
+        console.error("Kosa la kuleta risiti:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta risiti" });
+    }
 });
 
 // 8. API YA MASOMO NA MITIHANI
