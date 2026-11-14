@@ -70,6 +70,31 @@ async function loadBalances() {
     } catch (error) { tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Kosa la mtandao.</td></tr>`; }
 }
 
+// KAZI MPYA: EXPORT MADENI KWENDA EXCEL
+async function exportFeesToExcel() {
+    try {
+        const response = await fetch('/api/fees/export', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error("Imeshindwa kupakua");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Madeni_Na_Malipo_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error(error);
+        alert("Kuna tatizo limetokea wakati wa kupakua faili.");
+    }
+}
+
 document.getElementById('feeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusMsg = document.getElementById('status-msg');
@@ -110,16 +135,13 @@ document.getElementById('feeForm').addEventListener('submit', async (e) => {
     }
 });
 
-// ==========================================
 // KAZI YA KUONYESHA AWAMU (INSTALLMENTS)
-// ==========================================
 async function openInstallmentModal(studentId) {
     const modal = document.getElementById('installmentModal');
     const tableBody = document.getElementById('installment-table-body');
     
     tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Inapakia data...</td></tr>`;
     
-    // Weka tarehe ya leo kwenye taarifa
     const today = new Date().toLocaleDateString('sw-TZ');
     document.getElementById('modal-date').innerText = today;
 
@@ -133,7 +155,6 @@ async function openInstallmentModal(studentId) {
         if (!response.ok) throw new Error("Imeshindwa kuleta data");
         const data = await response.json();
 
-        // Weka Maelezo ya Juu
         document.getElementById('modal-student-name').innerText = data.student.full_name;
         document.getElementById('modal-student-stream').innerText = data.student.stream_name || 'Hajapewa Darasa';
         
@@ -145,7 +166,6 @@ async function openInstallmentModal(studentId) {
             : `+ ${Math.abs(data.balance).toLocaleString()} (Ziada)`;
         document.getElementById('modal-balance').innerText = balanceText;
 
-        // Onyesha Ujumbe wa Pongezi au Deni
         const congrats = document.getElementById('congrats-message');
         const debt = document.getElementById('debt-message');
         
@@ -157,7 +177,6 @@ async function openInstallmentModal(studentId) {
             debt.style.display = 'block';
         }
 
-        // Jaza Jedwali la Awamu
         if (data.installments.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Hakuna malipo yaliyofanyika bado.</td></tr>`;
         } else {
@@ -190,11 +209,8 @@ function closeInstallmentModal() {
     document.getElementById('installmentModal').style.display = 'none';
 }
 
-// ==========================================
-// KAZI YA KUONYESHA RISITI (Ile ya Awali)
-// ==========================================
+// KAZI YA KUONYESHA RISITI
 async function showReceipt(feeId) {
-    // Ficha modal ya awamu kama ipo wazi
     document.getElementById('installmentModal').style.display = 'none';
 
     try {

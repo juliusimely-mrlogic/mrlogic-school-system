@@ -8,7 +8,6 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
-        .navbar a:hover { background: #2563eb; }
         .container { padding: 30px; max-width: 1200px; margin: auto; }
         
         .form-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -21,7 +20,7 @@
         .btn-cancel { padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; display: none; margin-left: 10px;}
         
         .btn-upload { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .btn-upload:hover { background: #2563eb; }
+        .btn-export { padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; float: right; }
 
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -32,9 +31,7 @@
         .btn-edit { background: #f59e0b; color: white; }
         .btn-delete { background: #ef4444; color: white; }
 
-        /* CSS kwa ajili ya Dropdown ya Darasa kwenye Jedwali */
         .stream-select-table { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; width: 100%; max-width: 150px; cursor: pointer; background-color: #fff;}
-        .stream-select-table:disabled { background-color: #e5e7eb; cursor: not-allowed; }
 
         .upload-section { border-left: 5px solid #3b82f6; background: #eff6ff; }
     </style>
@@ -51,7 +48,6 @@
     </div>
 
     <div class="container">
-        <!-- Sehemu ya Kupakia Excel -->
         <div class="form-section upload-section">
             <h3>Pakia Wanafunzi Kupitia Excel (Bulk Upload)</h3>
             <form id="uploadForm">
@@ -83,6 +79,11 @@
                 <button type="button" class="btn-cancel" id="btn-cancel" onclick="cancelEdit()">Ghairi Marekebisho</button>
                 <p id="status-msg" style="font-weight:bold; margin-top:10px;"></p>
             </form>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+            <h3 style="margin: 0;">Orodha ya Wanafunzi</h3>
+            <button class="btn-export" onclick="exportToExcel()">Pakua Excel</button>
         </div>
 
         <table>

@@ -16,6 +16,7 @@
         .form-group select, .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
         .btn-save { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; width: 100%; }
         .btn-print { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+        .btn-export { padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-bottom: 15px; margin-left: 10px;}
 
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-bottom: 30px;}
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -61,7 +62,7 @@
             #receiptModal[style*="display: block"] { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; }
 
             /* FICHA VITUFE VYOTE KWENYE KARATASI */
-            .close, .btn-print-modal, .btn-print-modal-awamu, .btn-receipt, .btn-details, .btn-save, .btn-print { display: none !important; }
+            .close, .btn-print-modal, .btn-print-modal-awamu, .btn-receipt, .btn-details, .btn-save, .btn-print, .btn-export { display: none !important; }
             
             .modal-content { margin: 0; padding: 0; width: 100%; max-width: 100%; border: none; box-shadow: none; }
             .receipt-box { border: 2px solid #000; }
@@ -105,7 +106,10 @@
 
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3>Salio la Wanafunzi (Madeni)</h3>
-            <button class="btn-print" onclick="window.print()">Chapisha Orodha ya Madeni</button>
+            <div>
+                <button class="btn-print" onclick="window.print()">Chapisha Orodha</button>
+                <button class="btn-export" onclick="exportFeesToExcel()">Pakua Excel</button>
+            </div>
         </div>
         
         <table>
@@ -130,8 +134,6 @@
     <div id="installmentModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeInstallmentModal()">&times;</span>
-            
-            <!-- Sehemu inayochapishwa -->
             <div id="installment-content">
                 <h2 style="color: #1e3a8a; margin-top: 0; text-align: center;">TAARIFA YA MALIPO YA ADA</h2>
                 <hr style="border: 1px dashed #ccc; margin-bottom: 20px;">
@@ -146,7 +148,6 @@
                     </div>
                 </div>
 
-                <!-- Maelezo ya Jumla -->
                 <div class="summary-box">
                     <div>
                         <h4>ADA INAYOTAKIWA</h4>
@@ -162,7 +163,6 @@
                     </div>
                 </div>
 
-                <!-- Ujumbe wa Pongezi au Deni -->
                 <div id="congrats-message" class="congrats-msg">
                     🎉 Pongezi sana! Mwanafunzi amekamilisha malipo yote ya ada kwa mwaka huu.
                 </div>
@@ -170,14 +170,13 @@
                     Mwanafunzi bado ana deni. Tafadhali kamilisha malipo.
                 </div>
 
-                <!-- Jedwali la Awamu -->
                 <table class="installment-table">
                     <thead>
                         <tr>
                             <th>Awamu</th>
                             <th>Tarehe ya Malipo</th>
                             <th>Kiasi (Tsh)</th>
-                            <th class="btn-receipt">Risiti</th> <!-- Kitufe kimefichwa kwenye print -->
+                            <th class="btn-receipt">Risiti</th> 
                         </tr>
                     </thead>
                     <tbody id="installment-table-body">
@@ -185,13 +184,11 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Mwisho wa sehemu inayochapishwa -->
-
             <button class="btn-print-modal-awamu" onclick="window.print()" style="width: 100%; margin-top: 20px; padding: 12px; background: #10b981; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px;">Chapisha Taarifa Hii (Print)</button>
         </div>
     </div>
 
-    <!-- Modal ya Risiti (Ile ya Awali) -->
+    <!-- Modal ya Risiti -->
     <div id="receiptModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeReceipt()">&times;</span>
