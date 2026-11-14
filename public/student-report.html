@@ -18,7 +18,6 @@
         .btn-load { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
         .btn-print { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
 
-        /* Muonekano wa Report Card */
         .report-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; border: 1px solid #ccc; }
         .report-header { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
         .report-header h1 { margin: 0; color: #1e3a8a; font-size: 24px; text-transform: uppercase; }
@@ -41,7 +40,9 @@
         .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
         .signature-line { border-top: 1px dotted #000; width: 200px; text-align: center; padding-top: 5px; font-size: 14px;}
 
-        /* CSS MAALUM KWA AJILI YA KUCHAPISHA (A4 Portrait) */
+        .status-pass { color: #10b981; font-size: 20px; font-weight: bold; }
+        .status-inc { color: #ef4444; font-size: 20px; font-weight: bold; }
+
         @media print {
             @page { size: portrait; margin: 15mm; }
             body { background: white; }
@@ -51,6 +52,7 @@
             .report-header h1 { color: black !important; }
             th { background-color: #ddd !important; color: black !important; }
             .summary-table .total-row { background-color: transparent !important; }
+            .status-pass, .status-inc { color: black !important; }
             .signatures { margin-top: 70px; }
         }
     </style>
@@ -107,6 +109,7 @@
                         <th>SOMO (SUBJECT)</th>
                         <th>ALAMA (MARKS)</th>
                         <th>DARAJA (GRADE)</th>
+                        <th>POINTI</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -116,15 +119,19 @@
                 <thead>
                     <tr>
                         <th>JUMLA YA ALAMA</th>
-                        <th>WASTANI</th>
+                        <th>JUMLA YA POINTI</th>
+                        <th>DARAJA (DIV)</th>
                         <th>NAFASI (POSITION)</th>
+                        <th>HALI (STATUS)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="total-row">
                         <td id="total-display">0</td>
-                        <td id="average-display">0.00%</td>
+                        <td id="points-display">0</td>
+                        <td id="division-display">-</td>
                         <td id="position-display">-</td>
+                        <td id="status-display">-</td>
                     </tr>
                 </tbody>
             </table>

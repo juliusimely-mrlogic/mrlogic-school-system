@@ -11,7 +11,6 @@ if (!token || !userStr) {
         document.getElementById('user-name').innerText = user.full_name || user.name || "Mtumiaji";
     }
 
-    // Vigeu vya kutunza Chart instances ili kuzifuta kabla ya kuchora mpya
     let feesChartInstance = null;
     let genderOverallChartInstance = null;
     let genderStreamChartInstance = null;
@@ -57,11 +56,7 @@ if (!token || !userStr) {
 
     window.logout = function() { localStorage.clear(); window.location.replace('/login.html'); }
 
-    // ==========================================
-    // KAZI YA KUCHORA MICHORO (CHARTS)
-    // ==========================================
     function renderCharts(data) {
-        // 1. Futa charts za zamani kama zipo kuzuia mrundikano
         if (feesChartInstance) feesChartInstance.destroy();
         if (genderOverallChartInstance) genderOverallChartInstance.destroy();
         if (genderStreamChartInstance) genderStreamChartInstance.destroy();
@@ -73,7 +68,6 @@ if (!token || !userStr) {
             animation: { duration: 800 }, 
         };
 
-        // 2. Chart ya Fedha (Bar)
         const ctxFees = document.getElementById('feesChart').getContext('2d');
         feesChartInstance = new Chart(ctxFees, {
             type: 'bar',
@@ -92,7 +86,6 @@ if (!token || !userStr) {
             }
         });
 
-        // 3. Chart ya Jinsia Overall (Doughnut)
         const maleOverall = Number(data.overallGender.M);
         const femaleOverall = Number(data.overallGender.F);
 
@@ -110,14 +103,13 @@ if (!token || !userStr) {
             },
             options: {
                 ...commonOptions,
-                cutout: '65%', // Inafanya shimo la katikati lionekane vizuri
+                cutout: '65%', 
                 plugins: { 
                     legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } } 
                 }
             }
         });
 
-        // 4. Chart ya Ufaulu (Bar)
         const ctxExamResults = document.getElementById('examResultsChart').getContext('2d');
         examResultsChartInstance = new Chart(ctxExamResults, {
             type: 'bar',
@@ -139,7 +131,6 @@ if (!token || !userStr) {
             }
         });
 
-        // 5. Chart ya Jinsia kwa Kila Darasa (Stacked Bar Chart)
         const ctxGenderStream = document.getElementById('genderStreamChart').getContext('2d');
         
         const streamLabels = data.streamGenderStats.map(s => s.stream_name);
@@ -168,7 +159,6 @@ if (!token || !userStr) {
         });
     }
 
-    // Kazi ya Kuleta Takwimu
     async function loadDashboardData() {
         let url = '/api/dashboard/stats';
         
@@ -179,7 +169,6 @@ if (!token || !userStr) {
                 if (selectedSchool) { 
                     url += `?school_id=${selectedSchool}`; 
                 } else {
-                    // Weka sifuri na futa charts kama hakuna shule iliyochaguliwa
                     ['students','teachers','classes','expected-fees','collected-fees','outstanding-fees','div1','div2','div3','div4','div0','inc','pass','abs'].forEach(id => {
                         document.getElementById(`stat-${id}`).innerText = id.includes('fees') ? 'Tsh 0' : '0';
                     });
@@ -199,17 +188,14 @@ if (!token || !userStr) {
             
             const data = await response.json();
             
-            // Sasisha Kadi za Idadi
             document.getElementById('stat-students').innerText = data.totalStudents;
             document.getElementById('stat-teachers').innerText = data.totalTeachers;
             document.getElementById('stat-classes').innerText = data.totalClasses;
 
-            // Sasisha Kadi za Fedha
             document.getElementById('stat-expected-fees').innerText = 'Tsh ' + Number(data.totalExpectedFees).toLocaleString();
             document.getElementById('stat-collected-fees').innerText = 'Tsh ' + Number(data.totalCollectedFees).toLocaleString();
             document.getElementById('stat-outstanding-fees').innerText = 'Tsh ' + Number(data.totalOutstandingFees).toLocaleString();
 
-            // Sasisha Kadi za Matokeo
             document.getElementById('stat-div1').innerText = data.examStats.div1;
             document.getElementById('stat-div2').innerText = data.examStats.div2;
             document.getElementById('stat-div3').innerText = data.examStats.div3;
@@ -219,10 +205,8 @@ if (!token || !userStr) {
             document.getElementById('stat-pass').innerText = data.examStats.pass;
             document.getElementById('stat-abs').innerText = data.examStats.abs;
 
-            // Chora Michoro
             renderCharts(data);
 
-            // Mkuu wa shule na Mtaaluma wanaona jina la shule moja kwa moja
             if (user.role === 'school_manager' || user.role === 'mtaaluma_mkuu') {
                 document.getElementById('dropdown-container').style.display = 'none';
                 document.getElementById('static-school-container').style.display = 'block';
@@ -233,7 +217,6 @@ if (!token || !userStr) {
         }
     }
 
-    // Kazi ya kuleta orodha ya shule kwenye Dropdown (Super Admin)
     async function loadSchoolsForDropdown() {
         if (user.role !== 'super_admin') return;
         
@@ -257,7 +240,6 @@ if (!token || !userStr) {
         }
     }
 
-    // Anzisha mfumo mtumiaji akiingia
     document.addEventListener('DOMContentLoaded', () => {
         renderMenu();
         if (user.role === 'super_admin') { 

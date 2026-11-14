@@ -15,6 +15,24 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Function ya kupata Grade na Pointi
+const getGradeAndPoints = (score) => {
+    if (score >= 75) return { grade: 'A', points: 1 };
+    if (score >= 65) return { grade: 'B', points: 2 };
+    if (score >= 45) return { grade: 'C', points: 3 };
+    if (score >= 30) return { grade: 'D', points: 4 };
+    return { grade: 'F', points: 5 };
+};
+
+// Function ya kupata Daraja (Division)
+const getDivision = (points) => {
+    if (points >= 7 && points <= 17) return 'I';
+    if (points >= 18 && points <= 21) return 'II';
+    if (points >= 22 && points <= 25) return 'III';
+    if (points >= 26 && points <= 33) return 'IV';
+    return '0';
+};
+
 // 1. API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -48,7 +66,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI
+// 2. API YA TAKWIMU ZA DASHIBODI (Inahesabu PASS/INC kwa mujibu wa sheria yako)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -66,7 +84,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const schoolResult = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
         const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
 
-        // --- Takwimu za Msingi ---
         const [studentsRes, teachersRes, classesRes] = await Promise.all([
             pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
             pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
@@ -77,7 +94,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const totalTeachers = parseInt(teachersRes.rows[0].count);
         const totalClasses = classesRes.rows.length;
 
-        // --- Takwimu za Fedha ---
         let totalExpectedFees = 0;
         studentsRes.rows.forEach(student => {
             const stream = classesRes.rows.find(s => s.id === student.stream_id);
@@ -93,15 +109,12 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         const totalCollectedFees = parseFloat(collectedRes.rows[0].total);
         const totalOutstandingFees = totalExpectedFees - totalCollectedFees;
 
-        // --- Takwimu za Jinsia ---
         let maleCount = 0;
         let femaleCount = 0;
-
         studentsRes.rows.forEach(s => {
             if (s.gender === 'M') maleCount++;
             if (s.gender === 'F') femaleCount++;
         });
-
         const overallGender = { M: maleCount, F: femaleCount };
 
         const streamGenderStats = classesRes.rows.map(stream => {
@@ -113,7 +126,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             };
         });
 
-        // --- Takwimu za Matokeo (Div I, II, III, IV, 0, INC, PASS, ABS) ---
         let examStats = { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 };
         
         const latestExamRes = await pool.query(`SELECT id FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1`, [targetSchoolId]);
@@ -125,27 +137,47 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 
             if (totalSubjects > 0) {
                 const resultsRes = await pool.query(`
-                    SELECT s.id, COALESCE(SUM(r.score), 0) as total_marks, COUNT(r.score) as subjects_done
-                    FROM students s
+                    SELECT s.id, r.score 
+                    FROM students s 
                     LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1
                     WHERE s.school_id = $2
-                    GROUP BY s.id
                 `, [examId, targetSchoolId]);
 
+                const studentScores = {};
                 resultsRes.rows.forEach(row => {
-                    if (row.subjects_done == 0) {
+                    if (!studentScores[row.id]) studentScores[row.id] = [];
+                    if (row.score !== null) studentScores[row.id].push(parseFloat(row.score));
+                });
+
+                Object.keys(studentScores).forEach(studentId => {
+                    const scores = studentScores[studentId];
+                    if (scores.length === 0) {
                         examStats.abs++;
-                    } else if (row.subjects_done < totalSubjects) {
+                    } else if (scores.length < totalSubjects) {
                         examStats.inc++;
                     } else {
-                        const avg = parseFloat(row.total_marks) / totalSubjects;
-                        if (avg >= 75) examStats.div1++;
-                        else if (avg >= 65) examStats.div2++;
-                        else if (avg >= 45) examStats.div3++;
-                        else if (avg >= 30) examStats.div4++;
+                        let totalPoints = 0;
+                        let countDOrBetter = 0;
+
+                        scores.forEach(score => {
+                            const { grade, points } = getGradeAndPoints(score);
+                            totalPoints += points;
+                            if (['A', 'B', 'C', 'D'].includes(grade)) countDOrBetter++;
+                        });
+
+                        const div = getDivision(totalPoints);
+                        if (div === 'I') examStats.div1++;
+                        else if (div === 'II') examStats.div2++;
+                        else if (div === 'III') examStats.div3++;
+                        else if (div === 'IV') examStats.div4++;
                         else examStats.div0++;
 
-                        if (avg >= 30) examStats.pass++;
+                        // Logic ya PASS Kulingana na Maelekezo
+                        if (totalPoints <= 7 && countDOrBetter >= 2) {
+                            examStats.pass++;
+                        } else {
+                            examStats.inc++;
+                        }
                     }
                 });
             }
@@ -545,7 +577,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 9. RIPOTI (BROADSHEET NA MWANAFUNZI)
+// 9. RIPOTI (BROADSHEET NA MWANAFUNZI) - Zimeongezwa Pointi na Division
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
@@ -554,17 +586,37 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
         const studentsRes = await pool.query(`SELECT id, full_name FROM students WHERE stream_id = $1 AND school_id = $2 ORDER BY full_name ASC`, [stream_id, user.school_id]);
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
         const resultsRes = await pool.query(`SELECT r.student_id, r.subject_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND s.stream_id = $2 AND r.school_id = $3`, [exam_id, stream_id, user.school_id]);
+        
         const reportData = studentsRes.rows.map(student => {
-            let totalScore = 0, subjectsCount = 0; const scores = {};
+            let totalScore = 0, subjectsCount = 0, totalPoints = 0; 
+            const scores = {};
             subjectsRes.rows.forEach(sub => {
                 const result = resultsRes.rows.find(r => r.student_id === student.id && r.subject_id === sub.id);
-                if (result) { scores[sub.id] = parseFloat(result.score); totalScore += parseFloat(result.score); subjectsCount++; } else { scores[sub.id] = '-'; }
+                if (result) { 
+                    scores[sub.id] = parseFloat(result.score); 
+                    totalScore += parseFloat(result.score); 
+                    const { points } = getGradeAndPoints(parseFloat(result.score));
+                    totalPoints += points;
+                    subjectsCount++; 
+                } else { 
+                    scores[sub.id] = '-'; 
+                }
             });
-            return { student_id: student.id, full_name: student.full_name, scores, total: totalScore, average: subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0 };
+            return { 
+                student_id: student.id, 
+                full_name: student.full_name, 
+                scores, 
+                total: totalScore, 
+                points: totalPoints,
+                division: getDivision(totalPoints),
+                average: subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0 
+            };
         });
+        
         reportData.sort((a, b) => b.total - a.total);
         let currentPosition = 1;
         for (let i = 0; i < reportData.length; i++) { if (i > 0 && reportData[i].total < reportData[i-1].total) { currentPosition = i + 1; } reportData[i].position = currentPosition; }
+        
         res.json({ subjects: subjectsRes.rows, reportData });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
@@ -581,20 +633,54 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
         const streamName = streamRes.rows.length > 0 ? streamRes.rows[0].name : '-';
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
         const resultsRes = await pool.query(`SELECT subject_id, score FROM results WHERE student_id = $1 AND exam_id = $2 AND school_id = $3`, [student_id, exam_id, user.school_id]);
-        let totalScore = 0, subjectsCount = 0;
+        
+        let totalScore = 0, subjectsCount = 0, totalPoints = 0, countDOrBetter = 0;
+        
         const scores = subjectsRes.rows.map(sub => {
             const result = resultsRes.rows.find(r => r.subject_id === sub.id);
-            let score = '-', grade = '-';
-            if (result) { score = parseFloat(result.score); totalScore += score; subjectsCount++; if (score >= 75) grade = 'A'; else if (score >= 65) grade = 'B'; else if (score >= 45) grade = 'C'; else if (score >= 30) grade = 'D'; else grade = 'F'; }
-            return { name: sub.name, score: score, grade: grade };
+            let score = '-', grade = '-', points = 0;
+            if (result) { 
+                score = parseFloat(result.score); 
+                totalScore += score; 
+                const g = getGradeAndPoints(score);
+                grade = g.grade;
+                points = g.points;
+                totalPoints += points;
+                if (['A', 'B', 'C', 'D'].includes(grade)) countDOrBetter++;
+                subjectsCount++; 
+            }
+            return { name: sub.name, score: score, grade: grade, points: points };
         });
+
         const average = subjectsCount > 0 ? (totalScore / subjectsCount).toFixed(2) : 0;
+        const division = getDivision(totalPoints);
+        
+        // Logic ya PASS
+        let status = 'INC';
+        if (totalPoints <= 7 && countDOrBetter >= 2) {
+            status = 'PASS';
+        }
+        
         const classResultsRes = await pool.query(`SELECT r.student_id, SUM(r.score) as total FROM results r JOIN students s ON r.student_id = s.id WHERE s.stream_id = $1 AND r.exam_id = $2 AND r.school_id = $3 GROUP BY r.student_id ORDER BY total DESC`, [student.stream_id, exam_id, user.school_id]);
         let position = '-', totalInClass = classResultsRes.rows.length;
         if (totalInClass > 0) { const rank = classResultsRes.rows.findIndex(r => r.student_id == student_id); position = rank !== -1 ? rank + 1 : '-'; }
+        
         const schoolRes = await pool.query(`SELECT name FROM schools WHERE id = $1`, [user.school_id]);
         const schoolName = schoolRes.rows.length > 0 ? schoolRes.rows[0].name : 'Shule';
-        res.json({ schoolName, student, streamName, scores, total: totalScore, average: parseFloat(average), position, totalInClass });
+        
+        res.json({ 
+            schoolName, 
+            student, 
+            streamName, 
+            scores, 
+            total: totalScore, 
+            totalPoints: totalPoints,
+            division: division,
+            status: status,
+            average: parseFloat(average), 
+            position, 
+            totalInClass 
+        });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 

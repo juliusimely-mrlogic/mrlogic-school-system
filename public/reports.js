@@ -47,13 +47,11 @@ async function loadBroadsheet() {
         return;
     }
 
-    // Chukua majina kwa ajili ya print header
     const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
     const streamName = document.getElementById('stream-select').options[document.getElementById('stream-select').selectedIndex].text;
     document.getElementById('print-exam-name').innerText = examName;
     document.getElementById('print-stream-name').innerText = streamName;
     
-    // Njia rahisi ya kupata jina la shule (kutoka kwenye local storage)
     const user = JSON.parse(userStr);
     document.getElementById('print-school-name').innerText = user.school_name || "SHULE YAKO";
 
@@ -78,7 +76,7 @@ async function loadBroadsheet() {
         data.subjects.forEach(sub => {
             tableHeaders += `<th>${sub.name.substring(0, 3).toUpperCase()}</th>`;
         });
-        tableHeaders += `<th>TOTAL</th><th>AVERAGE</th>`;
+        tableHeaders += `<th>TOTAL</th><th>POINTI</th><th>DIV</th><th>AVERAGE</th>`;
 
         let tableRows = '';
         data.reportData.forEach(row => {
@@ -94,6 +92,8 @@ async function loadBroadsheet() {
                     <td>${row.full_name}</td>
                     ${scoresHtml}
                     <td class="total-col">${row.total}</td>
+                    <td class="points-col">${row.points}</td>
+                    <td class="div-col">${row.division}</td>
                     <td class="avg-col">${row.average}%</td>
                 </tr>
             `;

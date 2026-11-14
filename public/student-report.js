@@ -14,10 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadInitialData();
 });
 
-// 1. Pakia Mitihani na Madarasa kwenye Dropdown
 async function loadInitialData() {
     try {
-        // Pakia Mitihani
         const examsRes = await fetch('/api/exams', { headers: { 'Authorization': `Bearer ${token}` } });
         const exams = await examsRes.json();
         const examSelect = document.getElementById('exam-select');
@@ -26,7 +24,6 @@ async function loadInitialData() {
             examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
 
-        // Pakia Madarasa
         const streamsRes = await fetch('/api/streams', { headers: { 'Authorization': `Bearer ${token}` } });
         const streams = await streamsRes.json();
         const streamSelect = document.getElementById('stream-select');
@@ -40,7 +37,6 @@ async function loadInitialData() {
     }
 }
 
-// 2. Pakia Wanafunzi Kulingana na Darasa Lililochaguliwa
 async function loadStudentsDropdown() {
     const streamId = document.getElementById('stream-select').value;
     const studentSelect = document.getElementById('student-select');
@@ -67,7 +63,6 @@ async function loadStudentsDropdown() {
     }
 }
 
-// 3. Tengeneza Ripoti
 async function loadReportCard() {
     const exam_id = document.getElementById('exam-select').value;
     const student_id = document.getElementById('student-select').value;
@@ -77,7 +72,6 @@ async function loadReportCard() {
         return;
     }
 
-    // Chukua majina ya mtihani kwa ajili ya kuonyesha
     const examName = document.getElementById('exam-select').options[document.getElementById('exam-select').selectedIndex].text;
 
     try {
@@ -89,18 +83,15 @@ async function loadReportCard() {
         
         const data = await response.json();
 
-        // Weka Header Info
         document.getElementById('school-name-display').innerText = data.schoolName;
         document.getElementById('student-name-display').innerText = data.student.full_name;
         document.getElementById('student-adm-display').innerText = data.student.admission_number || '-';
         document.getElementById('student-stream-display').innerText = data.streamName;
         document.getElementById('exam-name-display').innerText = examName;
 
-        // Weka Alama za Masomo
         const tableBody = document.querySelector('#subjects-table tbody');
         let html = '';
         data.scores.forEach(score => {
-            // Rangi ya Grade kwenye screen (Haitatokea kwenye print)
             let gradeColor = 'black';
             if (score.grade === 'A') gradeColor = 'green';
             if (score.grade === 'F') gradeColor = 'red';
@@ -110,22 +101,30 @@ async function loadReportCard() {
                     <td>${score.name}</td>
                     <td>${score.score}</td>
                     <td style="font-weight: bold; color: ${gradeColor};">${score.grade}</td>
+                    <td>${score.points}</td>
                 </tr>
             `;
         });
         tableBody.innerHTML = html;
 
-        // Weka Summary
         document.getElementById('total-display').innerText = data.total;
-        document.getElementById('average-display').innerText = data.average + '%';
+        document.getElementById('points-display').innerText = data.totalPoints;
+        document.getElementById('division-display').innerText = data.division;
         document.getElementById('position-display').innerText = `${data.position} kati ya ${data.totalInClass}`;
+        
+        const statusEl = document.getElementById('status-display');
+        statusEl.innerText = data.status;
+        if (data.status === 'PASS') {
+            statusEl.className = 'status-pass';
+        } else {
+            statusEl.className = 'status-inc';
+        }
 
-        // Onyesha Report Card na Kitufe cha Print
         document.getElementById('report-card-container').style.display = 'block';
         document.getElementById('btn-print').style.display = 'inline-block';
 
     } catch (error) {
         console.error("Kosa:", error);
-        alert("Kuna tatizo limetokea wakati wa kuleta ripoti. Hakikisha alama za mwanafunzi huyu zimeingizwa.");
+        alert("Kuna tatizo limetokea wakati wa kuleta ripoti.");
     }
 }

@@ -8,7 +8,6 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
-        .navbar a:hover { background: #2563eb; }
         .container { padding: 30px; max-width: 100%; overflow-x: auto; }
         
         .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -19,7 +18,6 @@
         .btn-load { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
         .btn-print { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 25px; }
 
-        /* Muonekano wa Jedwali */
         .print-header { text-align: center; margin-bottom: 20px; display: none; }
         .print-header h2 { margin: 0; color: #1e3a8a; }
         
@@ -32,8 +30,9 @@
         .total-col { background-color: #dbeafe; font-weight: bold; }
         .avg-col { background-color: #dcfce7; font-weight: bold; }
         .pos-col { background-color: #fef08a; font-weight: bold; }
+        .points-col { background-color: #e0e7ff; font-weight: bold; }
+        .div-col { background-color: #fce7f3; font-weight: bold; }
 
-        /* CSS MAALUM KWA AJILI YA KUCHAPISHA (A4 Landscape) */
         @media print {
             @page { size: landscape; margin: 10mm; }
             body { background: white; }
@@ -44,7 +43,7 @@
             th { background-color: #ddd !important; color: black !important; border: 1px solid #000; }
             td { border: 1px solid #000; }
             tr:nth-child(even) { background-color: transparent; }
-            .total-col, .avg-col, .pos-col { background-color: transparent !important; }
+            .total-col, .avg-col, .pos-col, .points-col, .div-col { background-color: transparent !important; }
         }
     </style>
 </head>
