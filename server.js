@@ -15,7 +15,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// Function ya kupata Grade na Pointi
 const getGradeAndPoints = (score) => {
     if (score >= 75) return { grade: 'A', points: 1 };
     if (score >= 65) return { grade: 'B', points: 2 };
@@ -24,7 +23,6 @@ const getGradeAndPoints = (score) => {
     return { grade: 'F', points: 5 };
 };
 
-// Function ya kupata Daraja (Division)
 const getDivision = (points) => {
     if (points >= 7 && points <= 17) return 'I';
     if (points >= 18 && points <= 21) return 'II';
@@ -33,7 +31,6 @@ const getDivision = (points) => {
     return '0';
 };
 
-// 1. API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -53,7 +50,6 @@ app.post('/api/login', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
 
-// Middleware ya Usalama
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -66,7 +62,6 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -195,7 +190,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API MPYA: WANAFUNZI WALIOFELI MASOMO YOTE (IMEBORESHWA)
 app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query;
     const user = req.user;
@@ -267,7 +261,6 @@ app.get('/api/reports/failed-students', authenticateToken, async (req, res) => {
     }
 });
 
-// API YA TOP 50 WANAFUNZI (Zote)
 app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, type } = req.query; 
     const user = req.user;
@@ -331,7 +324,6 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     }
 });
 
-// API YA TOP 40 KWA MAKUNDI YA MASOMO
 app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, cluster } = req.query; 
     const user = req.user;
@@ -399,7 +391,6 @@ app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res)
     }
 });
 
-// API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -476,9 +467,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// ==========================================
 // API YA WALIMU (IMEBORESHWA KWA MAJUKUMU)
-// ==========================================
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -489,7 +478,6 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/teachers', authenticateToken, async (req, res) => {
-    // Tumeongeza 'designation' hapa
     const { full_name, gender, phone, designation } = req.body; 
     const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -513,14 +501,12 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         }
 
         await client.query('BEGIN');
-        // Tumeongeza designation kwenye INSERT statement
         const query = `INSERT INTO teachers (full_name, gender, phone, username, school_id, designation) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
         const result = await client.query(query, [full_name, gender, phone, username, user.school_id, designation || 'Mwalimu']);
 
         const salt = await bcrypt.genSalt(10); 
         const hashedPassword = await bcrypt.hash('password123', salt);
         
-        // Hapa user role inabaki kuwa 'teacher' kwa ajili ya system access, ila majukumu yake yapo kwenye table ya teachers
         await client.query(`INSERT INTO users (full_name, username, password_hash, role, school_id) VALUES ($1, $2, $3, $4, $5)`, 
             [full_name, username, hashedPassword, 'teacher', user.school_id]);
 
@@ -528,14 +514,13 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         res.status(201).json({ ...result.rows[0], username });
     } catch (error) { 
         await client.query('ROLLBACK');
-        res.status(500).json({ error: "Imeshindikana. Hakikisha column 'username' na 'designation' zipo kwenye table ya teachers." }); 
+        res.status(500).json({ error: "Imeshindikana. Hakikisha column 'designation' ipo kwenye table ya teachers." }); 
     } finally {
         client.release();
     }
 });
 
 app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
-    // Tumeongeza 'designation' hapa
     const { id } = req.params; const { full_name, gender, phone, designation } = req.body; const user = req.user;
     try {
         let query = `UPDATE teachers SET full_name=$1, gender=$2, phone=$3, designation=$4 WHERE id=$5`; 
@@ -558,7 +543,6 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -573,7 +557,6 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -619,7 +602,6 @@ app.delete('/api/streams/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// API YA MALIPO NA RISITI
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
@@ -718,7 +700,6 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta risiti" }); }
 });
 
-// API YA MASOMO NA MITIHANI
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM subjects`; let params = [];
@@ -757,7 +738,6 @@ app.post('/api/exams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA KUFUNGA MATOKEO
 app.put('/api/exams/:id/lock', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
@@ -770,7 +750,6 @@ app.put('/api/exams/:id/lock', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufunga matokeo." }); }
 });
 
-// API YA KUHIFADHI ALAMA
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -800,7 +779,6 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA KUPATA EXCEL YA ALAMA ZOTE
 app.get('/api/reports/export-excel/:exam_id', authenticateToken, async (req, res) => {
     const { exam_id } = req.params;
     const user = req.user;
@@ -836,7 +814,6 @@ app.get('/api/reports/export-excel/:exam_id', authenticateToken, async (req, res
     }
 });
 
-// RIPOTI (BROADSHEET NA MWANAFUNZI)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
@@ -948,7 +925,6 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// API YA SHULE NA WATUMIAJI
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } 
     catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
@@ -1032,7 +1008,6 @@ app.delete('/api/assignments/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// Kinga ya API zisizojulikana (Ili kuzuia HTML kurudi kama JSON)
 app.use('/api', (req, res) => {
     res.status(404).json({ error: "API uliyoitafuta haipo kwenye mfumo" });
 });

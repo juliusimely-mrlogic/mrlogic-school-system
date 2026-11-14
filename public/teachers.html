@@ -1,91 +1,186 @@
 <!DOCTYPE html>
 <html lang="sw">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Walimu - MR-LOGIC</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
-        .navbar a:hover { background: #2563eb; }
-        .container { padding: 30px; max-width: 1200px; margin: auto; }
-        
-        .form-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; font-size: 14px;}
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
-        .btn-save { padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .btn-save:hover { background: #059669; }
-        .btn-cancel { padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; display: none; margin-left: 10px;}
-        
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-top: 20px;}
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        th { background-color: #f8fafc; color: #1e3a8a; font-weight: bold; text-transform: uppercase; font-size: 14px;}
-        tr:hover { background-color: #f9fafb; }
-        
-        .action-btn { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
-        .btn-edit { background: #f59e0b; color: white; }
-        .btn-delete { background: #ef4444; color: white; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walimu - M-Logic</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f3f4f6; margin: 0; padding: 20px; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+    
+    .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
+    .form-group { flex: 1; min-width: 200px; }
+    label { display: block; margin-bottom: 5px; font-weight: 500; color: #4b5563; font-size: 14px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
+    
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: #fff; }
+    .btn-primary { background: #2563eb; }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f9fafb; font-weight: 600; color: #374151; }
+    tr:hover { background: #f9fafb; }
+
+    .alert { padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; }
+    .alert-success { background: #d1fae5; color: #065f46; }
+    .alert-danger { background: #fee2e2; color: #991b1b; }
+  </style>
 </head>
 <body>
-    <div class="navbar">
-        <div>
-            <a href="/index.html">&larr; Rudi Dashibodi</a>
-            <span style="font-size: 20px; font-weight: bold;">Orodha ya Walimu</span>
-        </div>
-        <div>
-            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
-        </div>
-    </div>
 
-    <div class="container">
-        <div class="form-section">
-            <h3 id="form-title">Sajili Mwalimu Mpya</h3>
-            <form id="teacherForm">
-                <input type="hidden" id="teacher_id" value="">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Jina Kamili:</label>
-                        <input type="text" id="full_name" required placeholder="Mfano: John Magesa">
-                    </div>
-                    <div class="form-group">
-                        <label>Jinsia:</label>
-                        <select id="gender" required>
-                            <option value="M">Mume (M)</option>
-                            <option value="F">Mke (F)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Namba ya Simu:</label>
-                        <input type="text" id="phone">
-                    </div>
-                </div>
-                <button type="submit" class="btn-save" id="btn-submit">Sajili Mwalimu</button>
-                <button type="button" class="btn-cancel" id="btn-cancel" onclick="cancelEdit()">Ghairi Marekebisho</button>
-                <p id="status-msg" style="font-weight:bold; margin-top:10px;"></p>
-            </form>
+  <div class="container">
+    <h1>Usajili wa Walimu</h1>
+    
+    <div id="alert-box" class="alert"></div>
+
+    <form id="teacher-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jina Kamili:</label>
+          <input type="text" id="full_name" required placeholder="Mfano: John Doe" />
         </div>
+        <div class="form-group">
+          <label>Jinsia:</label>
+          <select id="gender" required>
+            <option value="M">Me (M)</option>
+            <option value="F">Ke (F)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Namba ya Simu:</label>
+          <input type="text" id="phone" required placeholder="Mfano: 0712345678" />
+        </div>
+      </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Jina Kamili</th>
-                    <th>Jinsia</th>
-                    <th>Namba ya Simu</th>
-                    <th>Username (Kuingia)</th>
-                    <th>Hatua (Actions)</th>
-                </tr>
-            </thead>
-            <tbody id="teachers-table-body">
-                <tr><td colspan="6" style="text-align: center;">Inapakia walimu...</td></tr>
-            </tbody>
-        </table>
-    </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jukumu / Wadhifa:</label>
+          <select id="designation" required>
+            <option value="Mwalimu">Mwalimu</option>
+            <option value="Mtaaluma">Mtaaluma (Academic)</option>
+            <option value="Mhasibu wa Shule">Mhasibu wa Shule (Bursar)</option>
+            <option value="Mwalimu wa Nidhamu">Mwalimu wa Nidhamu (Discipline)</option>
+            <option value="Makamu Mkuu wa Shule">Makamu Mkuu wa Shule (Second Master)</option>
+            <option value="Meneja wa Shule">Meneja wa Shule (Manager)</option>
+          </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Sajili Mwalimu</button>
+        </div>
+      </div>
+    </form>
 
-    <script src="teachers.js"></script>
+    <h2>Orodha ya Walimu</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jina Kamili</th>
+          <th>Jinsia</th>
+          <th>Simu</th>
+          <th>Jukumu</th>
+          <th>Username</th>
+        </tr>
+      </thead>
+      <tbody id="teachers-table-body">
+        <!-- Data itaingia hapa -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Chukua Token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert("Tafadhali ingia (login) kwanza.");
+        window.location.href = '/';
+        return;
+      }
+
+      const teacherForm = document.getElementById('teacher-form');
+      const tableBody = document.getElementById('teachers-table-body');
+      const alertBox = document.getElementById('alert-box');
+
+      const authHeaders = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      function showAlert(message, type = 'success') {
+        alertBox.textContent = message;
+        alertBox.className = `alert alert-${type}`;
+        alertBox.style.display = 'block';
+        setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
+      }
+
+      // 2. Vuta Walimu kutoka Server
+      async function loadTeachers() {
+        try {
+          const res = await fetch('/api/teachers', { headers: authHeaders });
+          const teachers = await res.json();
+          
+          if (!res.ok) throw new Error(teachers.error || "Imeshindikana kupata walimu");
+
+          tableBody.innerHTML = '';
+          if (teachers.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Hakuna walimu waliosajiliwa bado.</td></tr>';
+            return;
+          }
+
+          teachers.forEach((teacher, index) => {
+            tableBody.innerHTML += `
+              <tr>
+                <td>${index + 1}</td>
+                <td><strong>${teacher.full_name}</strong></td>
+                <td>${teacher.gender}</td>
+                <td>${teacher.phone || '-'}</td>
+                <td><span style="background:#e0e7ff; color:#3730a3; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${teacher.designation || 'Mwalimu'}</span></td>
+                <td>${teacher.username || '-'}</td>
+              </tr>
+            `;
+          });
+        } catch (error) {
+          showAlert(error.message, 'danger');
+        }
+      }
+
+      // 3. Sajili Mwalimu Mpya
+      teacherForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const teacherData = {
+          full_name: document.getElementById('full_name').value,
+          gender: document.getElementById('gender').value,
+          phone: document.getElementById('phone').value,
+          designation: document.getElementById('designation').value // <--- Hapa jukumu linatumwa
+        };
+
+        try {
+          const res = await fetch('/api/teachers', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify(teacherData)
+          });
+          const result = await res.json();
+
+          if (!res.ok) throw new Error(result.error || "Imeshindikana kusajili");
+
+          showAlert(`Mwalimu ${result.full_name} amesajiliwa kikamilifu! Username: ${result.username}`);
+          teacherForm.reset();
+          loadTeachers();
+
+        } catch (error) {
+          showAlert(error.message, 'danger');
+        }
+      });
+
+      // Anzisha mfumo
+      loadTeachers();
+    });
+  </script>
 </body>
 </html>
