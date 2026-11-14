@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ingiza Alama - M-Logic</title>
+  <title>Pakia Alama (Excel) - M-Logic</title>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background: #f3f4f6; margin: 0; padding: 20px; color: #333; }
@@ -13,45 +13,45 @@
     .page-header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
     
     .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; text-align: center; }
-    .btn-primary { background: #2563eb; color: #fff; width: 100%;}
+    .btn-primary { background: #2563eb; color: #fff; width: 100%; font-size: 16px;}
     .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
     .btn-secondary { background: #6b7280; color: #fff; }
     .btn-secondary:hover { background: #4b5563; }
-    .btn-success { background: #059669; color: #fff; width: 100%; margin-top: 10px;}
-    .btn-success:hover { background: #047857; }
-    .btn-download { background: #f59e0b; color: #fff; margin-bottom: 15px; display: block; text-align: center;}
+    .btn-download { background: #f59e0b; color: #fff; display: block; text-align: center; margin-top: 10px;}
 
     .form-group { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #4b5563; font-size: 14px; }
-    input[type="file"] { width: 100%; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #f8fafc; }
-    select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 15px; }
+    input[type="file"] { width: 100%; padding: 15px; border: 2px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 15px; cursor: pointer; }
+    input[type="file"]:hover { border-color: #3b82f6; background: #eff6ff; }
+    select { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 15px; }
 
     .alert { padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; }
-    .alert-success { background: #d1fae5; color: #065f46; }
-    .alert-danger { background: #fee2e2; color: #991b1b; }
-    .alert-warning { background: #fef3c7; color: #92400e; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+    .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+    .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <div class="page-header">
-      <h1>Kadi ya Kuingiza Alama (Excel)</h1>
+      <h1>Kadi ya Kupakia Alama (Excel)</h1>
       <a href="/" class="btn btn-secondary">⬅️ Rudi Dashibodi</a>
     </div>
 
     <div id="alert-box" class="alert"></div>
 
-    <!-- Sehemu ya Kupakua Template -->
-    <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bfdbfe;">
-        <h3 style="margin-top: 0; color: #1e40af; font-size: 16px;">Hatua ya 1: Pakua Template</h3>
+    <!-- Hatua ya 1: Pakua Template -->
+    <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #bfdbfe;">
+        <h3 style="margin-top: 0; color: #1e40af; font-size: 18px;">Hatua ya 1: Pakua Template</h3>
         <p style="font-size: 14px; color: #3b82f6;">Pakua faili hili, lijaze majina ya wanafunzi na alama zao. <strong>Usibadilishe majina ya masomo.</strong></p>
-        <button id="download-template-btn" class="btn btn-download">📥 Pakua Template ya Excel</button>
+        <a href="#" id="download-template-btn" class="btn btn-download">📥 Pakua Template ya Excel</a>
     </div>
 
-    <!-- Sehemu ya Kupakia Matokeo -->
+    <!-- Hatua ya 2: Kupakia Matokeo -->
     <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <h3 style="margin-top: 0; color: #1e40af; font-size: 16px;">Hatua ya 2: Pakia Faili Lililojazwa</h3>
+        <h3 style="margin-top: 0; color: #1e40af; font-size: 18px;">Hatua ya 2: Pakia Faili Lililojazwa</h3>
         
         <form id="upload-form">
             <div style="display: flex; gap: 15px; margin-bottom: 20px;">
@@ -70,7 +70,7 @@
             </div>
 
             <div class="form-group">
-                <label>Chagua Faili la Excel:</label>
+                <label>Chagua Faili la Excel (.xlsx):</label>
                 <input type="file" id="excel-file" accept=".xlsx, .xls" required />
             </div>
 
@@ -95,7 +95,7 @@
       const alertBox = document.getElementById('alert-box');
 
       function showAlert(message, type = 'success') {
-        alertBox.innerHTML = message.replace(/\n/g, '<br>'); // Inaruhusu mistari mingi kwenye makosa
+        alertBox.innerHTML = message.replace(/\n/g, '<br>');
         alertBox.className = `alert alert-${type}`;
         alertBox.style.display = 'block';
       }
@@ -110,9 +110,12 @@
         const exams = await examsRes.json();
         const streams = await streamsRes.json();
 
+        examSelect.innerHTML = '<option value="">-- Chagua Mtihani --</option>';
         exams.forEach(exam => {
           examSelect.innerHTML += `<option value="${exam.id}">${exam.name}</option>`;
         });
+        
+        streamSelect.innerHTML = '<option value="">-- Chagua Darasa --</option>';
         streams.forEach(stream => {
           streamSelect.innerHTML += `<option value="${stream.id}">${stream.name}</option>`;
         });
@@ -121,8 +124,9 @@
       }
 
       // 2. Kupakua Template
-      document.getElementById('download-template-btn').addEventListener('click', () => {
-        window.location.href = `/api/results/excel-template?token=${token}`; // Inatumia token kwenye URL kwa sababu ya download link
+      document.getElementById('download-template-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = `/api/results/excel-template?token=${token}`; 
       });
 
       // 3. Kupakia Excel
@@ -151,7 +155,7 @@
         try {
             const res = await fetch('/api/results/upload-excel', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }, // Express-multer inahitaji FormData isiwe na Content-Type manual
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
             
@@ -159,7 +163,6 @@
 
             if (!res.ok) throw new Error(result.error || "Imeshindikana kupakia");
 
-            // Kama kuna makosa kwenye baadhi ya wanafunzi (mfano jina halipo)
             if (result.errors && result.errors.length > 0) {
                 showAlert(`<strong>Imekamilika kwa kiasi!</strong><br>${result.message}<br><br><strong>Makosa:</strong><br>${result.errors.join('<br>')}`, "warning");
             } else {
