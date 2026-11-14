@@ -55,7 +55,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 1. API YA TAKWIMU ZA DASHIBODI NA NAFASI YA SHULE
+// API YA DASHIBODI (Ina kadi ya Nafasi ya Shule)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -71,9 +71,18 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             });
         }
 
-        const schoolResult = await pool.query(`SELECT name, district FROM schools WHERE id = $1`, [targetSchoolId]);
-        const schoolName = schoolResult.rows.length > 0 ? schoolResult.rows[0].name : "Shule Haijulikani";
-        const districtName = schoolResult.rows.length > 0 ? schoolResult.rows[0].district : null;
+        let schoolName = "Shule Haijulikani";
+        let districtName = null;
+        try {
+            const schoolResult = await pool.query(`SELECT name, district FROM schools WHERE id = $1`, [targetSchoolId]);
+            if (schoolResult.rows.length > 0) {
+                schoolName = schoolResult.rows[0].name;
+                districtName = schoolResult.rows[0].district;
+            }
+        } catch (e) {
+            const fallback = await pool.query(`SELECT name FROM schools WHERE id = $1`, [targetSchoolId]);
+            if (fallback.rows.length > 0) schoolName = fallback.rows[0].name;
+        }
 
         const [studentsRes, teachersRes, classesRes] = await Promise.all([
             pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
@@ -92,10 +101,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         });
 
         const currentYear = new Date().getFullYear();
-        const collectedRes = await pool.query(`
-            SELECT COALESCE(SUM(amount), 0) as total 
-            FROM fees WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2
-        `, [targetSchoolId, currentYear]);
+        const collectedRes = await pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2`, [targetSchoolId, currentYear]);
         
         const totalCollectedFees = parseFloat(collectedRes.rows[0].total);
         const totalOutstandingFees = totalExpectedFees - totalCollectedFees;
@@ -129,13 +135,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
             const totalSubjects = parseInt(subjRes.rows[0].total);
 
             if (totalSubjects > 0) {
-                const resultsRes = await pool.query(`
-                    SELECT s.id, r.score 
-                    FROM students s 
-                    LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1
-                    WHERE s.school_id = $2
-                `, [examId, targetSchoolId]);
-
+                const resultsRes = await pool.query(`SELECT s.id, r.score FROM students s LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1 WHERE s.school_id = $2`, [examId, targetSchoolId]);
                 const studentScores = {};
                 resultsRes.rows.forEach(row => {
                     if (!studentScores[row.id]) studentScores[row.id] = [];
@@ -159,44 +159,39 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                         else if (div === 'III') examStats.div3++;
                         else if (div === 'IV') examStats.div4++;
                         else examStats.div0++;
-
                         if (totalPoints <= 7 && countDOrBetter >= 2) examStats.pass++;
                         else examStats.inc++;
                     }
                 });
             }
 
-            // HESABU YA NAFASI YA SHULE KWENYE HALMASHAURI
             if (districtName && examName) {
-                const schoolsInDistrict = await pool.query(`SELECT id FROM schools WHERE district = $1`, [districtName]);
-                totalSchoolsInDistrict = schoolsInDistrict.rows.length;
-                
-                if (totalSchoolsInDistrict > 1) {
-                    const ranksRes = await pool.query(`
-                        SELECT s.school_id, SUM(r.score) as total_score
-                        FROM results r
-                        JOIN students s ON r.student_id = s.id
-                        JOIN exams e ON r.exam_id = e.id
-                        WHERE e.name = $1 AND s.school_id = ANY($2)
-                        GROUP BY s.school_id
-                        ORDER BY total_score DESC
-                    `, [examName, schoolsInDistrict.rows.map(s => s.id)]);
-
-                    const rankIndex = ranksRes.rows.findIndex(r => r.school_id === targetSchoolId);
-                    if (rankIndex !== -1) {
-                        districtRank = rankIndex + 1;
+                try {
+                    const schoolsInDistrict = await pool.query(`SELECT id FROM schools WHERE district = $1`, [districtName]);
+                    totalSchoolsInDistrict = schoolsInDistrict.rows.length;
+                    if (totalSchoolsInDistrict > 1) {
+                        const ranksRes = await pool.query(`
+                            SELECT s.school_id, SUM(r.score) as total_score
+                            FROM results r
+                            JOIN students s ON r.student_id = s.id
+                            JOIN exams e ON r.exam_id = e.id
+                            WHERE e.name = $1 AND s.school_id = ANY($2)
+                            GROUP BY s.school_id
+                            ORDER BY total_score DESC
+                        `, [examName, schoolsInDistrict.rows.map(s => s.id)]);
+                        const rankIndex = ranksRes.rows.findIndex(r => r.school_id === targetSchoolId);
+                        if (rankIndex !== -1) districtRank = rankIndex + 1;
+                    } else {
+                        districtRank = 1;
                     }
-                } else {
-                    districtRank = 1; // Kama ni shule pekee kwenye halmashauri hiyo
-                }
+                } catch (err) { console.log("Hesabu ya nafasi imeshindwa:", err.message); }
             }
         }
 
         res.json({
-            schoolName: schoolName, totalStudents: totalStudents, totalTeachers: totalTeachers,
-            totalClasses: totalClasses, totalExpectedFees: totalExpectedFees, totalCollectedFees: totalCollectedFees,
-            totalOutstandingFees: totalOutstandingFees, overallGender: overallGender, streamGenderStats: streamGenderStats,
-            examStats: examStats, role: user.role, districtRank: districtRank, totalSchoolsInDistrict: totalSchoolsInDistrict
+            schoolName, totalStudents, totalTeachers, totalClasses, totalExpectedFees, totalCollectedFees,
+            totalOutstandingFees, overallGender, streamGenderStats, examStats, role: user.role,
+            districtRank, totalSchoolsInDistrict
         });
 
     } catch (error) { 
@@ -205,7 +200,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. API YA WALIMU
+// API ZA WALIMU NA MAJUKUMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -216,8 +211,7 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/teachers', authenticateToken, async (req, res) => {
-    const { full_name, gender, phone, designation } = req.body; 
-    const user = req.user;
+    const { full_name, gender, phone, designation } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     const client = await pool.connect();
     try {
@@ -236,10 +230,7 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         await client.query(`INSERT INTO users (full_name, username, password_hash, role, school_id) VALUES ($1, $2, $3, $4, $5)`, [full_name, username, hashedPassword, 'teacher', user.school_id]);
         await client.query('COMMIT');
         res.status(201).json({ ...result.rows[0], username });
-    } catch (error) { 
-        await client.query('ROLLBACK');
-        res.status(500).json({ error: "Imeshindikana. Hakikisha column 'designation' ipo." }); 
-    } finally { client.release(); }
+    } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
 app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
@@ -265,7 +256,7 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 3. API YA DATA MSINGI (WANAFUNZI, MADARASA, MASOMO, MITIHANI)
+// API ZA WANAFUNZI, MADARASA, MASOMO NA MITIHANI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT id, full_name, gender, stream_id, admission_number FROM students`; let params = [], conditions = [];
@@ -276,7 +267,7 @@ app.get('/api/students', authenticateToken, async (req, res) => {
         query += ` ORDER BY full_name ASC`;
         const result = await pool.query(query, params);
         res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta wanafunzi" }); }
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
 app.get('/api/streams', authenticateToken, async (req, res) => {
@@ -306,15 +297,14 @@ app.get('/api/exams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 4. API YA ALAMA (MANUAL & EXCEL)
+// API YA ALAMA
 app.get('/api/results/existing', authenticateToken, async (req, res) => {
-    const { exam_id, subject_id, stream_id } = req.query;
-    const user = req.user;
-    if (!exam_id || !subject_id || !stream_id) return res.status(400).json({ error: "Chagua Mtihani, Somo na Darasa." });
+    const { exam_id, subject_id, stream_id } = req.query; const user = req.user;
+    if (!exam_id || !subject_id || !stream_id) return res.status(400).json({ error: "Chagua" });
     try {
         const result = await pool.query(`SELECT r.student_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4`, [exam_id, subject_id, stream_id, user.school_id]);
         res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta alama zilizopo." }); }
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
 app.post('/api/results', authenticateToken, async (req, res) => {
@@ -322,23 +312,12 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
     try {
         const examStatus = await pool.query('SELECT is_locked FROM exams WHERE id = $1', [exam_id]);
-        if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) return res.status(403).json({ error: "Matokeo yamefungwa." });
-
-        for (let record of marks) {
-            if (record.score !== '' && record.score !== null) {
-                const scoreVal = parseFloat(record.score);
-                if (scoreVal < 0 || scoreVal > 100) return res.status(400).json({ error: "Alama hazipaswi kuzidi 100 au kuwa chini ya 0." });
-            }
-        }
+        if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) return res.status(403).json({ error: "Yamefungwa." });
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
             await client.query('DELETE FROM results WHERE exam_id = $1 AND subject_id = $2 AND school_id = $3', [exam_id, subject_id, user.school_id]);
-            for (let record of marks) { 
-                if (record.score !== '' && record.score !== null) { 
-                    await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [record.student_id, exam_id, subject_id, record.score, user.school_id]); 
-                } 
-            }
+            for (let record of marks) { if (record.score !== '' && record.score !== null) { await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [record.student_id, exam_id, subject_id, record.score, user.school_id]); } }
             await client.query('COMMIT'); res.json({ message: "Yamehifadhiwa" });
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
@@ -353,29 +332,27 @@ app.get('/api/results/excel-template', async (req, res) => {
         const subjectsRes = await pool.query(`SELECT name FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [decoded.school_id]);
         const subjects = subjectsRes.rows.map(s => s.name);
         const headers = ['Jina la Mwanafunzi', 'Jinsia', ...subjects];
-        const sampleRow = ['Mfano: John Doe', 'M', 80, 75, 60]; 
-        while (sampleRow.length < headers.length) sampleRow.push(70); 
+        const sampleRow = ['Mfano: John Doe', 'M', 80, 75, 60]; while (sampleRow.length < headers.length) sampleRow.push(70); 
         const ws = xlsx.utils.aoa_to_sheet([headers, sampleRow]);
-        const wb = xlsx.utils.book_new();
-        xlsx.utils.book_append_sheet(wb, ws, "Template_Ya_Alama");
+        const wb = xlsx.utils.book_new(); xlsx.utils.book_append_sheet(wb, ws, "Template_Ya_Alama");
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
         res.setHeader('Content-Disposition', `attachment; filename="Template_Alama.xlsx"`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buf);
-    } catch (error) { res.status(500).send("Imeshindikana kutengeneza template."); }
+    } catch (error) { res.status(500).send("Imeshindikana."); }
 });
 
 app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), async (req, res) => {
     if (req.user.role !== 'mtaaluma' && req.user.role !== 'mtaaluma_mkuu' && req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { exam_id, stream_id } = req.body; const user = req.user;
-    if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua Mtihani na Darasa." });
-    if (!req.file) return res.status(400).json({ error: "Pakia faili la Excel." });
+    if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
+    if (!req.file) return res.status(400).json({ error: "Pakia faili" });
     try {
         const examStatus = await pool.query('SELECT is_locked FROM exams WHERE id = $1', [exam_id]);
-        if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) return res.status(403).json({ error: "Matokeo yamefungwa." });
+        if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) return res.status(403).json({ error: "Yamefungwa." });
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const data = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        if (data.length === 0) return res.status(400).json({ error: "Faili ni tupu." });
+        if (data.length === 0) return res.status(400).json({ error: "Faili tupu." });
         const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
         const subjectMap = {}; subjectsRes.rows.forEach(s => subjectMap[s.name.toLowerCase()] = s.id);
         let successCount = 0; let errors = [];
@@ -404,32 +381,11 @@ app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), 
                 successCount++;
             }
             await client.query('COMMIT');
-            res.json({ message: `Imefanikiwa kupakia alama za ${successCount} wanafunzi.`, errors: errors.length > 0 ? errors : null });
+            res.json({ message: `Imefanikiwa ${successCount} wanafunzi.`, errors: errors.length > 0 ? errors : null });
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
     } catch (error) { res.status(500).json({ error: `Imeshindikana: ${error.message}` }); }
 });
 
-// 5. API ZA ADA NA MALIPO
-app.get('/api/fees/balances', authenticateToken, async (req, res) => {
-    const user = req.user; if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
-    try {
-        const query = `SELECT s.id, s.full_name, s.admission_number, st.name as stream_name, COALESCE(st.fee_amount, 0) as expected_fee, COALESCE(SUM(f.amount), 0) as total_paid FROM students s LEFT JOIN streams st ON s.stream_id = st.id LEFT JOIN fees f ON s.id = f.student_id WHERE s.school_id = $1 GROUP BY s.id, s.full_name, s.admission_number, st.name, st.fee_amount ORDER BY s.full_name ASC`;
-        const result = await pool.query(query, [user.school_id]);
-        const balances = result.rows.map(row => ({ ...row, balance: parseFloat(row.expected_fee) - parseFloat(row.total_paid) }));
-        res.json(balances);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.get('/api/fees', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
-        if (user.role === 'super_admin') { if (req.query.school_id) { query += ` WHERE f.school_id = $1`; params.push(req.query.school_id); } } 
-        else { if (!user.school_id) return res.status(400).json({ error: "Hana shule" }); query += ` WHERE f.school_id = $1`; params.push(user.school_id); }
-        query += ` ORDER BY f.id DESC`; const result = await pool.query(query, params); res.json(result.rows);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-// KINGA YA API
 app.use('/api', (req, res) => { res.status(404).json({ error: "API haipo" }); });
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 

@@ -1,103 +1,127 @@
 <!DOCTYPE html>
 <html lang="sw">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MR-LOGIC Dashibodi</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-        .container { padding: 30px; max-width: 1400px; margin: auto; }
-        h3 { color: #1e3a8a; margin-bottom: 15px; margin-top: 30px; font-size: 18px;}
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { padding: 15px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        .stat-card h4 { margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase; opacity: 0.9; }
-        .stat-card h2 { margin: 0; font-size: 22px; }
-        .bg-blue { background-color: #3b82f6; } .bg-red { background-color: #ef4444; } .bg-purple { background-color: #a855f7; }
-        .bg-green { background-color: #10b981; } .bg-orange { background-color: #f59e0b; } .bg-teal { background-color: #14b8a6; }
-        .bg-pink { background-color: #ec4899; } .bg-gray { background-color: #6b7280; } .bg-indigo { background-color: #6366f1; }
-        .bg-dark { background-color: #374151; } .bg-light-blue { background-color: #0ea5e9; }
-        .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 280px; position: relative; display: flex; flex-direction: column; }
-        .chart-box h3 { margin-top: 0; text-align: center; color: #1e3a8a; font-size: 14px; margin-bottom: 15px; flex-shrink: 0;}
-        .chart-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; }
-        .school-selector { margin-bottom: 30px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .school-selector select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; width: 100%; max-width: 400px; }
-        .school-static { font-size: 18px; font-weight: bold; color: #1e3a8a; }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .menu-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border-left: 5px solid #ccc; }
-        .menu-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .menu-card h3 { margin: 0 0 5px 0; color: #333; }
-        .menu-card p { margin: 0; color: #666; font-size: 14px; }
-        .border-blue { border-left-color: #3b82f6; } .border-red { border-left-color: #ef4444; }
-        .border-purple { border-left-color: #a855f7; } .border-green { border-left-color: #10b981; }
-        .border-orange { border-left-color: #f59e0b; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashibodi - M-Logic</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f3f4f6; margin: 0; color: #333; }
+    .navbar { background: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+    .navbar h1 { margin: 0; font-size: 20px; }
+    .navbar .btn-logout { background: #ef4444; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; }
+    .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+    .page-title { color: #1e3a8a; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #3b82f6; }
+    .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
+    .card .value { font-size: 32px; font-weight: bold; color: #1f2937; margin: 0; }
+    
+    .card.blue { border-left-color: #3b82f6; }
+    .card.green { border-left-color: #10b981; }
+    .card.orange { border-left-color: #f59e0b; }
+    .card.red { border-left-color: #ef4444; }
+    .card.purple { border-left-color: #8b5cf6; }
+    .card.teal { border-left-color: #14b8a6; }
+
+    /* Kadi ya Nafasi ya Shule */
+    .rank-card { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; border: none; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 25px; }
+    .rank-card h3 { color: #bfdbfe; margin-bottom: 5px; }
+    .rank-card .rank-value { font-size: 48px; font-weight: 900; line-height: 1; margin: 10px 0; }
+    .rank-card .rank-sub { font-size: 14px; color: #e0e7ff; }
+    #loading { text-align: center; font-size: 18px; color: #6b7280; padding: 50px; display: none; }
+  </style>
 </head>
 <body>
-    <div class="navbar">
-        <h2>Dashibodi ya MR-LOGIC</h2>
-        <div id="user-info">
-            Karibu, <span id="user-name" style="font-weight: bold;">...</span>
-            <button onclick="logout()" style="margin-left: 15px; padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
-        </div>
+
+  <div class="navbar">
+    <h1>M-Logic School System</h1>
+    <a href="#" id="logout-btn" class="btn-logout">Toka (Logout)</a>
+  </div>
+
+  <div class="container">
+    <h2 class="page-title" id="school-name">Inapakia Takwimu...</h2>
+    <div id="loading">Inapakia data kutoka kwenye mfumo...</div>
+
+    <div class="stats-grid" id="stats-container" style="display: none;">
+      
+      <!-- KADI YA NAFASI YA SHULE (HALMASHAURI) -->
+      <div class="card rank-card">
+        <h3>Nafasi ya Shule</h3>
+        <div class="rank-value" id="district-rank">-</div>
+        <div class="rank-sub">Kati ya Shule <span id="total-schools">0</span> (Halmashauri)</div>
+      </div>
+
+      <!-- KADI ZINGINE -->
+      <div class="card blue">
+        <h3>Jumla ya Wanafunzi</h3>
+        <p class="value" id="total-students">0</p>
+      </div>
+      <div class="card green">
+        <h3>Jumla ya Walimu</h3>
+        <p class="value" id="total-teachers">0</p>
+      </div>
+      <div class="card purple">
+        <h3>Madarasa (Streams)</h3>
+        <p class="value" id="total-classes">0</p>
+      </div>
+      <div class="card teal">
+        <h3>Ada Iliyokusanywa</h3>
+        <p class="value" id="collected-fees">Tsh 0</p>
+      </div>
+      <div class="card red">
+        <h3>Madeni ya Ada</h3>
+        <p class="value" id="outstanding-fees">Tsh 0</p>
+      </div>
     </div>
-    <div class="container">
-        <h3>Takwimu za Shule Yako</h3>
-        <div class="stats-grid">
-            <div class="stat-card bg-blue"><h4>Wanafunzi</h4><h2 id="stat-students">0</h2></div>
-            <div class="stat-card bg-red"><h4>Walimu</h4><h2 id="stat-teachers">0</h2></div>
-            <div class="stat-card bg-purple"><h4>Madarasa</h4><h2 id="stat-classes">0</h2></div>
-        </div>
-        <h3>Takwimu za Fedha</h3>
-        <div class="stats-grid">
-            <div class="stat-card bg-orange"><h4>Makadirio ya Ada</h4><h2 id="stat-expected-fees">Tsh 0</h2></div>
-            <div class="stat-card bg-green"><h4>Ada Iliyokusanywa</h4><h2 id="stat-collected-fees">Tsh 0</h2></div>
-            <div class="stat-card bg-red"><h4>Madeni</h4><h2 id="stat-outstanding-fees">Tsh 0</h2></div>
-        </div>
-        <h3>Matokeo ya Mtihani wa Mwisho</h3>
-        <div class="stats-grid">
-            <div class="stat-card bg-green"><h4>Div I</h4><h2 id="stat-div1">0</h2></div>
-            <div class="stat-card bg-teal"><h4>Div II</h4><h2 id="stat-div2">0</h2></div>
-            <div class="stat-card bg-blue"><h4>Div III</h4><h2 id="stat-div3">0</h2></div>
-            <div class="stat-card bg-indigo"><h4>Div IV</h4><h2 id="stat-div4">0</h2></div>
-            <div class="stat-card bg-dark"><h4>Div 0</h4><h2 id="stat-div0">0</h2></div>
-            <div class="stat-card bg-orange"><h4>INC</h4><h2 id="stat-inc">0</h2></div>
-            <div class="stat-card bg-light-blue"><h4>PASS</h4><h2 id="stat-pass">0</h2></div>
-            <div class="stat-card bg-gray"><h4>ABS</h4><h2 id="stat-abs">0</h2></div>
-        </div>
-        <h3>Michoro ya Takwimu</h3>
-        <div class="charts-container">
-            <div class="chart-box">
-                <h3>Mchanganuo wa Fedha za Ada</h3>
-                <div class="chart-wrapper"><canvas id="feesChart"></canvas></div>
-            </div>
-            <div class="chart-box">
-                <h3>Jumla ya Jinsia (Shule Nzima)</h3>
-                <div class="chart-wrapper"><canvas id="genderOverallChart"></canvas></div>
-            </div>
-            <div class="chart-box">
-                <h3>Mgawanyiko wa Ufaulu (Div I - 0)</h3>
-                <div class="chart-wrapper"><canvas id="examResultsChart"></canvas></div>
-            </div>
-            <div class="chart-box">
-                <h3>Mgawanyiko wa Jinsia kwa Kila Darasa</h3>
-                <div class="chart-wrapper"><canvas id="genderStreamChart"></canvas></div>
-            </div>
-        </div>
-        <div class="school-selector" id="dropdown-container" style="display: none;">
-            <label><strong>Chagua Shule:</strong></label><br><br>
-            <select id="school-select" onchange="loadDashboardData()">
-                <option value="">-- Chagua Shule --</option>
-            </select>
-        </div>
-        <div class="school-selector" id="static-school-container" style="display: none;">
-            <span class="school-static">Shule: <span id="static-school-name">Inatafuta...</span></span>
-        </div>
-        <h3>Menyu za Mfumo</h3>
-        <div class="menu-grid" id="menu-container"></div>
-    </div>
-    <script src="app.js"></script>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/login.html'; return; }
+
+      const authHeaders = { 'Authorization': `Bearer ${token}` };
+      const loading = document.getElementById('loading');
+      const statsContainer = document.getElementById('stats-container');
+
+      loading.style.display = 'block';
+      statsContainer.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard/stats', { headers: authHeaders });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || "Imeshindwa kupata data");
+
+        document.getElementById('school-name').textContent = `Takwimu za ${data.schoolName}`;
+        document.getElementById('total-students').textContent = data.totalStudents;
+        document.getElementById('total-teachers').textContent = data.totalTeachers;
+        document.getElementById('total-classes').textContent = data.totalClasses;
+        
+        const formatMoney = (amount) => "Tsh " + parseInt(amount).toLocaleString('en-US');
+        document.getElementById('collected-fees').textContent = formatMoney(data.totalCollectedFees);
+        document.getElementById('outstanding-fees').textContent = formatMoney(data.totalOutstandingFees);
+
+        // Weka Nafasi ya Shule
+        document.getElementById('district-rank').textContent = data.districtRank || '-';
+        document.getElementById('total-schools').textContent = data.totalSchoolsInDistrict || 0;
+
+        loading.style.display = 'none';
+        statsContainer.style.display = 'grid';
+
+      } catch (error) {
+        loading.textContent = `Kosa: ${error.message}`;
+        loading.style.color = '#ef4444';
+      }
+
+      document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+    });
+  </script>
 </body>
 </html>
