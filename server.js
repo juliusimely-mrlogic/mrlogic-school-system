@@ -66,7 +66,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI (Inahesabu PASS/INC kwa mujibu wa sheria yako)
+// 2. API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -172,7 +172,6 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
                         else if (div === 'IV') examStats.div4++;
                         else examStats.div0++;
 
-                        // Logic ya PASS Kulingana na Maelekezo
                         if (totalPoints <= 7 && countDOrBetter >= 2) {
                             examStats.pass++;
                         } else {
@@ -200,6 +199,93 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { 
         console.error("Dashboard Stats Error:", error);
         res.status(500).json({ error: "Imeshindikana kupata takwimu" }); 
+    }
+});
+
+// API MPYA: KUPATA TOP 50 NA BOTTOM 50
+app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
+    const { exam_id, stream_id, type } = req.query; // type = 'best' au 'worst'
+    const user = req.user;
+    
+    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        // 1. Pata masomo yote ya shule
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
+        const subjects = subjectsRes.rows;
+
+        // 2. Pata wanafunzi (kuchujwa kwa stream kama imechaguliwa)
+        let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
+        let studentParams = [user.school_id];
+        if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
+        
+        const studentsRes = await pool.query(studentQuery, studentParams);
+        const students = studentsRes.rows;
+
+        // 3. Pata alama zote za mtihani huu
+        const resultsRes = await pool.query(`
+            SELECT student_id, subject_id, score 
+            FROM results 
+            WHERE exam_id = $1 AND school_id = $2
+        `, [exam_id, user.school_id]);
+        const results = resultsRes.rows;
+
+        // 4. Chakarata (Process) data
+        const reportData = students.map(student => {
+            let totalScore = 0;
+            let subjectsCount = 0;
+            let totalPoints = 0;
+            const scoresDetail = {};
+
+            subjects.forEach(sub => {
+                const result = results.find(r => r.student_id === student.id && r.subject_id === sub.id);
+                if (result) {
+                    const score = parseFloat(result.score);
+                    const { grade, points } = getGradeAndPoints(score);
+                    scoresDetail[sub.name] = { score, grade, points };
+                    totalScore += score;
+                    totalPoints += points;
+                    subjectsCount++;
+                }
+            });
+
+            const average = subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0;
+            const division = subjectsCount > 0 ? getDivision(totalPoints) : '-';
+
+            return {
+                student_id: student.id,
+                full_name: student.full_name,
+                gender: student.gender,
+                stream_name: student.stream_name || 'Hajapewa',
+                total_score: totalScore,
+                average: average,
+                points: totalPoints,
+                division: division,
+                subjects_detail: scoresDetail
+            };
+        });
+
+        // 5. Panga (Sort) kulingana na aina
+        if (type === 'worst') {
+            // Wabovu: Pointi nyingi kwanza, alama ndogo kwanza
+            reportData.sort((a, b) => b.points - a.points || a.total_score - b.total_score);
+        } else {
+            // Bora: Pointi chache kwanza, alama nyingi kwanza
+            reportData.sort((a, b) => a.points - b.points || b.total_score - a.total_score);
+        }
+
+        // 6. Chukua 50 tu (au chini yake kama hawafiki 50)
+        const top50 = reportData.slice(0, 50);
+
+        // 7. Ongeza Rank
+        top50.forEach((row, index) => { row.rank = index + 1; });
+
+        res.json({ subjects, reportData: top50 });
+
+    } catch (error) { 
+        console.error("Top Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
     }
 });
 
@@ -577,7 +663,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 9. RIPOTI (BROADSHEET NA MWANAFUNZI) - Zimeongezwa Pointi na Division
+// 9. RIPOTI (BROADSHEET NA MWANAFUNZI)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
@@ -655,7 +741,6 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
         const average = subjectsCount > 0 ? (totalScore / subjectsCount).toFixed(2) : 0;
         const division = getDivision(totalPoints);
         
-        // Logic ya PASS
         let status = 'INC';
         if (totalPoints <= 7 && countDOrBetter >= 2) {
             status = 'PASS';

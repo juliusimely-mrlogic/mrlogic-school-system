@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wanafunzi Bora & Wabovu - MR-LOGIC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; margin-right: 20px; background: #3b82f6; padding: 8px 15px; border-radius: 4px; }
+        .container { padding: 30px; max-width: 100%; overflow-x: auto; }
+        
+        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); align-items: flex-end;}
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        
+        .btn-load { padding: 10px 20px; background: #14b8a6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; height: 42px; }
+        .btn-print { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; height: 42px; }
+
+        .print-header { text-align: center; margin-bottom: 20px; display: none; }
+        .print-header h2 { margin: 0; color: #1e3a8a; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 13px; }
+        th, td { padding: 10px; text-align: center; border: 1px solid #e5e7eb; }
+        th { background-color: #1e3a8a; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px;}
+        td:nth-child(2) { text-align: left; font-weight: bold; }
+        td:nth-child(9) { text-align: left; font-size: 12px; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        
+        .pos-col { background-color: #fef08a; font-weight: bold; }
+        .total-col { background-color: #dbeafe; font-weight: bold; }
+        .points-col { background-color: #e0e7ff; font-weight: bold; }
+        .div-col { background-color: #fce7f3; font-weight: bold; }
+        .subject-badge { display: inline-block; margin: 2px; padding: 2px 6px; border-radius: 4px; background: #e5e7eb; font-weight: bold; font-size: 11px; }
+
+        @media print {
+            @page { size: landscape; margin: 10mm; }
+            body { background: white; }
+            .navbar, .controls { display: none !important; }
+            .container { padding: 0; overflow: visible; }
+            .print-header { display: block !important; margin-bottom: 10px; }
+            table { box-shadow: none; border-radius: 0; font-size: 10px; }
+            th { background-color: #ddd !important; color: black !important; border: 1px solid #000; }
+            td { border: 1px solid #000; }
+            tr:nth-child(even) { background-color: transparent; }
+            .pos-col, .total-col, .points-col, .div-col { background-color: transparent !important; }
+            .subject-badge { background: transparent; border: 1px solid #000; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="/index.html">&larr; Rudi Dashibodi</a>
+            <span style="font-size: 20px; font-weight: bold;">Wanafunzi Bora & Wabovu (Top 50)</span>
+        </div>
+        <div>
+            <button onclick="logout()" style="padding: 8px 15px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toka</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="form-group">
+                <label>Chagua Mtihani:</label>
+                <select id="exam-select"></select>
+            </div>
+            <div class="form-group">
+                <label>Chagua Darasa (Mkondo):</label>
+                <select id="stream-select">
+                    <option value="">Shule Nzima</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Chagua Aina ya Wanafunzi:</label>
+                <select id="type-select">
+                    <option value="best">50 Bora (Top 50)</option>
+                    <option value="worst">50 Wabovu (Bottom 50)</option>
+                </select>
+            </div>
+            <button class="btn-load" onclick="loadTopStudents()">Pakia Wanafunzi</button>
+            <button class="btn-print" onclick="window.print()" id="btn-print" style="display:none;">Chapisha (Print)</button>
+        </div>
+
+        <div class="print-header">
+            <h2>ORODHA YA WANAFUNZI BORA/WABOVU</h2>
+            <p>Shule: <span id="print-school-name"></span> | Mtihani: <span id="print-exam-name"></span> | Darasa: <span id="print-stream-name"></span> | Aina: <span id="print-type-name"></span></p>
+        </div>
+
+        <div id="report-container">
+            <p style="text-align: center; color: #666;">Chagua vigezo kisha bonyeza "Pakia Wanafunzi".</p>
+        </div>
+    </div>
+
+    <script src="top-students.js"></script>
+</body>
+</html>

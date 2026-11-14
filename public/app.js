@@ -31,6 +31,7 @@ if (!token || !userStr) {
                 <div class="menu-card border-blue" onclick="window.location.href='/exams.html'"><h3>Kuingiza Alama</h3><p>Weka alama za mitihani</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/reports.html'"><h3>Broadsheet</h3><p>Matokeo ya darasa zima</p></div>
                 <div class="menu-card border-green" onclick="window.location.href='/student-report.html'"><h3>Ripoti Binafsi</h3><p>Toa Report Card ya mwanafunzi</p></div>
+                <div class="menu-card border-teal" onclick="window.location.href='/top-students.html'" style="border-left-color: #14b8a6;"><h3>Wanafunzi Bora & Wabovu</h3><p>Top 50 na Bottom 50</p></div>
                 <div class="menu-card border-blue" onclick="window.location.href='/notifications.html'"><h3>Taarifa</h3><p>Tuma na angalia taarifa</p></div>
             `;
         }
