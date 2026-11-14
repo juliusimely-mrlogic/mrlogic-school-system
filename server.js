@@ -33,7 +33,7 @@ const getDivision = (points) => {
     return '0';
 };
 
-// 1. API YA LOGIN
+// API YA LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -66,7 +66,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// 2. API YA TAKWIMU ZA DASHIBODI
+// API YA TAKWIMU ZA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -183,17 +183,10 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         }
 
         res.json({
-            schoolName: schoolName,
-            totalStudents: totalStudents,
-            totalTeachers: totalTeachers,
-            totalClasses: totalClasses,
-            totalExpectedFees: totalExpectedFees,
-            totalCollectedFees: totalCollectedFees,
-            totalOutstandingFees: totalOutstandingFees,
-            overallGender: overallGender,
-            streamGenderStats: streamGenderStats,
-            examStats: examStats,
-            role: user.role
+            schoolName: schoolName, totalStudents: totalStudents, totalTeachers: totalTeachers,
+            totalClasses: totalClasses, totalExpectedFees: totalExpectedFees, totalCollectedFees: totalCollectedFees,
+            totalOutstandingFees: totalOutstandingFees, overallGender: overallGender, streamGenderStats: streamGenderStats,
+            examStats: examStats, role: user.role
         });
 
     } catch (error) { 
@@ -202,7 +195,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// API YA TOP 50 NA BOTTOM 50 (IMEBORESHWA: Kupanga kwa Wastani)
+// API YA TOP 50 WANAFUNZI (Zote)
 app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     const { exam_id, stream_id, type } = req.query; 
     const user = req.user;
@@ -221,17 +214,11 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
         const studentsRes = await pool.query(studentQuery, studentParams);
         const students = studentsRes.rows;
 
-        const resultsRes = await pool.query(`
-            SELECT student_id, subject_id, score 
-            FROM results 
-            WHERE exam_id = $1 AND school_id = $2
-        `, [exam_id, user.school_id]);
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
         const results = resultsRes.rows;
 
         const reportData = students.map(student => {
-            let totalScore = 0;
-            let subjectsCount = 0;
-            let totalPoints = 0;
+            let totalScore = 0, subjectsCount = 0, totalPoints = 0;
             const scoresDetail = {};
 
             subjects.forEach(sub => {
@@ -250,24 +237,15 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
             const division = subjectsCount > 0 ? getDivision(totalPoints) : '-';
 
             return {
-                student_id: student.id,
-                full_name: student.full_name,
-                gender: student.gender,
-                stream_name: student.stream_name || 'Hajapewa',
-                total_score: totalScore,
-                average: average,
-                points: totalPoints,
-                division: division,
-                subjects_detail: scoresDetail
+                student_id: student.id, full_name: student.full_name, gender: student.gender,
+                stream_name: student.stream_name || 'Hajapewa', total_score: totalScore,
+                average: average, points: totalPoints, division: division, subjects_detail: scoresDetail
             };
         });
 
-        // MPANGILIO MPYA: Tunapanga kwa Wastani (Average)
         if (type === 'worst') {
-            // Wabovu: Wastani mdogo kwanza
             reportData.sort((a, b) => a.average - b.average || a.total_score - b.total_score);
         } else {
-            // Bora: Wastani mkubwa kwanza
             reportData.sort((a, b) => b.average - a.average || b.total_score - a.total_score);
         }
 
@@ -275,14 +253,91 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
         top50.forEach((row, index) => { row.rank = index + 1; });
 
         res.json({ subjects, reportData: top50 });
-
     } catch (error) { 
         console.error("Top Students Error:", error);
         res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
     }
 });
 
-// 3. API YA WANAFUNZI
+// API MPYA: TOP 40 KWA MAKUNDI YA MASOMO (SCIENCE, BUSINESS, ARTS)
+app.get('/api/reports/cluster-top-students', authenticateToken, async (req, res) => {
+    const { exam_id, stream_id, cluster } = req.query; 
+    const user = req.user;
+    
+    if (!exam_id || !cluster) return res.status(400).json({ error: "Chagua Mtihani na Kundi la Masomo" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        // 1. Chuja masomo kulingana na kundi (Cluster)
+        const allSubjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id]);
+        const allSubjects = allSubjectsRes.rows;
+        
+        let clusterKeywords = [];
+        if (cluster === 'science') clusterKeywords = ['PHY', 'CHEM', 'BIO', 'MATH', 'AGR'];
+        else if (cluster === 'business') clusterKeywords = ['BOOK', 'COMM', 'BUS', 'MATH', 'ACC'];
+        else if (cluster === 'arts') clusterKeywords = ['HIST', 'KISW', 'ENGL', 'GEO', 'LIT'];
+
+        // Chuja masomo yanayohusika na huu mkondo
+        const subjects = allSubjects.filter(sub => 
+            clusterKeywords.some(keyword => sub.name.toUpperCase().includes(keyword))
+        );
+
+        if (subjects.length === 0) {
+            return res.json({ subjects: [], reportData: [] });
+        }
+
+        // 2. Pata Wanafunzi
+        let studentQuery = `SELECT s.id, s.full_name, s.gender, s.stream_id, st.name as stream_name FROM students s LEFT JOIN streams st ON s.stream_id = st.id WHERE s.school_id = $1`;
+        let studentParams = [user.school_id];
+        if (stream_id) { studentQuery += ` AND s.stream_id = $2`; studentParams.push(stream_id); }
+        
+        const studentsRes = await pool.query(studentQuery, studentParams);
+        const students = studentsRes.rows;
+
+        // 3. Pata Alama za mtihani huu
+        const resultsRes = await pool.query(`SELECT student_id, subject_id, score FROM results WHERE exam_id = $1 AND school_id = $2`, [exam_id, user.school_id]);
+        const results = resultsRes.rows;
+
+        // 4. Chakarata (Process) data
+        const reportData = students.map(student => {
+            let totalScore = 0, subjectsCount = 0;
+            const scoresDetail = {};
+
+            subjects.forEach(sub => {
+                const result = results.find(r => r.student_id === student.id && r.subject_id === sub.id);
+                if (result) {
+                    const score = parseFloat(result.score);
+                    const { grade } = getGradeAndPoints(score);
+                    scoresDetail[sub.name] = { score, grade };
+                    totalScore += score;
+                    subjectsCount++;
+                }
+            });
+
+            const average = subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0;
+
+            return {
+                student_id: student.id, full_name: student.full_name, gender: student.gender,
+                stream_name: student.stream_name || 'Hajapewa', average: average, subjects_detail: scoresDetail
+            };
+        });
+
+        // 5. Panga kwa Wastani (Average) - Mkubwa kwanza
+        reportData.sort((a, b) => b.average - a.average);
+        
+        // 6. Chukua 40 tu
+        const top40 = reportData.slice(0, 40);
+        top40.forEach((row, index) => { row.rank = index + 1; });
+
+        res.json({ subjects, reportData: top40 });
+
+    } catch (error) { 
+        console.error("Cluster Top Students Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta ripoti" }); 
+    }
+});
+
+// API YA WANAFUNZI
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -359,7 +414,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 4. API YA WALIMU
+// API YA WALIMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -433,7 +488,7 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 5. API YA MAHUDHURIO
+// API YA MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -448,7 +503,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 6. API YA MADARASA
+// API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -494,7 +549,7 @@ app.delete('/api/streams/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
-// 7. API YA MALIPO NA RISITI
+// API YA MALIPO NA RISITI
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
@@ -593,7 +648,7 @@ app.get('/api/fees/receipt/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kuleta risiti" }); }
 });
 
-// 8. API YA MASOMO NA MITIHANI
+// API YA MASOMO NA MITIHANI
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM subjects`; let params = [];
@@ -656,7 +711,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 9. RIPOTI (BROADSHEET NA MWANAFUNZI)
+// RIPOTI (BROADSHEET NA MWANAFUNZI)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
@@ -681,15 +736,7 @@ app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
                     scores[sub.id] = '-'; 
                 }
             });
-            return { 
-                student_id: student.id, 
-                full_name: student.full_name, 
-                scores, 
-                total: totalScore, 
-                points: totalPoints,
-                division: getDivision(totalPoints),
-                average: subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0 
-            };
+            return { student_id: student.id, full_name: student.full_name, scores, total: totalScore, points: totalPoints, division: getDivision(totalPoints), average: subjectsCount > 0 ? parseFloat((totalScore / subjectsCount).toFixed(2)) : 0 };
         });
         
         reportData.sort((a, b) => b.total - a.total);
@@ -719,12 +766,8 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
             const result = resultsRes.rows.find(r => r.subject_id === sub.id);
             let score = '-', grade = '-', points = 0;
             if (result) { 
-                score = parseFloat(result.score); 
-                totalScore += score; 
-                const g = getGradeAndPoints(score);
-                grade = g.grade;
-                points = g.points;
-                totalPoints += points;
+                score = parseFloat(result.score); totalScore += score; 
+                const g = getGradeAndPoints(score); grade = g.grade; points = g.points; totalPoints += points;
                 if (['A', 'B', 'C', 'D'].includes(grade)) countDOrBetter++;
                 subjectsCount++; 
             }
@@ -735,9 +778,7 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
         const division = getDivision(totalPoints);
         
         let status = 'INC';
-        if (totalPoints <= 7 && countDOrBetter >= 2) {
-            status = 'PASS';
-        }
+        if (totalPoints <= 7 && countDOrBetter >= 2) { status = 'PASS'; }
         
         const classResultsRes = await pool.query(`SELECT r.student_id, SUM(r.score) as total FROM results r JOIN students s ON r.student_id = s.id WHERE s.stream_id = $1 AND r.exam_id = $2 AND r.school_id = $3 GROUP BY r.student_id ORDER BY total DESC`, [student.stream_id, exam_id, user.school_id]);
         let position = '-', totalInClass = classResultsRes.rows.length;
@@ -746,23 +787,11 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
         const schoolRes = await pool.query(`SELECT name FROM schools WHERE id = $1`, [user.school_id]);
         const schoolName = schoolRes.rows.length > 0 ? schoolRes.rows[0].name : 'Shule';
         
-        res.json({ 
-            schoolName, 
-            student, 
-            streamName, 
-            scores, 
-            total: totalScore, 
-            totalPoints: totalPoints,
-            division: division,
-            status: status,
-            average: parseFloat(average), 
-            position, 
-            totalInClass 
-        });
+        res.json({ schoolName, student, streamName, scores, total: totalScore, totalPoints, division, status, average: parseFloat(average), position, totalInClass });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 10. API YA SHULE NA WATUMIAJI
+// API YA SHULE NA WATUMIAJI
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } 
     catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
