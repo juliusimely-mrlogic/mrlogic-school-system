@@ -55,7 +55,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// API YA DASHIBODI (Ina kadi ya Nafasi ya Shule)
+// API YA DASHIBODI
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
