@@ -73,9 +73,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kupata takwimu" }); }
 });
 
-// ==========================================
-// API YA TAARIFA (NOTIFICATIONS)
-// ==========================================
+// 3. API YA TAARIFA (NOTIFICATIONS)
 app.get('/api/notifications', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -100,7 +98,6 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
 app.post('/api/notifications', authenticateToken, async (req, res) => {
     const { title, message, target_role } = req.body;
     const user = req.user;
-    
     const finalSchoolId = user.school_id || null;
 
     try {
@@ -126,7 +123,7 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta taarifa." }); }
 });
 
-// (API zingine zote ziko chini kama kawaida - zimefupishwa hapa kwa urahisi, lakini ni zile zile za awali)
+// 4. API YA WANAFUNZI (CRUD + BULK)
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -203,6 +200,7 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana kufuta." }); }
 });
 
+// 5. API YA WALIMU
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -244,6 +242,7 @@ app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 6. API YA MAHUDHURIO
 app.post('/api/attendance', authenticateToken, async (req, res) => {
     const { records, date } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -258,6 +257,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 7. API YA MADARASA
 app.get('/api/streams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM streams`; let params = [];
@@ -277,6 +277,7 @@ app.post('/api/streams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 8. API YA MALIPO
 app.get('/api/fees', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT f.*, s.full_name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id`; let params = [];
@@ -306,6 +307,7 @@ app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 9. API YA MASOMO
 app.get('/api/subjects', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM subjects`; let params = [];
@@ -325,6 +327,7 @@ app.post('/api/subjects', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 10. API YA MITIHANI
 app.get('/api/exams', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM exams`; let params = [];
@@ -344,6 +347,7 @@ app.post('/api/exams', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 11. KUHIFADHI ALAMA
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
@@ -358,6 +362,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 12. RIPOTI (BROADSHEET NA MWANAFUNZI)
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     if (!exam_id || !stream_id) return res.status(400).json({ error: "Chagua" });
@@ -410,6 +415,7 @@ app.get('/api/reports/student/:student_id', authenticateToken, async (req, res) 
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// 13. API YA SHULE NA WATUMIAJI
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } 
     catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
