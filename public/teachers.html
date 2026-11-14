@@ -7,18 +7,24 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background: #f3f4f6; margin: 0; padding: 20px; color: #333; }
-    .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     
     /* Header Styles */
     .page-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 25px; }
     .page-header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
     
     /* Button Styles */
-    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; }
+    .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; text-align: center; }
     .btn-primary { background: #2563eb; color: #fff; }
     .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn-success:hover { background: #047857; }
     .btn-secondary { background: #6b7280; color: #fff; }
     .btn-secondary:hover { background: #4b5563; }
+    .btn-edit { background: #f59e0b; color: #fff; padding: 6px 12px; font-size: 13px;}
+    .btn-edit:hover { background: #d97706; }
+    .btn-delete { background: #ef4444; color: #fff; padding: 6px 12px; font-size: 13px;}
+    .btn-delete:hover { background: #dc2626; }
     
     /* Form Styles */
     .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -28,7 +34,7 @@
     
     /* Table Styles */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
     th { background: #f9fafb; font-weight: 600; color: #374151; }
     tr:hover { background: #f9fafb; }
 
@@ -44,14 +50,17 @@
     
     <!-- Kichwa cha Ukurasa na Kitufe cha Kurudi -->
     <div class="page-header">
-      <h1>Usajili wa Walimu</h1>
+      <h1>Usajili na Usimamizi wa Walimu</h1>
       <a href="/" class="btn btn-secondary">⬅️ Rudi Dashibodi</a>
     </div>
     
     <div id="alert-box" class="alert"></div>
 
-    <!-- Fomu ya Kusajili -->
-    <form id="teacher-form">
+    <!-- Fomu (Inatumika kwa Kusajili na Kurekebisha) -->
+    <form id="teacher-form" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <!-- ID iliyofichwa kwa ajili ya kurekebisha -->
+      <input type="hidden" id="teacher-id" value="" />
+
       <div class="form-row">
         <div class="form-group">
           <label>Jina Kamili:</label>
@@ -68,9 +77,6 @@
           <label>Namba ya Simu:</label>
           <input type="text" id="phone" required placeholder="Mfano: 0712345678" />
         </div>
-      </div>
-
-      <div class="form-row">
         <div class="form-group">
           <label>Jukumu / Wadhifa:</label>
           <select id="designation" required>
@@ -82,8 +88,12 @@
             <option value="Meneja wa Shule">Meneja wa Shule (Manager)</option>
           </select>
         </div>
-        <div class="form-group" style="display: flex; align-items: flex-end;">
-          <button type="submit" class="btn btn-primary" style="width: 100%;">Sajili Mwalimu</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
+          <button type="submit" id="submit-btn" class="btn btn-primary" style="flex: 1;">Sajili Mwalimu Mpya</button>
+          <button type="button" id="cancel-btn" class="btn btn-secondary" style="display: none; flex: 1;">Ghairi Marekebisho</button>
         </div>
       </div>
     </form>
@@ -99,10 +109,11 @@
           <th>Simu</th>
           <th>Jukumu</th>
           <th>Username</th>
+          <th>Vitendo</th>
         </tr>
       </thead>
       <tbody id="teachers-table-body">
-        <!-- Data itaingia hapa -->
+        <!-- Data itaingia hapa kupitia JavaScript -->
       </tbody>
     </table>
   </div>
@@ -119,12 +130,18 @@
       const teacherForm = document.getElementById('teacher-form');
       const tableBody = document.getElementById('teachers-table-body');
       const alertBox = document.getElementById('alert-box');
+      const submitBtn = document.getElementById('submit-btn');
+      const cancelBtn = document.getElementById('cancel-btn');
+      const teacherIdField = document.getElementById('teacher-id');
+      
+      let allTeachers = []; // Tutahifadhi walimu hapa kwa ajili ya kurekebisha
 
       const authHeaders = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
 
+      // 1. Kazi ya kuonyesha tahadhari (Alert)
       function showAlert(message, type = 'success') {
         alertBox.textContent = message;
         alertBox.className = `alert alert-${type}`;
@@ -132,6 +149,7 @@
         setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
       }
 
+      // 2. Vuta Walimu kutoka Server
       async function loadTeachers() {
         try {
           const res = await fetch('/api/teachers', { headers: authHeaders });
@@ -139,9 +157,11 @@
           
           if (!res.ok) throw new Error(teachers.error || "Imeshindikana kupata walimu");
 
+          allTeachers = teachers; // Hifadhi data kwa ajili ya matumizi mengine
           tableBody.innerHTML = '';
+          
           if (teachers.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Hakuna walimu waliosajiliwa bado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Hakuna walimu waliosajiliwa bado.</td></tr>';
             return;
           }
 
@@ -154,6 +174,10 @@
                 <td>${teacher.phone || '-'}</td>
                 <td><span style="background:#e0e7ff; color:#3730a3; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${teacher.designation || 'Mwalimu'}</span></td>
                 <td>${teacher.username || '-'}</td>
+                <td>
+                  <button class="btn btn-edit" onclick="prepareEdit(${teacher.id})">✏️ Rekebisha</button>
+                  <button class="btn btn-delete" onclick="deleteTeacher(${teacher.id})">🗑️ Futa</button>
+                </td>
               </tr>
             `;
           });
@@ -162,9 +186,64 @@
         }
       }
 
+      // 3. Andaa Fomu kwa ajili ya Kurekebisha (Edit)
+      window.prepareEdit = function(id) {
+        const teacher = allTeachers.find(t => t.id === id);
+        if (!teacher) return;
+
+        // Jaza fomu na taarifa za mwalimu
+        teacherIdField.value = teacher.id;
+        document.getElementById('full_name').value = teacher.full_name;
+        document.getElementById('gender').value = teacher.gender;
+        document.getElementById('phone').value = teacher.phone || '';
+        document.getElementById('designation').value = teacher.designation || 'Mwalimu';
+
+        // Badilisha mwonekano wa vitufe
+        submitBtn.textContent = 'Hifadhi Marekebisho';
+        submitBtn.className = 'btn btn-success'; // Badilisha rangi kuwa ya kijani
+        cancelBtn.style.display = 'block'; // Onyesha kitufe cha kughairi
+
+        // Peleka mtumiaji juu kwenye fomu
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // 4. Futa Mwalimu (Delete)
+      window.deleteTeacher = async function(id) {
+        if (!confirm("Je, una uhakika unataka kumfuta mwalimu huyu? Kitendo hiki hakiwezi kurudishwa.")) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/teachers/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders
+          });
+          const result = await res.json();
+
+          if (!res.ok) throw new Error(result.error || "Imeshindikana kufuta");
+
+          showAlert("Mwalimu amefutwa kikamilifu.", "success");
+          loadTeachers(); // Rejesha jedwali jipya
+
+        } catch (error) {
+          showAlert(error.message, 'danger');
+        }
+      };
+
+      // 5. Ghairi Marekebisho (Rudisha fomu kwenye hali ya kawaida)
+      cancelBtn.addEventListener('click', () => {
+        teacherForm.reset();
+        teacherIdField.value = '';
+        submitBtn.textContent = 'Sajili Mwalimu Mpya';
+        submitBtn.className = 'btn btn-primary';
+        cancelBtn.style.display = 'none';
+      });
+
+      // 6. Tuma Fomu (Inashughulikia POST mpya na PUT ya kurekebisha)
       teacherForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const id = teacherIdField.value;
         const teacherData = {
           full_name: document.getElementById('full_name').value,
           gender: document.getElementById('gender').value,
@@ -172,25 +251,35 @@
           designation: document.getElementById('designation').value
         };
 
+        // Kama kuna ID, tunarekebisha (PUT). Kama hakuna, tunasajili mpya (POST)
+        const url = id ? `/api/teachers/${id}` : '/api/teachers';
+        const method = id ? 'PUT' : 'POST';
+
         try {
-          const res = await fetch('/api/teachers', {
-            method: 'POST',
+          const res = await fetch(url, {
+            method: method,
             headers: authHeaders,
             body: JSON.stringify(teacherData)
           });
           const result = await res.json();
 
-          if (!res.ok) throw new Error(result.error || "Imeshindikana kusajili");
+          if (!res.ok) throw new Error(result.error || "Imeshindikana kuhifadhi");
 
-          showAlert(`Mwalimu ${result.full_name} amesajiliwa kikamilifu! Username: ${result.username}`);
-          teacherForm.reset();
-          loadTeachers();
+          if (id) {
+            showAlert(`Taarifa za mwalimu ${result.full_name} zimefanyiwa marekebisho!`);
+          } else {
+            showAlert(`Mwalimu ${result.full_name} amesajiliwa kikamilifu! Username: ${result.username}`);
+          }
+          
+          cancelBtn.click(); // Safisha fomu na urudishe vitufe kwenye hali ya kawaida
+          loadTeachers(); // Rejesha jedwali jipya
 
         } catch (error) {
           showAlert(error.message, 'danger');
         }
       });
 
+      // Anzisha mfumo
       loadTeachers();
     });
   </script>
