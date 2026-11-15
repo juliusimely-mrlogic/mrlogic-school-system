@@ -37,6 +37,8 @@
     input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px; }
     .btn-primary { background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn-green { background: #16a34a; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-save-light { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-save-light:hover { background: #c3e6cb; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .stat-card { padding: 20px; border-radius: 8px; color: white; text-align: center; }
     .stat-card h3 { margin: 0; font-size: 14px; opacity: 0.9; }
@@ -67,9 +69,14 @@
     .badge-unpaid { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; color: white; }
 
-    /* Fomu ya Kusajili Shule */
+    /* Fomu na Vichupo */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; color: #4b5563; }
+    .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 20px; }
+    .tab-btn { padding: 10px 20px; background: none; border: none; font-size: 16px; font-weight: bold; cursor: pointer; color: #6b7280; border-bottom: 3px solid transparent; }
+    .tab-btn.active { color: #1e3a8a; border-bottom: 3px solid #1e3a8a; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
   </style>
 </head>
 <body>
@@ -95,7 +102,6 @@
     <div class="main-wrapper">
       <div class="sidebar">
         <a onclick="navigate('dashboard')" class="nav-link active" id="nav-dashboard">📊 Dashibodi</a>
-        <!-- Kitufe hiki kitaonekana kwa Super Admin pekee kupitia app.js -->
         <a onclick="navigate('kusajili_shule')" class="nav-link" id="nav-kusajili_shule" style="display: none;">🏫 Kusajili Shule</a>
         <a onclick="navigate('wanafunzi')" class="nav-link" id="nav-wanafunzi">👨‍🎓 Wanafunzi</a>
         <a onclick="navigate('walimu')" class="nav-link" id="nav-walimu">👨‍🏫 Walimu</a>

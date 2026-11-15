@@ -26,7 +26,6 @@ function showApp() {
     document.getElementById('app-screen').style.display = 'flex';
     
     const user = JSON.parse(localStorage.getItem('user'));
-    // Onyesha kitufe cha Kusajili Shule kama ni Super Admin
     if (user && user.role === 'super_admin') {
         document.getElementById('nav-kusajili_shule').style.display = 'block';
     } else {
@@ -93,7 +92,6 @@ async function renderDashboard() {
         
         let superAdminHtml = '';
         if (user && user.role === 'super_admin') {
-            // Halmashauri
             try {
                 const distRes = await fetch('/api/super-admin/district-stats', { headers: authHeaders });
                 if (distRes.ok) {
@@ -122,7 +120,6 @@ async function renderDashboard() {
                 }
             } catch (e) { console.error(e); }
 
-            // Malipo
             try {
                 const payRes = await fetch('/api/super-admin/system-payments', { headers: authHeaders });
                 if (payRes.ok) {
@@ -270,7 +267,7 @@ async function renderKusajiliShule() {
                     </div>
                     <div class="form-group">
                         <label>Meneja wa Shule (Kama ni ya Binafsi):</label>
-                        <input type="text" id="sch_manager" placeholder="Jina la Meneja (Acha tupu kama ni ya Serikali)">
+                        <input type="text" id="sch_manager" placeholder="Jina la Meneja">
                     </div>
                 </div>
                 <button type="submit" class="btn-primary" style="margin-top:15px; width:100%;">Sajili Shule</button>
@@ -281,26 +278,10 @@ async function renderKusajiliShule() {
             <h3>Orodha ya Shule Zilizosajiliwa (${schools.length})</h3>
             <table>
                 <thead>
-                    <tr>
-                        <th>Jina la Shule</th>
-                        <th>Ngazi</th>
-                        <th>Mkoa</th>
-                        <th>Halmashauri</th>
-                        <th>Centre No.</th>
-                        <th>Supervisor</th>
-                    </tr>
+                    <tr><th>Jina la Shule</th><th>Ngazi</th><th>Mkoa</th><th>Halmashauri</th><th>Centre No.</th><th>Supervisor</th></tr>
                 </thead>
                 <tbody>
-                    ${schools.map(s => `
-                        <tr>
-                            <td><strong>${s.name}</strong></td>
-                            <td>${s.level || '-'}</td>
-                            <td>${s.region || '-'}</td>
-                            <td>${s.district || '-'}</td>
-                            <td>${s.center_number || '-'}</td>
-                            <td>${s.supervisor || '-'}</td>
-                        </tr>
-                    `).join('')}
+                    ${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.region || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td>${s.supervisor || '-'}</td></tr>`).join('')}
                 </tbody>
             </table>
         </div>
@@ -319,20 +300,13 @@ async function addSchool() {
         academic_master: document.getElementById('sch_academic_master').value,
         manager: document.getElementById('sch_manager').value || null
     };
-
     try {
-        const res = await fetch('/api/schools', {
-            method: 'POST',
-            headers: { ...authHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        const res = await fetch('/api/schools', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Imeshindikana kusajili");
         alert("Shule imesajiliwa kikamilifu!");
-        renderKusajiliShule(); // Reload page
-    } catch (error) {
-        alert(error.message);
-    }
+        renderKusajiliShule();
+    } catch (error) { alert(error.message); }
 }
 
 // ==========================================
@@ -442,27 +416,86 @@ async function addFee() {
 }
 
 // ==========================================
-// 6. ALAMA
+// 6. ALAMA (NORMAL NA EXCEL)
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
+    const user = JSON.parse(localStorage.getItem('user'));
+    const canUploadExcel = (user.role === 'mtaaluma' || user.role === 'mtaaluma_mkuu' || user.role === 'super_admin');
+
     const [e, s, st] = await Promise.all([fetch('/api/exams', { headers: authHeaders }), fetch('/api/subjects', { headers: authHeaders }), fetch('/api/streams', { headers: authHeaders })]);
     const exams = await e.json(), subjects = await s.json(), streams = await st.json();
     
     content.innerHTML = `
-        <div class="card">
-            <h3>Kuingiza Alama (Kwa Mkono)</h3>
-            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
-                <select id="a_exam" style="flex:1;">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="a_subj" style="flex:1;">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <select id="a_stream" style="flex:1;">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
-                <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchAlamaTab('normal', event)">Normal Entry</button>
+            ${canUploadExcel ? `<button class="tab-btn" onclick="switchAlamaTab('excel', event)">Pakia Excel</button>` : ''}
+        </div>
+
+        <!-- Normal Entry Tab -->
+        <div id="tab-normal" class="tab-content active">
+            <div class="card">
+                <h3>Kuingiza Alama (Kwa Mkono)</h3>
+                <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                    <select id="a_exam" style="flex:1;">${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                    <select id="a_stream" style="flex:1;">${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                    <select id="a_subj" style="flex:1;">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                    <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
+                </div>
+                
+                <!-- Kitufe cha Juu Kulia -->
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <button class="btn-save-light" style="display:none;" id="save_marks_top" onclick="saveMarks()">💾 Hifadhi Alama</button>
+                </div>
+
+                <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
+                
+                <!-- Kitufe cha Chini Kulia -->
+                <div style="text-align: right; margin-top: 15px;">
+                    <button class="btn-save-light" style="display:none;" id="save_marks_bottom" onclick="saveMarks()">💾 Hifadhi Alama</button>
+                </div>
             </div>
-            <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
-            <button class="btn-green" style="margin-top:10px; display:none;" id="save_marks_btn" onclick="saveMarks()">Hifadhi Alama</button>
+        </div>
+
+        <!-- Excel Tab -->
+        <div id="tab-excel" class="tab-content">
+            <div class="card">
+                <h3>Kupakia Alama kwa Excel</h3>
+                <p style="font-size:14px; color:#6b7280; margin-bottom:15px;">Pakua template, jaza alama, kisha pakia hapa. Excel iwe na majina, jinsia, mkondo, na masomo.</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <a href="#" id="dl-template-btn" class="btn-primary" style="text-decoration:none; display:inline-block;">📥 Pakua Template ya Excel</a>
+                </div>
+
+                <form onsubmit="event.preventDefault(); uploadExcel();" style="background:#f9fafb; padding:15px; border-radius:8px; border:1px solid #e5e7eb;">
+                    <div class="form-group" style="margin-bottom:15px;">
+                        <label>Chagua Mtihani:</label>
+                        <select id="ex_exam" required>${exams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:15px;">
+                        <label>Chagua Kidato (Mkondo):</label>
+                        <select id="ex_stream" required>${streams.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:15px;">
+                        <label>Chagua Faili la Excel:</label>
+                        <input type="file" id="excel_file" accept=".xlsx, .xls" required style="padding:10px; border:1px dashed #ccc; width:100%;">
+                    </div>
+                    <button type="submit" class="btn-primary" id="upload_btn" style="width:100%;">📤 Pakia Matokeo kwenye Mfumo</button>
+                </form>
+            </div>
         </div>
     `;
+
+    document.getElementById('dl-template-btn').href = `/api/results/excel-template?token=${token}`;
 }
+
+function switchAlamaTab(tabId, event) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+}
+
 async function loadMarks() {
     const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value, st = document.getElementById('a_stream').value;
     const [r1, r2] = await Promise.all([fetch(`/api/students?stream_id=${st}`, { headers: authHeaders }), fetch(`/api/results/existing?exam_id=${ex}&subject_id=${sub}&stream_id=${st}`, { headers: authHeaders })]);
@@ -470,13 +503,50 @@ async function loadMarks() {
     const map = {}; res.forEach(r => map[r.student_id] = r.score);
     
     document.getElementById('marks_table').innerHTML = studs.map(x => `<tr><td>${x.full_name}</td><td><input type="number" class="mark-input" data-id="${x.id}" value="${map[x.id] || ''}" style="width:80px;"></td></tr>`).join('');
-    document.getElementById('save_marks_btn').style.display = 'block';
+    
+    document.getElementById('save_marks_top').style.display = 'block';
+    document.getElementById('save_marks_bottom').style.display = 'block';
 }
+
 async function saveMarks() {
     const ex = document.getElementById('a_exam').value, sub = document.getElementById('a_subj').value;
     const marks = [...document.querySelectorAll('.mark-input')].map(i => ({ student_id: i.dataset.id, score: i.value }));
     await fetch('/api/results', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ exam_id: ex, subject_id: sub, marks }) });
     alert('Alama zimehifadhiwa!');
+}
+
+async function uploadExcel() {
+    const examId = document.getElementById('ex_exam').value;
+    const fileInput = document.getElementById('excel_file');
+    if (!examId || fileInput.files.length === 0) return alert('Chagua mtihani na faili la Excel.');
+
+    const formData = new FormData();
+    formData.append('exam_id', examId);
+    formData.append('file', fileInput.files[0]);
+
+    const btn = document.getElementById('upload_btn');
+    btn.disabled = true; btn.textContent = 'Inapakia... Tafadhali subiri';
+
+    try {
+        const res = await fetch('/api/results/upload-excel', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }, 
+            body: formData
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Imeshindikana");
+
+        if (result.errors && result.errors.length > 0) {
+            alert(`Imekamilika kwa kiasi!\n${result.message}\n\nMakosa:\n${result.errors.join('\n')}`);
+        } else {
+            alert(`Hongera! ${result.message}`);
+            document.getElementById('excel_file').value = '';
+        }
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '📤 Pakia Matokeo kwenye Mfumo';
+    }
 }
 
 // ==========================================
