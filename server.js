@@ -48,133 +48,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// NAFASI YA SHULE (HALMASHAURI) NA TOP 10
-// ==========================================
-app.get('/api/reports/district-rankings', authenticateToken, async (req, res) => {
-    const { exam_id } = req.query;
-    const user = req.user;
-    
-    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
-    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
-
-    try {
-        const schoolRes = await pool.query('SELECT district FROM schools WHERE id = $1', [user.school_id]);
-        const district = schoolRes.rows[0]?.district;
-        if (!district) return res.status(400).json({ error: "Shule yako haina Halmashauri (District) iliyowekwa." });
-
-        const schoolsInDistrict = await pool.query('SELECT id, name FROM schools WHERE district = $1', [district]);
-        const schoolIds = schoolsInDistrict.rows.map(s => s.id);
-        
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
-        const subjects = subjectsRes.rows;
-
-        const resultsRes = await pool.query(`
-            SELECT r.student_id, r.subject_id, r.score, st.full_name, st.gender, st.stream_id, s.name as school_name, s.id as school_id
-            FROM results r 
-            JOIN students st ON r.student_id = st.id 
-            JOIN schools s ON st.school_id = s.id
-            WHERE r.exam_id = $1 AND r.school_id = ANY($2)
-        `, [exam_id, schoolIds]);
-
-        const results = resultsRes.rows;
-        const schoolStats = {}; 
-        
-        schoolsInDistrict.rows.forEach(sch => {
-            schoolStats[sch.id] = { id: sch.id, name: sch.name, total_points: 0, count: 0, students: [] };
-        });
-
-        const studentMap = {};
-        results.forEach(r => {
-            if (!studentMap[r.student_id]) {
-                studentMap[r.student_id] = {
-                    id: r.student_id, name: r.full_name, gender: r.gender, school_id: r.school_id, school_name: r.school_name,
-                    scores: [], total_points: 0, count: 0, division: '-', gpa: 0
-                };
-            }
-            const score = parseFloat(r.score);
-            const { grade, points } = getGradeAndPoints(score);
-            studentMap[r.student_id].scores.push({ subject_id: r.subject_id, score: score, grade: grade, points: points });
-        });
-
-        Object.values(studentMap).forEach(student => {
-            let totalPoints = 0, count = 0;
-            student.scores.forEach(s => { totalPoints += s.points; count++; });
-            if (count > 0) {
-                student.total_points = totalPoints;
-                student.division = getDivision(totalPoints);
-                student.gpa = parseFloat((totalPoints / count).toFixed(2)); 
-                
-                const sch = schoolStats[student.school_id];
-                if (sch) {
-                    sch.total_points += totalPoints;
-                    sch.count += count;
-                    sch.students.push(student);
-                }
-            }
-        });
-
-        const schoolRankings = Object.values(schoolStats)
-            .filter(sch => sch.count > 0) 
-            .map(sch => ({
-                id: sch.id, name: sch.name,
-                school_gpa: parseFloat((sch.total_points / sch.count).toFixed(4)),
-                total_students: sch.students.length
-            }))
-            .sort((a, b) => a.school_gpa - b.school_gpa);
-
-        schoolRankings.forEach((sch, index) => {
-            sch.rank = index + 1;
-        });
-
-        const ourSchoolRank = schoolRankings.find(s => s.id === user.school_id) || { rank: '-', school_gpa: '-' };
-        const bestSchool = schoolRankings[0] || { name: '-', school_gpa: '-' };
-        const worstSchool = schoolRankings[schoolRankings.length - 1] || { name: '-', school_gpa: '-' };
-
-        const allStudents = Object.values(studentMap).filter(st => st.count > 0);
-        
-        allStudents.sort((a, b) => {
-            if (a.division !== b.division) return a.division.localeCompare(b.division);
-            if (a.gpa !== b.gpa) return a.gpa - b.gpa;
-            return a.total_points - b.total_points;
-        });
-
-        const top10Students = allStudents.slice(0, 10).map((st, index) => {
-            const subjectGrades = subjects.map(sub => {
-                const s = st.scores.find(x => x.subject_id === sub.id);
-                return s ? s.grade : '-';
-            });
-
-            return {
-                rank: index + 1,
-                name: st.name,
-                gender: st.gender,
-                school_name: st.school_name,
-                division: st.division,
-                gpa: st.gpa,
-                aggt: st.total_points,
-                subjects: subjectGrades
-            };
-        });
-
-        res.json({
-            district_name: district,
-            total_schools: schoolRankings.length,
-            our_school_rank: ourSchoolRank.rank,
-            our_school_gpa: ourSchoolRank.school_gpa,
-            best_school: bestSchool,
-            worst_school: worstSchool,
-            top_students: top10Students,
-            subjects_list: subjects.map(s => s.name)
-        });
-
-    } catch (error) {
-        console.error("District Rankings Error:", error);
-        res.status(500).json({ error: "Imeshindikana kuleta takwimu za Halmashauri." });
-    }
-});
-
-// ==========================================
-// ANNOUNCEMENTS
+// ANNOUNCEMENTS (LOGIN PAGE MANAGEMENT)
 // ==========================================
 app.get('/api/public/announcements', async (req, res) => {
     try {
@@ -337,7 +211,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// WALIMU
+// WALIMU & WANAFUNZI
 // ==========================================
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
@@ -364,9 +238,6 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
     } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-// ==========================================
-// WANAFUNZI
-// ==========================================
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM students`; let params = [], conditions = [];
@@ -456,8 +327,33 @@ app.post('/api/results', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// REPORTS
+// EXCEL
 // ==========================================
+app.get('/api/results/excel-template', async (req, res) => {
+    try {
+        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
+        if (decoded.role !== 'mtaaluma' && decoded.role !== 'mtaaluma_mkuu' && decoded.role !== 'super_admin') return res.status(403).send("Hauna ruhusa.");
+        const subjectsRes = await pool.query(`SELECT name FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [decoded.school_id]);
+        const headers = ['Jina la Mwanafunzi', 'Jinsia', 'Mkondo', ...subjectsRes.rows.map(s => s.name)];
+        const sampleRow = ['Mfano: John Doe', 'M', 'Stream A', ...headers.slice(3).map(()=>70)];
+        const ws = xlsx.utils.aoa_to_sheet([headers, sampleRow]);
+        const wb = xlsx.utils.book_new(); xlsx.utils.book_append_sheet(wb, ws, "Template_Alama");
+        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Disposition', `attachment; filename="Template_Alama.xlsx"`); 
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buf);
+    } catch (error) { res.status(500).send("Imeshindikana."); }
+});
+
+app.get('/api/assignments', authenticateToken, async (req, res) => {
+    const user = req.user; let query = `SELECT ta.*, t.full_name as teacher_name, st.name as stream_name, sub.name as subject_name FROM teacher_assignments ta JOIN teachers t ON ta.teacher_id = t.id JOIN streams st ON ta.stream_id = st.id JOIN subjects sub ON ta.subject_id = sub.id WHERE ta.school_id = $1`;
+    try { const result = await pool.query(query, [user.school_id]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+app.post('/api/assignments', authenticateToken, async (req, res) => {
+    const { teacher_id, stream_id, subject_id } = req.body; const user = req.user;
+    try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     try {
