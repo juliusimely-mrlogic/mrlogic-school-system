@@ -252,7 +252,13 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        let targetSchoolId = (user.role === 'super_admin' || user.role === 'district_officer') ? req.query.school_id : user.school_id;
+        // HAPA NDIPO MARKEBISHO MAKUBWA YALIPO
+        let targetSchoolId;
+        if (user.role === 'super_admin' || user.role === 'district_officer') {
+            targetSchoolId = req.query.school_id; // Super Admin hutumia ile aliyochagua
+        } else {
+            targetSchoolId = user.school_id; // Mtumiaji wa kawaida hutumia yake
+        }
         
         if (!targetSchoolId) {
             return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: {}, districtRank: "-", totalSchoolsInDistrict: 0 });

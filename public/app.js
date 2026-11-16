@@ -98,7 +98,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHIBODI YA SHULE
+// 1. DASHIBODI YA SHULE (NA CHAGUO LA SHULE KWA SUPER ADMIN)
 // ==========================================
 async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -109,12 +109,15 @@ async function renderDashboard(selectedSchoolId = null) {
     if (user && user.role === 'super_admin') {
         const resS = await fetch('/api/schools', { headers: authHeaders });
         const schools = await resS.json();
+        
         let currentSelectedId = selectedSchoolId;
         if (!currentSelectedId) {
             const dropdown = document.getElementById('school-selector');
             if (dropdown) currentSelectedId = dropdown.value;
         }
         if (!currentSelectedId && schools.length > 0) currentSelectedId = schools[0].id;
+        
+        // HAPA NDIPO MARKEBISHO YALIPO: Tuma school_id iliyochaguliwa kwenye API
         if (currentSelectedId) targetSchoolQuery = `?school_id=${currentSelectedId}`;
 
         schoolSelectorHtml = `
