@@ -44,7 +44,9 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// ================= ANNOUNCEMENTS =================
+// ==========================================
+// ANNOUNCEMENTS (LOGIN PAGE MANAGEMENT)
+// ==========================================
 app.get('/api/public/announcements', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -94,7 +96,9 @@ app.delete('/api/admin/announcements/:id', authenticateToken, async (req, res) =
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ================= LOGIN =================
+// ==========================================
+// LOGIN
+// ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -105,33 +109,50 @@ app.post('/api/login', async (req, res) => {
         if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
         
         if (user.role !== 'super_admin' && user.school_id) {
-            const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [user.school_id]);
-            if (check.rows.length > 0) {
-                const s = check.rows[0];
-                const today = new Date();
-                if (s.subscription_status === 'TRIAL_ACTIVE' && s.trial_end_date && new Date(s.trial_end_date) < today) {
-                    await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [user.school_id]);
-                } else if (s.subscription_status === 'SUBSCRIPTION_ACTIVE' && s.subscription_end_date && new Date(s.subscription_end_date) < today) {
-                    await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [user.school_id]);
+            try {
+                const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [user.school_id]);
+                if (check.rows.length > 0) {
+                    const s = check.rows[0];
+                    const today = new Date();
+                    if (s.subscription_status === 'TRIAL_ACTIVE' && s.trial_end_date && new Date(s.trial_end_date) < today) {
+                        await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [user.school_id]);
+                    } else if (s.subscription_status === 'SUBSCRIPTION_ACTIVE' && s.subscription_end_date && new Date(s.subscription_end_date) < today) {
+                        await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [user.school_id]);
+                    }
                 }
-            }
+            } catch (err) { console.log("Subscription check skipped."); }
         }
+
         const token = jwt.sign({ id: user.id, role: user.role, school_id: user.school_id, name: user.full_name }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
         res.json({ token, user });
     } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
 
-// ================= SUBSCRIPTION =================
+// ==========================================
+// SUBSCRIPTION & PAYMENT GATEWAY
+// ==========================================
 app.get('/api/subscriptions/settings', authenticateToken, async (req, res) => {
-    try { const result = await pool.query('SELECT id, annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider FROM subscription_settings WHERE id = 1'); res.json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { 
+        const result = await pool.query('SELECT * FROM subscription_settings WHERE id = 1');
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]); 
+        } else {
+            res.json({ annual_fee: 500000, duration_months: 12, trial_days: 14, support_whatsapp: '+255700000000', instructions_sw: 'Lipa ada.', gateway_provider: 'SNIPPE' });
+        }
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
 app.put('/api/admin/subscriptions/settings', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider, gateway_api_key, gateway_webhook_secret } = req.body;
     try {
-        const result = await pool.query(`UPDATE subscription_settings SET annual_fee=$1, duration_months=$2, trial_days=$3, support_whatsapp=$4, instructions_sw=$5, gateway_provider=$6, gateway_api_key=$7, gateway_webhook_secret=$8 WHERE id = 1 RETURNING *`, [annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider, gateway_api_key, gateway_webhook_secret]);
-        res.json(result.rows[0]);
+        const check = await pool.query('SELECT id FROM subscription_settings WHERE id = 1');
+        if (check.rows.length === 0) {
+            await pool.query(`INSERT INTO subscription_settings (id, annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider, gateway_api_key, gateway_webhook_secret) VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8)`, [annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider, gateway_api_key, gateway_webhook_secret]);
+        } else {
+            await pool.query(`UPDATE subscription_settings SET annual_fee=$1, duration_months=$2, trial_days=$3, support_whatsapp=$4, instructions_sw=$5, gateway_provider=$6, gateway_api_key=$7, gateway_webhook_secret=$8 WHERE id = 1`, [annual_fee, duration_months, trial_days, support_whatsapp, instructions_sw, gateway_provider, gateway_api_key, gateway_webhook_secret]);
+        }
+        res.json({ message: "Mipangilio imehifadhiwa!" });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
@@ -140,8 +161,8 @@ app.get('/api/subscriptions/my-subscription', authenticateToken, async (req, res
     try {
         const school = await pool.query('SELECT name, subscription_status, trial_start_date, trial_end_date, subscription_start_date, subscription_end_date FROM schools WHERE id = $1', [req.user.school_id]);
         const settings = await pool.query('SELECT * FROM subscription_settings WHERE id = 1');
-        const payments = await pool.query('SELECT * FROM payment_transactions WHERE school_id = $1 ORDER BY created_at DESC', [req.user.school_id]);
-        res.json({ school: school.rows[0], settings: settings.rows[0], payments: payments.rows });
+        const payments = await pool.query('SELECT * FROM payment_transactions WHERE school_id = $1 ORDER BY created_at DESC', [req.user.school_id]).catch(() => ({ rows: [] }));
+        res.json({ school: school.rows[0], settings: settings.rows[0] || {}, payments: payments.rows });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
@@ -150,7 +171,7 @@ app.post('/api/subscriptions/payments', authenticateToken, async (req, res) => {
     const { phone_number } = req.body; 
     try {
         const settings = await pool.query('SELECT * FROM subscription_settings WHERE id = 1');
-        const amount = settings.rows[0].annual_fee;
+        const amount = settings.rows[0]?.annual_fee || 500000;
         const internalRef = 'SCH-' + req.user.school_id + '-' + Date.now();
         await pool.query(`INSERT INTO payment_transactions (school_id, internal_reference, amount, status, phone_number) VALUES ($1, $2, $3, 'INITIATED', $4)`, [req.user.school_id, internalRef, amount, phone_number]);
         const providerRef = 'PRV-' + Math.floor(Math.random() * 1000000); 
@@ -162,7 +183,7 @@ app.post('/api/subscriptions/payments', authenticateToken, async (req, res) => {
 app.post('/api/webhooks/snippe', async (req, res) => {
     try {
         const settings = await pool.query('SELECT gateway_webhook_secret FROM subscription_settings WHERE id = 1');
-        const secret = settings.rows[0].gateway_webhook_secret;
+        const secret = settings.rows[0]?.gateway_webhook_secret;
         if (secret) {
             const signature = req.headers['x-webhook-signature'];
             const expectedSignature = crypto.createHmac('sha256', secret).update(req.body).digest('hex');
@@ -203,29 +224,51 @@ app.post('/api/webhooks/snippe', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Internal server error." }); }
 });
 
-// ================= SHULE =================
+// ==========================================
+// SHULE
+// ==========================================
 app.post('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager } = req.body;
+    
     try {
+        if (!name) return res.status(400).json({ error: "Jina la shule linahitajika." });
+
         const check = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
-        if (check.rows.length > 0) return res.status(400).json({ error: "Shule ipo." });
-        const settings = await pool.query('SELECT trial_days FROM subscription_settings WHERE id = 1');
-        const trialDays = settings.rows[0].trial_days || 14;
+        if (check.rows.length > 0) return res.status(400).json({ error: "Shule yenye jina hili imeshasajiliwa." });
+        
+        let trialDays = 14;
+        try {
+            const settings = await pool.query('SELECT trial_days FROM subscription_settings WHERE id = 1');
+            if (settings.rows.length > 0 && settings.rows[0].trial_days) trialDays = settings.rows[0].trial_days;
+        } catch (e) { console.log("Trial days check skipped."); }
+
         const trialStart = new Date(), trialEnd = new Date();
         trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-        const query = `INSERT INTO schools (name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, subscription_status, trial_start_date, trial_end_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'TRIAL_ACTIVE', $11, $12) RETURNING *`;
+        const query = `
+            INSERT INTO schools (name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, subscription_status, trial_start_date, trial_end_date) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'TRIAL_ACTIVE', $11, $12) RETURNING *
+        `;
         const result = await pool.query(query, [name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, trialStart, trialEnd]);
+        
         res.status(201).json(result.rows[0]);
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    } catch (error) { 
+        console.error("School registration error:", error);
+        res.status(500).json({ error: `Imeshindikana kusajili shule. Hakikisha taarifa zote zimejazwa.` }); 
+    }
 });
 
 app.get('/api/schools', authenticateToken, async (req, res) => {
-    try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+    try { 
+        const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); 
+        res.json(result.rows); 
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ================= DASHBOARD =================
+// ==========================================
+// DASHBOARD
+// ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -259,7 +302,9 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ================= WALIMU & WANAFUNZI =================
+// ==========================================
+// WALIMU & WANAFUNZI
+// ==========================================
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -268,6 +313,7 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
         const result = await pool.query(query + ` ORDER BY full_name ASC`, params); res.json(result.rows);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.post('/api/teachers', authenticateToken, async (req, res) => {
     const { full_name, gender, phone, designation } = req.body; const user = req.user;
     const client = await pool.connect();
@@ -283,14 +329,6 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
         await client.query('COMMIT'); res.status(201).json({ ...result.rows[0], username });
     } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
-app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params; const user = req.user;
-    try {
-        let query = `DELETE FROM teachers WHERE id=$1`; let params = [id];
-        if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
-        await pool.query(query, params); res.json({ message: "Amefutwa" });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
 
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
@@ -302,6 +340,7 @@ app.get('/api/students', authenticateToken, async (req, res) => {
         const result = await pool.query(query + ` ORDER BY full_name ASC`, params); res.json(result.rows);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.post('/api/students', authenticateToken, async (req, res) => {
     const { full_name, gender, stream_id, admission_number } = req.body; const user = req.user;
     try {
@@ -309,37 +348,46 @@ app.post('/api/students', authenticateToken, async (req, res) => {
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
-app.delete('/api/students/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params; const user = req.user;
-    try {
-        let query = `DELETE FROM students WHERE id=$1`; let params = [id];
-        if (user.role !== 'super_admin') { query += ` AND school_id=$2`; params.push(user.school_id); }
-        await pool.query(query, params); res.json({ message: "Amefutwa" });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
 
-// ================= MIPANGILIO, ADA, NA ALAMA =================
+// ==========================================
+// MIPANGILIO, ADA, NA ALAMA
+// ==========================================
 app.get('/api/streams', authenticateToken, async (req, res) => {
-    const user = req.user; const result = await pool.query(`SELECT * FROM streams WHERE school_id = $1 ORDER BY name ASC`, [user.school_id || 1]); res.json(result.rows);
+    const user = req.user; 
+    try {
+        const result = await pool.query(`SELECT * FROM streams WHERE school_id = $1 ORDER BY name ASC`, [user.school_id || 1]); 
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/streams', authenticateToken, async (req, res) => {
     const { name, fee_amount } = req.body; const user = req.user;
     try { const result = await pool.query(`INSERT INTO streams (name, fee_amount, school_id) VALUES ($1, $2, $3) RETURNING *`, [name, fee_amount || 0, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.get('/api/subjects', authenticateToken, async (req, res) => {
-    const user = req.user; const result = await pool.query(`SELECT * FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [user.school_id || 1]); res.json(result.rows);
+    const user = req.user; 
+    try {
+        const result = await pool.query(`SELECT * FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [user.school_id || 1]); 
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/subjects', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
     try { const result = await pool.query(`INSERT INTO subjects (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.get('/api/exams', authenticateToken, async (req, res) => {
-    const user = req.user; const result = await pool.query(`SELECT id, name, is_locked FROM exams WHERE school_id = $1 ORDER BY id DESC`, [user.school_id || 1]); res.json(result.rows);
+    const user = req.user; 
+    try {
+        const result = await pool.query(`SELECT id, name, is_locked FROM exams WHERE school_id = $1 ORDER BY id DESC`, [user.school_id || 1]); 
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 app.post('/api/exams', authenticateToken, async (req, res) => {
     const { name } = req.body; const user = req.user;
     try { const result = await pool.query(`INSERT INTO exams (name, school_id) VALUES ($1, $2) RETURNING *`, [name, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.get('/api/fees/balances', authenticateToken, async (req, res) => {
     const user = req.user;
     try {
@@ -351,6 +399,7 @@ app.post('/api/fees', authenticateToken, async (req, res) => {
     const { student_id, amount, date_paid } = req.body; const user = req.user;
     try { const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
+
 app.get('/api/results/existing', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, stream_id } = req.query; const user = req.user;
     try { const result = await pool.query(`SELECT r.student_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4`, [exam_id, subject_id, stream_id, user.school_id || 1]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
@@ -366,7 +415,9 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-// ================= EXCEL NA RIPOTI =================
+// ==========================================
+// EXCEL NA RIPOTI
+// ==========================================
 app.get('/api/results/excel-template', async (req, res) => {
     try {
         const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
@@ -381,52 +432,6 @@ app.get('/api/results/excel-template', async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buf);
     } catch (error) { res.status(500).send("Imeshindikana."); }
-});
-app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), async (req, res) => {
-    if (req.user.role !== 'mtaaluma' && req.user.role !== 'mtaaluma_mkuu' && req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
-    const { exam_id } = req.body; const user = req.user;
-    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani." });
-    if (!req.file) return res.status(400).json({ error: "Pakia faili." });
-    try {
-        const examStatus = await pool.query('SELECT is_locked FROM exams WHERE id = $1', [exam_id]);
-        if (examStatus.rows.length > 0 && examStatus.rows[0].is_locked) return res.status(403).json({ error: "Matokeo yamefungwa." });
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const data = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        if (data.length === 0) return res.status(400).json({ error: "Faili ni tupu." });
-        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1`, [user.school_id || 1]);
-        const subjectMap = {}; subjectsRes.rows.forEach(s => subjectMap[s.name.toLowerCase()] = s.id);
-        let successCount = 0; let errors = [];
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            for (let row of data) {
-                const studentName = row['Jina la Mwanafunzi']?.trim();
-                const streamName = row['Mkondo']?.trim();
-                if (!studentName || studentName === 'Mfano: John Doe' || !streamName) continue; 
-                const streamRes = await client.query(`SELECT id FROM streams WHERE LOWER(name) = LOWER($1) AND school_id = $2`, [streamName, user.school_id || 1]);
-                if (streamRes.rows.length === 0) { errors.push(`Mkondo "${streamName}" haupatikani.`); continue; }
-                const streamId = streamRes.rows[0].id;
-                const studentRes = await client.query(`SELECT id FROM students WHERE LOWER(full_name) = LOWER($1) AND stream_id = $2 AND school_id = $3`, [studentName, streamId, user.school_id || 1]);
-                if (studentRes.rows.length === 0) { errors.push(`Mwanafunzi "${studentName}" hajapatikana.`); continue; }
-                const studentId = studentRes.rows[0].id;
-                for (let subjectName in row) {
-                    const subNameLower = subjectName.toLowerCase();
-                    if (subjectMap[subNameLower]) {
-                        const subjectId = subjectMap[subNameLower];
-                        let score = parseFloat(row[subjectName]);
-                        if (!isNaN(score)) {
-                            if (score < 0) score = 0; if (score > 100) score = 100;
-                            await client.query('DELETE FROM results WHERE student_id = $1 AND exam_id = $2 AND subject_id = $3', [studentId, exam_id, subjectId]);
-                            await client.query('INSERT INTO results (student_id, exam_id, subject_id, score, school_id) VALUES ($1, $2, $3, $4, $5)', [studentId, exam_id, subjectId, score, user.school_id || 1]);
-                        }
-                    }
-                }
-                successCount++;
-            }
-            await client.query('COMMIT');
-            res.json({ message: `Imefanikiwa ${successCount} wanafunzi.`, errors: errors.length > 0 ? errors : null });
-        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-    } catch (error) { res.status(500).json({ error: `Imeshindikana: ${error.message}` }); }
 });
 
 app.get('/api/assignments', authenticateToken, async (req, res) => {
