@@ -151,7 +151,7 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// 2. API YA LOGIN
+// 2. API YA LOGIN (TENANT ISOLATION FIX)
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -162,23 +162,47 @@ app.post('/api/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
         
-        if (user.role !== 'super_admin' && user.role !== 'district_officer' && user.school_id) {
+        // HAKIKISHA school_id INAPATIKANA KUTOKA DATABASE
+        let userSchoolId = user.school_id;
+        let userDistrict = user.district;
+
+        // Kama mtumiaji hana school_id kwenye table ya users, tafuta kwenye table ya teachers
+        if (!userSchoolId && user.role === 'teacher') {
             try {
-                const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [user.school_id]);
+                const teacherRes = await pool.query('SELECT school_id FROM teachers WHERE username = $1', [username]);
+                if (teacherRes.rows.length > 0) {
+                    userSchoolId = teacherRes.rows[0].school_id;
+                }
+            } catch (err) { console.log("Teacher lookup failed."); }
+        }
+
+        if (user.role !== 'super_admin' && user.role !== 'district_officer' && userSchoolId) {
+            try {
+                const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [userSchoolId]);
                 if (check.rows.length > 0) {
                     const s = check.rows[0];
                     const today = new Date();
                     if (s.subscription_status === 'TRIAL_ACTIVE' && s.trial_end_date && new Date(s.trial_end_date) < today) {
-                        await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [user.school_id]);
+                        await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [userSchoolId]);
                     } else if (s.subscription_status === 'SUBSCRIPTION_ACTIVE' && s.subscription_end_date && new Date(s.subscription_end_date) < today) {
-                        await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [user.school_id]);
+                        await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [userSchoolId]);
                     }
                 }
             } catch (err) { console.log("Subscription check skipped."); }
         }
 
-        const token = jwt.sign({ id: user.id, role: user.role, school_id: user.school_id, district: user.district, name: user.full_name }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
-        res.json({ token, user });
+        // HAKIKISHA JWT INA school_id SAHIHI
+        const token = jwt.sign({ 
+            id: user.id, 
+            role: user.role, 
+            school_id: userSchoolId, 
+            district: userDistrict, 
+            name: user.full_name 
+        }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
+        
+        // Tuma pia school_id kwenye response ya user object
+        const userResponse = { ...user, school_id: userSchoolId };
+        res.json({ token, user: userResponse });
     } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
 
@@ -223,7 +247,7 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// 4. API YA DASHIBODI YA SHULE (TENANT ISOLATION)
+// 4. API YA DASHIBODI YA SHULE (TENANT ISOLATION KAMILI)
 // ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
