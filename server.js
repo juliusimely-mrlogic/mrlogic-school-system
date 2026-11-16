@@ -17,6 +17,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// ==========================================
+// HELPER FUNCTIONS (NECTA FORMAT)
+// ==========================================
 const getGradeAndPoints = (score) => {
     if (score >= 75) return { grade: 'A', points: 1 };
     if (score >= 65) return { grade: 'B', points: 2 };
@@ -43,6 +46,146 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
+
+// ==========================================
+// API MPYA: NAFASI YA SHULE (HALMASHAURI) NA TOP 10
+// ==========================================
+app.get('/api/reports/district-rankings', authenticateToken, async (req, res) => {
+    const { exam_id } = req.query;
+    const user = req.user;
+    
+    if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani" });
+    if (!user.school_id) return res.status(400).json({ error: "Hana shule" });
+
+    try {
+        // 1. Pata taarifa za shule yetu (kupata district)
+        const schoolRes = await pool.query('SELECT district FROM schools WHERE id = $1', [user.school_id]);
+        const district = schoolRes.rows[0]?.district;
+        if (!district) return res.status(400).json({ error: "Shule yako haina Halmashauri (District) iliyowekwa." });
+
+        // 2. Pata shule zote zilizopo kwenye Halmashauri hii
+        const schoolsInDistrict = await pool.query('SELECT id, name FROM schools WHERE district = $1', [district]);
+        const schoolIds = schoolsInDistrict.rows.map(s => s.id);
+        
+        // 3. Pata masomo yote
+        const subjectsRes = await pool.query(`SELECT id, name FROM subjects WHERE school_id = $1 ORDER BY id ASC`, [user.school_id]);
+        const subjects = subjectsRes.rows;
+
+        // 4. Pata matokeo yote ya shule za Halmashauri hii kwa mtihani huu
+        const resultsRes = await pool.query(`
+            SELECT r.student_id, r.subject_id, r.score, st.full_name, st.gender, st.stream_id, s.name as school_name, s.id as school_id
+            FROM results r 
+            JOIN students st ON r.student_id = st.id 
+            JOIN schools s ON st.school_id = s.id
+            WHERE r.exam_id = $1 AND r.school_id = ANY($2)
+        `, [exam_id, schoolIds]);
+
+        const results = resultsRes.rows;
+
+        // 5. Hesabu GPA ya kila shule na kila mwanafunzi
+        const schoolStats = {}; // { school_id: { total_points, count, students: [], name } }
+        
+        schoolsInDistrict.rows.forEach(sch => {
+            schoolStats[sch.id] = { id: sch.id, name: sch.name, total_points: 0, count: 0, students: [] };
+        });
+
+        // Panga matokeo kwa mwanafunzi
+        const studentMap = {};
+        results.forEach(r => {
+            if (!studentMap[r.student_id]) {
+                studentMap[r.student_id] = {
+                    id: r.student_id, name: r.full_name, gender: r.gender, school_id: r.school_id, school_name: r.school_name,
+                    scores: [], total_points: 0, count: 0, division: '-', gpa: 0
+                };
+            }
+            const score = parseFloat(r.score);
+            const { grade, points } = getGradeAndPoints(score);
+            studentMap[r.student_id].scores.push({ subject_id: r.subject_id, score: score, grade: grade, points: points });
+        });
+
+        // Hesabu final stats kwa kila mwanafunzi na mkusanyiko wa shule
+        Object.values(studentMap).forEach(student => {
+            let totalPoints = 0, count = 0;
+            student.scores.forEach(s => { totalPoints += s.points; count++; });
+            if (count > 0) {
+                student.total_points = totalPoints;
+                student.division = getDivision(totalPoints);
+                student.gpa = parseFloat((totalPoints / count).toFixed(2)); // Wastani wa Pointi
+                
+                // Ongeza kwenye mkusanyiko wa shule
+                const sch = schoolStats[student.school_id];
+                if (sch) {
+                    sch.total_points += totalPoints;
+                    sch.count += count;
+                    sch.students.push(student);
+                }
+            }
+        });
+
+        // 6. Panga Shule kwa GPA (Ascending: Namba ndogo ya pointi ni nzuri zaidi)
+        const schoolRankings = Object.values(schoolStats)
+            .filter(sch => sch.count > 0) // Ondoa shule zisizo na alama
+            .map(sch => ({
+                id: sch.id, name: sch.name,
+                school_gpa: parseFloat((sch.total_points / sch.count).toFixed(4)),
+                total_students: sch.students.length
+            }))
+            .sort((a, b) => a.school_gpa - b.school_gpa);
+
+        // Weka Nafasi (Rank) kwa shule
+        schoolRankings.forEach((sch, index) => {
+            sch.rank = index + 1;
+        });
+
+        const ourSchoolRank = schoolRankings.find(s => s.id === user.school_id) || { rank: '-', school_gpa: '-' };
+        const bestSchool = schoolRankings[0] || { name: '-', school_gpa: '-' };
+        const worstSchool = schoolRankings[schoolRankings.length - 1] || { name: '-', school_gpa: '-' };
+
+        // 7. Pata Wanafunzi 10 Bora wa Halmashauri (Kwa GPA ndogo na Division)
+        const allStudents = Object.values(studentMap).filter(st => st.count > 0);
+        
+        // Panga kwa Division kwanza, kisha GPA, kisha Total Points
+        allStudents.sort((a, b) => {
+            if (a.division !== b.division) return a.division.localeCompare(b.division);
+            if (a.gpa !== b.gpa) return a.gpa - b.gpa;
+            return a.total_points - b.total_points;
+        });
+
+        const top10Students = allStudents.slice(0, 10).map((st, index) => {
+            // Tengeneza NECTA format ya masomo
+            const subjectGrades = subjects.map(sub => {
+                const s = st.scores.find(x => x.subject_id === sub.id);
+                return s ? s.grade : '-';
+            });
+
+            return {
+                rank: index + 1,
+                name: st.name,
+                gender: st.gender,
+                school_name: st.school_name,
+                division: st.division,
+                gpa: st.gpa,
+                aggt: st.total_points,
+                subjects: subjectGrades
+            };
+        });
+
+        res.json({
+            district_name: district,
+            total_schools: schoolRankings.length,
+            our_school_rank: ourSchoolRank.rank,
+            our_school_gpa: ourSchoolRank.school_gpa,
+            best_school: bestSchool,
+            worst_school: worstSchool,
+            top_students: top10Students,
+            subjects_list: subjects.map(s => s.name) // Kwa ajili ya vichwa vya meza
+        });
+
+    } catch (error) {
+        console.error("District Rankings Error:", error);
+        res.status(500).json({ error: "Imeshindikana kuleta takwimu za Halmashauri." });
+    }
+});
 
 // ==========================================
 // ANNOUNCEMENTS (LOGIN PAGE MANAGEMENT)
