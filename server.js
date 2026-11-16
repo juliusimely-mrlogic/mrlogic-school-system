@@ -299,14 +299,10 @@ app.post('/api/fees', authenticateToken, async (req, res) => {
     try { const result = await pool.query(`INSERT INTO fees (student_id, amount, date_paid, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [student_id, amount, date_paid, user.school_id || 1]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ==========================================
-// ALAMA NA EXCEL (IMEBORESHWA)
-// ==========================================
 app.get('/api/results/existing', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, stream_id } = req.query; const user = req.user;
     try { const result = await pool.query(`SELECT r.student_id, r.score FROM results r JOIN students s ON r.student_id = s.id WHERE r.exam_id = $1 AND r.subject_id = $2 AND s.stream_id = $3 AND r.school_id = $4`, [exam_id, subject_id, stream_id, user.school_id || 1]); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
-
 app.post('/api/results', authenticateToken, async (req, res) => {
     const { exam_id, subject_id, marks } = req.body; const user = req.user;
     const client = await pool.connect();
@@ -321,15 +317,12 @@ app.post('/api/results', authenticateToken, async (req, res) => {
 app.get('/api/results/excel-template', async (req, res) => {
     try {
         const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
-        // Ruhusa kwa Wataaluma na Super Admin pekee
         if (decoded.role !== 'mtaaluma' && decoded.role !== 'mtaaluma_mkuu' && decoded.role !== 'super_admin') {
             return res.status(403).send("Hauna ruhusa.");
         }
-        
         const subjectsRes = await pool.query(`SELECT name FROM subjects WHERE school_id = $1 ORDER BY name ASC`, [decoded.school_id]);
         const headers = ['Jina la Mwanafunzi', 'Jinsia', 'Mkondo', ...subjectsRes.rows.map(s => s.name)];
         const sampleRow = ['Mfano: John Doe', 'M', 'Stream A', ...headers.slice(3).map(()=>70)];
-        
         const ws = xlsx.utils.aoa_to_sheet([headers, sampleRow]);
         const wb = xlsx.utils.book_new(); xlsx.utils.book_append_sheet(wb, ws, "Template_Alama");
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -340,11 +333,9 @@ app.get('/api/results/excel-template', async (req, res) => {
 });
 
 app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), async (req, res) => {
-    // Ruhusa kwa Wataaluma na Super Admin pekee
     if (req.user.role !== 'mtaaluma' && req.user.role !== 'mtaaluma_mkuu' && req.user.role !== 'super_admin') {
         return res.status(403).json({ error: "Hauna ruhusa ya kupakia Excel." });
     }
-    
     const { exam_id } = req.body; const user = req.user;
     if (!exam_id) return res.status(400).json({ error: "Chagua Mtihani." });
     if (!req.file) return res.status(400).json({ error: "Pakia faili." });
@@ -369,17 +360,14 @@ app.post('/api/results/upload-excel', authenticateToken, upload.single('file'), 
                 const streamName = row['Mkondo']?.trim();
                 if (!studentName || studentName === 'Mfano: John Doe' || !streamName) continue; 
 
-                // Tafuta stream_id
                 const streamRes = await client.query(`SELECT id FROM streams WHERE LOWER(name) = LOWER($1) AND school_id = $2`, [streamName, user.school_id || 1]);
                 if (streamRes.rows.length === 0) { errors.push(`Mkondo "${streamName}" haupatikani.`); continue; }
                 const streamId = streamRes.rows[0].id;
 
-                // Tafuta mwanafunzi
                 const studentRes = await client.query(`SELECT id FROM students WHERE LOWER(full_name) = LOWER($1) AND stream_id = $2 AND school_id = $3`, [studentName, streamId, user.school_id || 1]);
                 if (studentRes.rows.length === 0) { errors.push(`Mwanafunzi "${studentName}" hajapatikana kwenye ${streamName}.`); continue; }
                 const studentId = studentRes.rows[0].id;
 
-                // Weka alama za masomo
                 for (let subjectName in row) {
                     const subNameLower = subjectName.toLowerCase();
                     if (subjectMap[subNameLower]) {

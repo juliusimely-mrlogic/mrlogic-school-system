@@ -60,7 +60,7 @@ function navigate(page) {
 // ==========================================
 // 1. DASHBOARD
 // ==========================================
-async function renderDashboard() {
+async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
     const user = JSON.parse(localStorage.getItem('user'));
     
@@ -71,16 +71,22 @@ async function renderDashboard() {
         const resS = await fetch('/api/schools', { headers: authHeaders });
         const schools = await resS.json();
         
-        let selectedId = document.getElementById('school-selector')?.value;
-        if (!selectedId && schools.length > 0) selectedId = schools[0].id;
+        // Tumia ID iliyopitishwa, au tafuta kwenye dropdown kama ipo
+        let currentSelectedId = selectedSchoolId;
+        if (!currentSelectedId) {
+            const dropdown = document.getElementById('school-selector');
+            if (dropdown) currentSelectedId = dropdown.value;
+        }
+        // Kama bado haipo, chukua ya kwanza
+        if (!currentSelectedId && schools.length > 0) currentSelectedId = schools[0].id;
         
-        if (selectedId) targetSchoolQuery = `?school_id=${selectedId}`;
+        if (currentSelectedId) targetSchoolQuery = `?school_id=${currentSelectedId}`;
 
         schoolSelectorHtml = `
             <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; display: inline-block;">
                 <label style="font-weight:bold; margin-right:10px;">Chagua Shule (Kwa Takwimu za Chini):</label>
-                <select id="school-selector" onchange="renderDashboard()" style="padding:10px; border-radius:5px;">
-                    ${schools.map(s => `<option value="${s.id}" ${s.id == selectedId ? 'selected' : ''}>${s.name}</option>`).join('')}
+                <select id="school-selector" onchange="renderDashboard(this.value)" style="padding:10px; border-radius:5px;">
+                    ${schools.map(s => `<option value="${s.id}" ${String(s.id) === String(currentSelectedId) ? 'selected' : ''}>${s.name}</option>`).join('')}
                 </select>
             </div>
         `;
@@ -443,14 +449,12 @@ async function renderAlama() {
                     <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
                 </div>
                 
-                <!-- Kitufe cha Juu Kulia -->
                 <div style="text-align: right; margin-bottom: 10px;">
                     <button class="btn-save-light" style="display:none;" id="save_marks_top" onclick="saveMarks()">💾 Hifadhi Alama</button>
                 </div>
 
                 <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
                 
-                <!-- Kitufe cha Chini Kulia -->
                 <div style="text-align: right; margin-top: 15px;">
                     <button class="btn-save-light" style="display:none;" id="save_marks_bottom" onclick="saveMarks()">💾 Hifadhi Alama</button>
                 </div>
