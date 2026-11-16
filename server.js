@@ -15,6 +15,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
 const getGradeAndPoints = (score) => {
     if (score >= 75) return { grade: 'A', points: 1 };
     if (score >= 65) return { grade: 'B', points: 2 };
@@ -29,6 +32,20 @@ const getDivision = (points) => {
     if (points >= 22 && points <= 25) return 'III';
     if (points >= 26 && points <= 33) return 'IV';
     return '0';
+};
+
+// ==========================================
+// MIDDLEWARE YA USALAMA (Imehamishwa Juu)
+// ==========================================
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "Hakuna token" });
+    jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
+        if (err) return res.status(401).json({ error: "Token imeisha muda au si sahihi" });
+        req.user = user; 
+        next();
+    });
 };
 
 // ==========================================
@@ -51,7 +68,7 @@ app.get('/api/public/announcements', async (req, res) => {
         res.json(result.rows);
     } catch (error) { 
         console.error(error);
-        res.json([]); // Return empty array on error so login page doesn't break
+        res.json([]); 
     }
 });
 
@@ -128,20 +145,6 @@ app.post('/api/login', async (req, res) => {
         res.json({ token, user });
     } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
-
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: "Hakuna token" });
-    jwt.verify(token, process.env.JWT_SECRET || 'siri_yako_ya_siri', (err, user) => {
-        if (err) return res.status(401).json({ error: "Token imeisha muda au si sahihi" });
-        req.user = user; 
-        next();
-    });
-};
-
-// (Weka APIs zote zilizobaki hapa chini: schools, dashboard, teachers, students, n.k.)
-// Kwa kuwa code ni ndefu, nakupa sehemu ya juu na APIs zote za msingi zipo kama zilivyokuwa.
 
 app.post('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa ya kusajili shule." });
