@@ -17,6 +17,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
 const getGradeAndPoints = (score) => {
     if (score >= 75) return { grade: 'A', points: 1 };
     if (score >= 65) return { grade: 'B', points: 2 };
@@ -45,7 +48,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// DASHIBODI YA HALMASHAURI (AFISA TAALUMA/ELIMU)
+// 1. API YA DASHIBODI YA HALMASHAURI (AFISA TAALUMA)
 // ==========================================
 app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
     const user = req.user;
@@ -148,7 +151,7 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// LOGIN
+// 2. API YA LOGIN
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -180,7 +183,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ==========================================
-// API ZA SHULE
+// 3. API YA SHULE
 // ==========================================
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { 
@@ -220,7 +223,7 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// DASHBOARD YA SHULE
+// 4. API YA DASHIBODI YA SHULE (TENANT ISOLATION)
 // ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
@@ -262,7 +265,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API ZA WALIMU NA WANAFUNZI
+// 5. API YA WALIMU
 // ==========================================
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
@@ -289,6 +292,9 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
     } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
+// ==========================================
+// 6. API YA WANAFUNZI
+// ==========================================
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM students`; let params = [], conditions = [];
@@ -309,7 +315,7 @@ app.post('/api/students', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API ZA MIPANGILIO, ADA NA ALAMA
+// 7. API YA MIPANGILIO, ADA NA ALAMA
 // ==========================================
 app.get('/api/streams', authenticateToken, async (req, res) => {
     const user = req.user; 
@@ -375,7 +381,7 @@ app.post('/api/results', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API ZA RIPOTI
+// 8. API ZA RIPOTI
 // ==========================================
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
@@ -425,7 +431,7 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API NYINGINE (Excel, Announcements, Subscription)
+// 9. API YA EXCEL NA MAHUDHURIO
 // ==========================================
 app.get('/api/results/excel-template', async (req, res) => {
     try {
@@ -452,6 +458,9 @@ app.post('/api/assignments', authenticateToken, async (req, res) => {
     try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+// ==========================================
+// 10. API ZA SUBSCRIPTION NA ANNOUNCEMENTS
+// ==========================================
 app.get('/api/public/announcements', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -539,6 +548,53 @@ app.post('/api/subscriptions/payments', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
+app.post('/api/webhooks/snippe', async (req, res) => {
+    try {
+        const settings = await pool.query('SELECT gateway_webhook_secret FROM subscription_settings WHERE id = 1');
+        const secret = settings.rows[0]?.gateway_webhook_secret;
+        if (secret) {
+            const signature = req.headers['x-webhook-signature'];
+            const expectedSignature = crypto.createHmac('sha256', secret).update(req.body).digest('hex');
+            if (signature !== expectedSignature) return res.status(401).json({ error: "Invalid signature" });
+        }
+        const event = JSON.parse(req.body.toString());
+        const checkEvent = await pool.query('SELECT id FROM payment_webhook_events WHERE event_id = $1', [event.id]);
+        if (checkEvent.rows.length > 0) return res.status(200).json({ message: "Event already processed." });
+        await pool.query('INSERT INTO payment_webhook_events (event_id, provider, payload) VALUES ($1, $2, $3)', [event.id, 'snippe', JSON.stringify(event)]);
+        if (event.type === 'payment.completed' && event.data.status === 'success') {
+            const providerRef = event.data.reference, amountPaid = event.data.amount;
+            const txResult = await pool.query('SELECT * FROM payment_transactions WHERE provider_reference = $1 AND status = $2', [providerRef, 'PENDING']);
+            if (txResult.rows.length > 0) {
+                const tx = txResult.rows[0];
+                if (parseFloat(amountPaid) !== parseFloat(tx.amount)) {
+                    await pool.query('UPDATE payment_transactions SET status = $1 WHERE id = $2', ['REVIEW_REQUIRED', tx.id]);
+                    return res.status(200).json({ message: "Amount mismatch." });
+                }
+                const client = await pool.connect();
+                try {
+                    await client.query('BEGIN');
+                    await client.query('UPDATE payment_transactions SET status = $1, updated_at = NOW() WHERE id = $2', ['SUCCESS', tx.id]);
+                    const schoolResult = await client.query('SELECT subscription_status, subscription_end_date FROM schools WHERE id = $1', [tx.school_id]);
+                    const school = schoolResult.rows[0];
+                    let newStartDate = new Date(), newEndDate = new Date();
+                    newEndDate.setFullYear(newStartDate.getFullYear() + 1); 
+                    if (school.subscription_status === 'SUBSCRIPTION_ACTIVE' && school.subscription_end_date) {
+                        newStartDate = new Date(school.subscription_end_date);
+                        newEndDate = new Date(newStartDate);
+                        newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+                    }
+                    await client.query(`UPDATE schools SET subscription_status = 'SUBSCRIPTION_ACTIVE', subscription_start_date = $1, subscription_end_date = $2 WHERE id = $3`, [newStartDate, newEndDate, tx.school_id]);
+                    await client.query('COMMIT');
+                } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+            }
+        }
+        res.status(200).json({ message: "Webhook processed." });
+    } catch (error) { res.status(500).json({ error: "Internal server error." }); }
+});
+
+// ==========================================
+// MWISHO
+// ==========================================
 app.use('/api', (req, res) => { res.status(404).json({ error: "API haipo" }); });
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 

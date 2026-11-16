@@ -98,7 +98,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHIBODI YA SHULE (NA DROPDOWN YA SUPER ADMIN)
+// 1. DASHIBODI YA SHULE
 // ==========================================
 async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
