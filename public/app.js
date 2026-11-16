@@ -270,7 +270,7 @@ async function renderKusajiliShule() {
             <h3>Orodha ya Shule Zilizosajiliwa (${schools.length})</h3>
             <table>
                 <thead><tr><th>Jina la Shule</th><th>Ngazi</th><th>Halmashauri</th><th>Centre No.</th><th>Hali ya Malipo</th></tr></thead>
-                <tbody>${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td><span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span></td></tr>`).join('')}</tbody>
+                <tbody>${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td><span class="badge-${s.subscription_status === 'ACTIVE' ? 'paid' : 'unpaid'}">${s.subscription_status}</span></td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -293,7 +293,6 @@ async function addSchool() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Imeshindikana kusajili");
         
-        // Onyesha Modal ya Maelekezo ya Malipo
         showPaymentModal(data.name);
         renderKusajiliShule();
     } catch (error) { alert(error.message); }
@@ -354,8 +353,7 @@ async function renderMySubscription() {
                 <h3>Hali ya Usajili wa Shule Yako</h3>
                 <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:15px;">
                     <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px;">
-                        <p><strong>Hali ya Malipo:</strong> <span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span></p>
-                        <p><strong>Namba ya Malipo:</strong> ${s.payment_reference || 'Hakuna'}</p>
+                        <p><strong>Hali ya Malipo:</strong> <span class="badge-${s.subscription_status === 'ACTIVE' ? 'paid' : 'unpaid'}">${s.subscription_status}</span></p>
                     </div>
                     <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px;">
                         <p><strong>Kuanza:</strong> ${s.subscription_start_date ? new Date(s.subscription_start_date).toLocaleDateString() : '-'}</p>
@@ -366,17 +364,14 @@ async function renderMySubscription() {
             </div>
 
             <div class="card">
-                <h3>Wasilisha Malipo Mapya</h3>
-                <form onsubmit="event.preventDefault(); submitPayment();">
+                <h3>Lipa Ada ya Mfumo</h3>
+                <p>Bonyeza kitufe hapo chini ili kuanzisha malipo. Utapokea ujumbe kwenye simu yako.</p>
+                <form onsubmit="event.preventDefault(); initiatePayment();">
                     <div class="form-group">
-                        <label>Namba ya Malipo (Reference Number):</label>
-                        <input type="text" id="pay_ref" required placeholder="Mfano: MP123456789">
+                        <label>Namba ya Simu (M-Pesa/Airtel/Tigo):</label>
+                        <input type="text" id="pay_phone" required placeholder="Mfano: 255712345678">
                     </div>
-                    <div class="form-group">
-                        <label>Pakia Picha ya Risiti (Screenshot):</label>
-                        <input type="file" id="pay_proof" accept="image/*" required>
-                    </div>
-                    <button type="submit" class="btn-primary" style="width:100%;">Wasilisha Malipo</button>
+                    <button type="submit" class="btn-primary" style="width:100%;">Lipa Tsh ${parseInt(settings.annual_fee).toLocaleString()}</button>
                 </form>
             </div>
 
@@ -384,35 +379,26 @@ async function renderMySubscription() {
                 <h3>Maelekezo ya Malipo</h3>
                 <p>${settings.instructions}</p>
                 <p><strong>Ada:</strong> Tsh ${parseInt(settings.annual_fee).toLocaleString()}</p>
-                <p><strong>M-PESA:</strong> ${settings.mpesa_details}</p>
-                <p><strong>TIGO PESA:</strong> ${settings.tigopesa_details}</p>
                 <p><strong>WhatsApp:</strong> ${settings.support_whatsapp}</p>
             </div>
         `;
     } catch (error) { content.innerHTML = `<h2 style="color:red;">Kosa: ${error.message}</h2>`; }
 }
 
-async function submitPayment() {
-    const ref = document.getElementById('pay_ref').value;
-    const file = document.getElementById('pay_proof').files[0];
-    if (!ref || !file) return alert('Weka namba ya malipo na pakia risiti.');
+async function initiatePayment() {
+    const phone = document.getElementById('pay_phone').value;
+    if (!phone) return alert('Weka namba ya simu.');
 
-    const reader = new FileReader();
-    reader.onload = async function() {
-        const base64String = reader.result;
-        try {
-            const res = await fetch('/api/school/submit-payment', {
-                method: 'POST',
-                headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ payment_reference: ref, payment_proof: base64String })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            alert('Malipo yamewasilishwa! Yanasubiri uhakiki wa Super Admin.');
-            renderMySubscription();
-        } catch (error) { alert(error.message); }
-    };
-    reader.readAsDataURL(file);
+    try {
+        const res = await fetch('/api/school/initiate-payment', {
+            method: 'POST',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone_number: phone })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert('Malipo yameanzishwa! Tafadhali thibitisha kwenye simu yako.');
+    } catch (error) { alert(error.message); }
 }
 
 // ==========================================
@@ -426,7 +412,7 @@ async function renderSubscriptionMgmt() {
     try {
         const [setRes, schRes] = await Promise.all([
             fetch('/api/admin/subscription-settings', { headers: authHeaders }),
-            fetch('/api/admin/school-subscriptions', { headers: authHeaders })
+            fetch('/api/schools', { headers: authHeaders })
         ]);
         const settings = await setRes.json();
         const schools = await schRes.json();
@@ -439,18 +425,6 @@ async function renderSubscriptionMgmt() {
                         <div class="form-group">
                             <label>Ada ya Mwaka (Tsh):</label>
                             <input type="number" id="sub_fee" value="${settings.annual_fee}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>M-PESA Details:</label>
-                            <input type="text" id="sub_mpesa" value="${settings.mpesa_details}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>TIGO PESA Details:</label>
-                            <input type="text" id="sub_tigo" value="${settings.tigopesa_details}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Jina la Mpokeaji:</label>
-                            <input type="text" id="sub_payee" value="${settings.payee_name}" required>
                         </div>
                         <div class="form-group">
                             <label>WhatsApp Support:</label>
@@ -468,21 +442,15 @@ async function renderSubscriptionMgmt() {
             <div class="card" style="overflow-x:auto;">
                 <h3>Usimamizi wa Shule (${schools.length})</h3>
                 <table>
-                    <thead><tr><th>Shule</th><th>Halmashauri</th><th>Hali</th><th>Ref</th><th>Vitendo</th></tr></thead>
+                    <thead><tr><th>Shule</th><th>Halmashauri</th><th>Hali</th><th>Trial End</th><th>Sub End</th></tr></thead>
                     <tbody>
                         ${schools.map(s => `
                             <tr>
                                 <td><strong>${s.name}</strong></td>
                                 <td>${s.district || '-'}</td>
-                                <td>
-                                    <span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span>
-                                    ${s.payment_proof ? `<br><a href="#" onclick="alert('Risiti imewasilishwa. (Inaweza kuonekana kwenye DB)')" style="font-size:12px;">Ona Risiti</a>` : ''}
-                                </td>
-                                <td>${s.payment_reference || '-'}</td>
-                                <td>
-                                    ${s.payment_status !== 'APPROVED' ? `<button class="btn-sm" style="background:#16a34a;" onclick="verifyPayment(${s.id}, 'APPROVE')">Approve</button>` : ''}
-                                    ${s.payment_status !== 'REJECTED' ? `<button class="btn-sm" style="background:#dc2626; margin-left:5px;" onclick="verifyPayment(${s.id}, 'REJECT')">Reject</button>` : ''}
-                                </td>
+                                <td><span class="badge-${s.subscription_status === 'ACTIVE' ? 'paid' : 'unpaid'}">${s.subscription_status}</span></td>
+                                <td>${s.trial_end_date ? new Date(s.trial_end_date).toLocaleDateString() : '-'}</td>
+                                <td>${s.subscription_end_date ? new Date(s.subscription_end_date).toLocaleDateString() : '-'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -495,33 +463,13 @@ async function renderSubscriptionMgmt() {
 async function saveSubSettings() {
     const payload = {
         annual_fee: document.getElementById('sub_fee').value,
-        mpesa_details: document.getElementById('sub_mpesa').value,
-        tigopesa_details: document.getElementById('sub_tigo').value,
-        payee_name: document.getElementById('sub_payee').value,
         support_whatsapp: document.getElementById('sub_whatsapp').value,
-        instructions: document.getElementById('sub_instructions').value,
-        mpesa_active: true,
-        tigopesa_active: true
+        instructions: document.getElementById('sub_instructions').value
     };
     try {
         await fetch('/api/admin/subscription-settings', { method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         alert('Mipangilio imehifadhiwa!');
     } catch (e) { alert('Kosa la kuhifadhi.'); }
-}
-
-async function verifyPayment(schoolId, action) {
-    if(!confirm(`Je, una uhakika unataka ${action} malipo ya shule hii?`)) return;
-    try {
-        const res = await fetch(`/api/admin/verify-payment/${schoolId}`, {
-            method: 'PUT',
-            headers: { ...authHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        alert('Hali ya malipo imebadilishwa!');
-        renderSubscriptionMgmt();
-    } catch (error) { alert(error.message); }
 }
 
 // ==========================================
