@@ -10,12 +10,18 @@
     body { background: #f3f4f6; margin: 0; color: #333; overflow-x: hidden; }
     
     /* Login Screen */
-    #login-screen { height: 100vh; display: flex; justify-content: center; align-items: center; background: #1e3a8a; }
-    .login-box { background: white; padding: 40px; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-    .login-box h2 { text-align: center; color: #1e3a8a; margin-bottom: 20px; }
-    .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
-    .login-box button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    #login-screen { height: 100vh; display: flex; justify-content: center; align-items: center; background: #1e3a8a; padding: 15px; }
+    .login-box { background: white; padding: 30px; border-radius: 8px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .login-box h2 { text-align: center; color: #1e3a8a; margin-bottom: 20px; font-size: 22px; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+    .login-box button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;}
+    .login-box button:hover { background: #1d4ed8; }
     
+    #login-announcement { margin-bottom: 20px; padding: 15px; border-radius: 8px; background: #eff6ff; color: #1e3a8a; border-left: 4px solid #3b82f6; display: none; }
+    #login-announcement p { margin: 0; }
+    #login-announcement .sw { font-weight: bold; margin-bottom: 5px; font-size: 15px; }
+    #login-announcement .en { font-style: italic; font-size: 13px; color: #4b5563; }
+
     /* App Layout */
     #app-screen { display: none; height: 100vh; flex-direction: column; }
     .navbar { background: #1e3a8a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -34,7 +40,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
     th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
     th { background: #f9fafb; font-weight: 600; }
-    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px; }
+    input, select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px; font-family: inherit; }
+    textarea { resize: vertical; min-height: 80px; }
     .btn-primary { background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn-green { background: #16a34a; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
     .btn-save-light { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
@@ -84,8 +91,15 @@
   <div id="login-screen">
     <div class="login-box">
       <h2>MR-LOGIC Login</h2>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
+      
+      <!-- Sehemu ya Matangazo (Dynamic Login Welcome Message) -->
+      <div id="login-announcement">
+          <p class="sw" id="login-ann-sw"></p>
+          <p class="en" id="login-ann-en"></p>
+      </div>
+
+      <input type="text" id="username" placeholder="Jina la Mtumiaji (Username)" />
+      <input type="password" id="password" placeholder="Neno la Siri (Password)" />
       <button onclick="login()">Ingia Mfumo</button>
       <p id="login-msg" style="color:red; text-align:center; margin-top:10px; font-size:14px;"></p>
     </div>
@@ -101,6 +115,7 @@
       <div class="sidebar">
         <a onclick="navigate('dashboard')" class="nav-link active" id="nav-dashboard">📊 Dashibodi</a>
         <a onclick="navigate('kusajili_shule')" class="nav-link" id="nav-kusajili_shule" style="display: none;">🏫 Kusajili Shule</a>
+        <a onclick="navigate('announcements')" class="nav-link" id="nav-announcements" style="display: none;">📢 Login Page Management</a>
         <a onclick="navigate('wanafunzi')" class="nav-link" id="nav-wanafunzi">👨‍🎓 Wanafunzi</a>
         <a onclick="navigate('walimu')" class="nav-link" id="nav-walimu">👨‍🏫 Walimu</a>
         <a onclick="navigate('ada')" class="nav-link" id="nav-ada">💰 Ada & Malipo</a>

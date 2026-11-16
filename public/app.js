@@ -1,3 +1,37 @@
+// ==========================================
+// 0. DYNAMIC LOGIN ANNOUNCEMENTS
+// ==========================================
+async function loadLoginAnnouncements() {
+    try {
+        const res = await fetch('/api/public/announcements');
+        if (!res.ok) throw new Error('Network error');
+        const data = await res.json();
+        
+        const annBox = document.getElementById('login-announcement');
+        const annSw = document.getElementById('login-ann-sw');
+        const annEn = document.getElementById('login-ann-en');
+
+        if (data.length > 0) {
+            annSw.textContent = data[0].message_sw;
+            annEn.textContent = data[0].message_en || '';
+            annBox.style.display = 'block';
+        } else {
+            // Default Message
+            annSw.textContent = "Karibu MR-LOGIC School System. Tafadhali ingia kuendelea.";
+            annEn.textContent = "Welcome to MR-LOGIC School System. Please login to continue.";
+            annBox.style.display = 'block';
+        }
+    } catch (error) {
+        // Fallback default message on error
+        document.getElementById('login-ann-sw').textContent = "Karibu MR-LOGIC School System.";
+        document.getElementById('login-ann-en').textContent = "Welcome to MR-LOGIC School System.";
+        document.getElementById('login-announcement').style.display = 'block';
+    }
+}
+
+// Load announcements on page load
+document.addEventListener('DOMContentLoaded', loadLoginAnnouncements);
+
 async function login() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
@@ -21,16 +55,31 @@ function logout() {
     document.getElementById('login-screen').style.display = 'flex';
 }
 
-function showApp() {
+async function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'flex';
     
     const user = JSON.parse(localStorage.getItem('user'));
     if (user && user.role === 'super_admin') {
         document.getElementById('nav-kusajili_shule').style.display = 'block';
+        document.getElementById('nav-announcements').style.display = 'block';
     } else {
         document.getElementById('nav-kusajili_shule').style.display = 'none';
+        document.getElementById('nav-announcements').style.display = 'none';
     }
+
+    // Fetch Role-Specific Announcements after login
+    try {
+        const res = await fetch('/api/my-announcements', { headers: authHeaders });
+        if (res.ok) {
+            const anns = await res.json();
+            // Kama kuna tangazo maalum kwa role hii, lionyeshe kama alert
+            const roleSpecific = anns.filter(a => a.target_role !== 'all'); 
+            if (roleSpecific.length > 0) {
+                alert(`TAARIFA MUHIMU:\n\n${roleSpecific[0].message_sw}\n\n${roleSpecific[0].message_en || ''}`);
+            }
+        }
+    } catch(e) { console.log("Hakuna matangazo maalum."); }
 
     navigate('dashboard');
 }
@@ -46,6 +95,7 @@ function navigate(page) {
 
     if (page === 'dashboard') renderDashboard();
     else if (page === 'kusajili_shule') renderKusajiliShule();
+    else if (page === 'announcements') renderAnnouncements();
     else if (page === 'wanafunzi') renderWanafunzi();
     else if (page === 'walimu') renderWalimu();
     else if (page === 'ada') renderAda();
@@ -58,7 +108,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHBOARD
+// 1. DASHBOARD (Na Login Management UI)
 // ==========================================
 async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -71,13 +121,11 @@ async function renderDashboard(selectedSchoolId = null) {
         const resS = await fetch('/api/schools', { headers: authHeaders });
         const schools = await resS.json();
         
-        // Tumia ID iliyopitishwa, au tafuta kwenye dropdown kama ipo
         let currentSelectedId = selectedSchoolId;
         if (!currentSelectedId) {
             const dropdown = document.getElementById('school-selector');
             if (dropdown) currentSelectedId = dropdown.value;
         }
-        // Kama bado haipo, chukua ya kwanza
         if (!currentSelectedId && schools.length > 0) currentSelectedId = schools[0].id;
         
         if (currentSelectedId) targetSchoolQuery = `?school_id=${currentSelectedId}`;
@@ -216,7 +264,7 @@ async function togglePayment(schoolId) {
 }
 
 // ==========================================
-// 2. KUSAJILI SHULE (SUPER ADMIN)
+// 2. KUSAJILI SHULE & ANNOUNCEMENTS
 // ==========================================
 async function renderKusajiliShule() {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -283,12 +331,8 @@ async function renderKusajiliShule() {
         <div class="card" style="overflow-x:auto;">
             <h3>Orodha ya Shule Zilizosajiliwa (${schools.length})</h3>
             <table>
-                <thead>
-                    <tr><th>Jina la Shule</th><th>Ngazi</th><th>Mkoa</th><th>Halmashauri</th><th>Centre No.</th><th>Supervisor</th></tr>
-                </thead>
-                <tbody>
-                    ${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.region || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td>${s.supervisor || '-'}</td></tr>`).join('')}
-                </tbody>
+                <thead><tr><th>Jina la Shule</th><th>Ngazi</th><th>Mkoa</th><th>Halmashauri</th><th>Centre No.</th><th>Supervisor</th></tr></thead>
+                <tbody>${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.region || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td>${s.supervisor || '-'}</td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -316,6 +360,105 @@ async function addSchool() {
 }
 
 // ==========================================
+// ANNOUNCEMENTS MANAGEMENT (LOGIN PAGE)
+// ==========================================
+async function renderAnnouncements() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'super_admin') return;
+
+    content.innerHTML = `<h2>Inapakia Matangazo...</h2>`;
+    const res = await fetch('/api/admin/announcements', { headers: authHeaders });
+    const anns = await res.json();
+
+    content.innerHTML = `
+        <div class="card">
+            <h3>Ongeza Tangazo Jipya la Ukurasa wa Kuingia</h3>
+            <form onsubmit="event.preventDefault(); addAnnouncement();">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Ujumbe kwa Kiswahili (Swahili):</label>
+                        <textarea id="ann_sw" required placeholder="Mfano: Karibu kwenye mfumo mpya wa shule..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Ujumbe kwa Kiingereza (English):</label>
+                        <textarea id="ann_en" placeholder="Mfano: Welcome to the new school system..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Nani Aone Ujumbe Huu:</label>
+                        <select id="ann_role">
+                            <option value="all">Wote (Login Page)</option>
+                            <option value="super_admin">Super Admin Pekee (Baada ya kuingia)</option>
+                            <option value="mtaaluma_mkuu">Mtaaluma Mkuu Pekee (Baada ya kuingia)</option>
+                            <option value="mtaaluma">Wataaluma Pekee (Baada ya kuingia)</option>
+                            <option value="teacher">Walimu Pekee (Baada ya kuingia)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tarehe ya Kuanza (Start Date):</label>
+                        <input type="date" id="ann_start" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tarehe ya Mwisho (Expiry Date):</label>
+                        <input type="date" id="ann_end" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top:15px; width:100%;">Hifadhi Tangazo</button>
+            </form>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+            <h3>Matangazo Yaliyopo (${anns.length})</h3>
+            <table>
+                <thead><tr><th>Ujumbe (SW)</th><th>Wataoiona</th><th>Muda</th><th>Hali</th><th>Vitendo</th></tr></thead>
+                <tbody>
+                    ${anns.map(a => `
+                        <tr>
+                            <td>${a.message_sw.substring(0, 30)}...</td>
+                            <td>${a.target_role}</td>
+                            <td>${new Date(a.start_date).toLocaleDateString()} - ${new Date(a.end_date).toLocaleDateString()}</td>
+                            <td><span class="badge-${a.is_active ? 'paid' : 'unpaid'}">${a.is_active ? 'Inafanya Kazi' : 'Imezimwa'}</span></td>
+                            <td>
+                                <button class="btn-sm" style="background:${a.is_active ? '#f59e0b' : '#16a34a'};" onclick="toggleAnnouncement(${a.id})">${a.is_active ? 'Zima' : 'Washa'}</button>
+                                <button class="btn-sm" style="background:#dc2626;" onclick="deleteAnnouncement(${a.id})">Futa</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function addAnnouncement() {
+    const payload = {
+        message_sw: document.getElementById('ann_sw').value,
+        message_en: document.getElementById('ann_en').value,
+        target_role: document.getElementById('ann_role').value,
+        start_date: document.getElementById('ann_start').value,
+        end_date: document.getElementById('ann_end').value,
+        is_active: true
+    };
+    try {
+        const res = await fetch('/api/admin/announcements', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert("Tangazo limehifadhiwa!");
+        renderAnnouncements();
+    } catch (error) { alert(error.message); }
+}
+
+async function toggleAnnouncement(id) {
+    await fetch(`/api/admin/announcements/${id}/toggle`, { method: 'PUT', headers: authHeaders });
+    renderAnnouncements();
+}
+
+async function deleteAnnouncement(id) {
+    if(!confirm('Futa tangazo hili?')) return;
+    await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders });
+    renderAnnouncements();
+}
+
+// ==========================================
 // 3. WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
@@ -337,9 +480,7 @@ async function renderWanafunzi() {
         <div class="card" style="overflow-x:auto;">
             <table>
                 <thead><tr><th>Jina</th><th>Darasa</th><th>Jinsia</th><th>Namba</th><th>Futa</th></tr></thead>
-                <tbody>
-                    ${students.map(s => `<tr><td>${s.full_name}</td><td>${streams.find(x => x.id === s.stream_id)?.name || '-'}</td><td>${s.gender}</td><td>${s.admission_number}</td><td><button class="btn-logout" onclick="delStudent(${s.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}
-                </tbody>
+                <tbody>${students.map(s => `<tr><td>${s.full_name}</td><td>${streams.find(x => x.id === s.stream_id)?.name || '-'}</td><td>${s.gender}</td><td>${s.admission_number}</td><td><button class="btn-logout" onclick="delStudent(${s.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -373,9 +514,7 @@ async function renderWalimu() {
         <div class="card" style="overflow-x:auto;">
             <table>
                 <thead><tr><th>Jina</th><th>Jukumu</th><th>Simu</th><th>Username</th><th>Futa</th></tr></thead>
-                <tbody>
-                    ${teachers.map(t => `<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td><td><button class="btn-logout" onclick="delTeacher(${t.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}
-                </tbody>
+                <tbody>${teachers.map(t => `<tr><td>${t.full_name}</td><td>${t.designation}</td><td>${t.phone}</td><td>${t.username}</td><td><button class="btn-logout" onclick="delTeacher(${t.id})" style="padding:5px 10px;font-size:12px;">Futa</button></td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -408,9 +547,7 @@ async function renderAda() {
         <div class="card" style="overflow-x:auto;">
             <table>
                 <thead><tr><th>Jina</th><th>Darasa</th><th>Makadirio</th><th>Iliyolipwa</th><th>Deni</th></tr></thead>
-                <tbody>
-                    ${fees.map(f => `<tr><td>${f.full_name}</td><td>${f.stream_name}</td><td>Tsh ${parseInt(f.expected_fee).toLocaleString()}</td><td style="color:green;">Tsh ${parseInt(f.total_paid).toLocaleString()}</td><td style="color:red; font-weight:bold;">Tsh ${parseInt(f.balance).toLocaleString()}</td></tr>`).join('')}
-                </tbody>
+                <tbody>${fees.map(f => `<tr><td>${f.full_name}</td><td>${f.stream_name}</td><td>Tsh ${parseInt(f.expected_fee).toLocaleString()}</td><td style="color:green;">Tsh ${parseInt(f.total_paid).toLocaleString()}</td><td style="color:red; font-weight:bold;">Tsh ${parseInt(f.balance).toLocaleString()}</td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -422,7 +559,7 @@ async function addFee() {
 }
 
 // ==========================================
-// 6. ALAMA (NORMAL NA EXCEL)
+// 6. ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -438,7 +575,6 @@ async function renderAlama() {
             ${canUploadExcel ? `<button class="tab-btn" onclick="switchAlamaTab('excel', event)">Pakia Excel</button>` : ''}
         </div>
 
-        <!-- Normal Entry Tab -->
         <div id="tab-normal" class="tab-content active">
             <div class="card">
                 <h3>Kuingiza Alama (Kwa Mkono)</h3>
@@ -448,29 +584,23 @@ async function renderAlama() {
                     <select id="a_subj" style="flex:1;">${subjects.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</select>
                     <button class="btn-primary" onclick="loadMarks()">Pakia Wanafunzi</button>
                 </div>
-                
                 <div style="text-align: right; margin-bottom: 10px;">
                     <button class="btn-save-light" style="display:none;" id="save_marks_top" onclick="saveMarks()">💾 Hifadhi Alama</button>
                 </div>
-
                 <div style="overflow-x:auto;"><table><thead><tr><th>Jina</th><th>Alama</th></tr></thead><tbody id="marks_table"></tbody></table></div>
-                
                 <div style="text-align: right; margin-top: 15px;">
                     <button class="btn-save-light" style="display:none;" id="save_marks_bottom" onclick="saveMarks()">💾 Hifadhi Alama</button>
                 </div>
             </div>
         </div>
 
-        <!-- Excel Tab -->
         <div id="tab-excel" class="tab-content">
             <div class="card">
                 <h3>Kupakia Alama kwa Excel</h3>
                 <p style="font-size:14px; color:#6b7280; margin-bottom:15px;">Pakua template, jaza alama, kisha pakia hapa. Excel iwe na majina, jinsia, mkondo, na masomo.</p>
-                
                 <div style="margin-bottom: 15px;">
                     <a href="#" id="dl-template-btn" class="btn-primary" style="text-decoration:none; display:inline-block;">📥 Pakua Template ya Excel</a>
                 </div>
-
                 <form onsubmit="event.preventDefault(); uploadExcel();" style="background:#f9fafb; padding:15px; border-radius:8px; border:1px solid #e5e7eb;">
                     <div class="form-group" style="margin-bottom:15px;">
                         <label>Chagua Mtihani:</label>
@@ -489,7 +619,6 @@ async function renderAlama() {
             </div>
         </div>
     `;
-
     document.getElementById('dl-template-btn').href = `/api/results/excel-template?token=${token}`;
 }
 
@@ -507,7 +636,6 @@ async function loadMarks() {
     const map = {}; res.forEach(r => map[r.student_id] = r.score);
     
     document.getElementById('marks_table').innerHTML = studs.map(x => `<tr><td>${x.full_name}</td><td><input type="number" class="mark-input" data-id="${x.id}" value="${map[x.id] || ''}" style="width:80px;"></td></tr>`).join('');
-    
     document.getElementById('save_marks_top').style.display = 'block';
     document.getElementById('save_marks_bottom').style.display = 'block';
 }
@@ -747,5 +875,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('app-screen').style.display = 'none';
+        loadLoginAnnouncements(); // Vuta matangazo ya login
     }
 });

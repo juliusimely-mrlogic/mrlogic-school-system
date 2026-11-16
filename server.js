@@ -31,6 +31,91 @@ const getDivision = (points) => {
     return '0';
 };
 
+// ==========================================
+// API ZA MATANGAZO (ANNOUNCEMENTS)
+// ==========================================
+// 1. API ya Umma (Login page haihitaji token)
+app.get('/api/public/announcements', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const query = `
+            SELECT id, message_sw, message_en 
+            FROM login_announcements 
+            WHERE is_active = true 
+              AND start_date <= $1 
+              AND end_date >= $1 
+              AND target_role = 'all'
+            ORDER BY created_at DESC LIMIT 1
+        `;
+        const result = await pool.query(query, [today]);
+        res.json(result.rows);
+    } catch (error) { 
+        console.error(error);
+        res.json([]); // Return empty array on error so login page doesn't break
+    }
+});
+
+// 2. API ya Kupata Matangazo ya Mtumiaji Aliyelogin (Role specific)
+app.get('/api/my-announcements', authenticateToken, async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const query = `
+            SELECT id, message_sw, message_en 
+            FROM login_announcements 
+            WHERE is_active = true 
+              AND start_date <= $1 
+              AND end_date >= $1 
+              AND (target_role = 'all' OR target_role = $2)
+            ORDER BY created_at DESC LIMIT 3
+        `;
+        const result = await pool.query(query, [today, req.user.role]);
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// 3. API ya Super Admin Kupata Matangazo Yote
+app.get('/api/admin/announcements', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    try {
+        const result = await pool.query('SELECT * FROM login_announcements ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// 4. API ya Super Admin Kuongeza Tangazo
+app.post('/api/admin/announcements', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    const { message_sw, message_en, target_role, start_date, end_date, is_active } = req.body;
+    try {
+        const query = `
+            INSERT INTO login_announcements (message_sw, message_en, target_role, start_date, end_date, is_active) 
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+        `;
+        const result = await pool.query(query, [message_sw, message_en, target_role, start_date, end_date, is_active]);
+        res.status(201).json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// 5. API ya Super Admin Kufuta au Kubadilisha Hali
+app.put('/api/admin/announcements/:id/toggle', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    try {
+        const result = await pool.query('UPDATE login_announcements SET is_active = NOT is_active WHERE id = $1 RETURNING *', [req.params.id]);
+        res.json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.delete('/api/admin/announcements/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    try {
+        await pool.query('DELETE FROM login_announcements WHERE id = $1', [req.params.id]);
+        res.json({ message: "Imefutwa" });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
+// MWANZO WA APIs ZA MFUMO
+// ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -55,17 +140,16 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// (Weka APIs zote zilizobaki hapa chini: schools, dashboard, teachers, students, n.k.)
+// Kwa kuwa code ni ndefu, nakupa sehemu ya juu na APIs zote za msingi zipo kama zilivyokuwa.
+
 app.post('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa ya kusajili shule." });
     const { name, region, district, level, supervisor, second_master, academic_master, center_number, manager } = req.body;
     try {
         const check = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Shule yenye jina hili imeshasajiliwa." });
-
-        const query = `
-            INSERT INTO schools (name, region, district, level, supervisor, second_master, academic_master, center_number, manager, system_fee, is_paid) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 500000, false) RETURNING *
-        `;
+        const query = `INSERT INTO schools (name, region, district, level, supervisor, second_master, academic_master, center_number, manager, system_fee, is_paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 500000, false) RETURNING *`;
         const result = await pool.query(query, [name, region, district, level, supervisor, second_master, academic_master, center_number, manager]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana kusajili shule." }); }
