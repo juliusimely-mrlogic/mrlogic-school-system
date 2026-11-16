@@ -9,7 +9,7 @@ const pool = require('./db');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const storage = multer.memoryStorage();
@@ -35,7 +35,7 @@ const getDivision = (points) => {
 };
 
 // ==========================================
-// MIDDLEWARE YA USALAMA (Imehamishwa Juu)
+// MIDDLEWARE YA USALAMA
 // ==========================================
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -49,48 +49,24 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// API ZA MATANGAZO (ANNOUNCEMENTS)
+// API ZA LOGIN NA ANNOUNCEMENTS
 // ==========================================
-// 1. API ya Umma (Login page haihitaji token)
 app.get('/api/public/announcements', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const query = `
-            SELECT id, message_sw, message_en 
-            FROM login_announcements 
-            WHERE is_active = true 
-              AND start_date <= $1 
-              AND end_date >= $1 
-              AND target_role = 'all'
-            ORDER BY created_at DESC LIMIT 1
-        `;
-        const result = await pool.query(query, [today]);
+        const result = await pool.query(`SELECT id, message_sw, message_en FROM login_announcements WHERE is_active = true AND start_date <= $1 AND end_date >= $1 AND target_role = 'all' ORDER BY created_at DESC LIMIT 1`, [today]);
         res.json(result.rows);
-    } catch (error) { 
-        console.error(error);
-        res.json([]); 
-    }
+    } catch (error) { res.json([]); }
 });
 
-// 2. API ya Kupata Matangazo ya Mtumiaji Aliyelogin (Role specific)
 app.get('/api/my-announcements', authenticateToken, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const query = `
-            SELECT id, message_sw, message_en 
-            FROM login_announcements 
-            WHERE is_active = true 
-              AND start_date <= $1 
-              AND end_date >= $1 
-              AND (target_role = 'all' OR target_role = $2)
-            ORDER BY created_at DESC LIMIT 3
-        `;
-        const result = await pool.query(query, [today, req.user.role]);
+        const result = await pool.query(`SELECT id, message_sw, message_en FROM login_announcements WHERE is_active = true AND start_date <= $1 AND end_date >= $1 AND (target_role = 'all' OR target_role = $2) ORDER BY created_at DESC LIMIT 3`, [today, req.user.role]);
         res.json(result.rows);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 3. API ya Super Admin Kupata Matangazo Yote
 app.get('/api/admin/announcements', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     try {
@@ -99,21 +75,15 @@ app.get('/api/admin/announcements', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 4. API ya Super Admin Kuongeza Tangazo
 app.post('/api/admin/announcements', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { message_sw, message_en, target_role, start_date, end_date, is_active } = req.body;
     try {
-        const query = `
-            INSERT INTO login_announcements (message_sw, message_en, target_role, start_date, end_date, is_active) 
-            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
-        `;
-        const result = await pool.query(query, [message_sw, message_en, target_role, start_date, end_date, is_active]);
+        const result = await pool.query(`INSERT INTO login_announcements (message_sw, message_en, target_role, start_date, end_date, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`, [message_sw, message_en, target_role, start_date, end_date, is_active]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// 5. API ya Super Admin Kufuta au Kubadilisha Hali
 app.put('/api/admin/announcements/:id/toggle', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     try {
@@ -130,9 +100,6 @@ app.delete('/api/admin/announcements/:id', authenticateToken, async (req, res) =
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ==========================================
-// MWANZO WA APIs ZA MFUMO
-// ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -141,18 +108,116 @@ app.post('/api/login', async (req, res) => {
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
+        
+        // Kagua kama subscription imeisha muda (Kwa wasio Super Admin)
+        if (user.role !== 'super_admin' && user.school_id) {
+            const schoolCheck = await pool.query('SELECT subscription_end_date, payment_status FROM schools WHERE id = $1', [user.school_id]);
+            if (schoolCheck.rows.length > 0) {
+                const end = schoolCheck.rows[0].subscription_end_date;
+                if (end && new Date(end) < new Date()) {
+                    await pool.query("UPDATE schools SET payment_status = 'EXPIRED' WHERE id = $1", [user.school_id]);
+                    return res.status(403).json({ error: "Muda wa usajili wa shule yako umeisha. Tafadhali lipia ada ya mfumo." });
+                }
+            }
+        }
+
         const token = jwt.sign({ id: user.id, role: user.role, school_id: user.school_id, name: user.full_name }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
         res.json({ token, user });
     } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
 
+// ==========================================
+// API ZA SUBSCRIPTION (MIPANGILIO NA VERIFICATION)
+// ==========================================
+app.get('/api/admin/subscription-settings', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    try {
+        const result = await pool.query('SELECT * FROM subscription_settings WHERE id = 1');
+        res.json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.put('/api/admin/subscription-settings', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    const { annual_fee, mpesa_details, tigopesa_details, payee_name, support_whatsapp, instructions, mpesa_active, tigopesa_active } = req.body;
+    try {
+        const result = await pool.query(`
+            UPDATE subscription_settings 
+            SET annual_fee=$1, mpesa_details=$2, tigopesa_details=$3, payee_name=$4, support_whatsapp=$5, instructions=$6, mpesa_active=$7, tigopesa_active=$8 
+            WHERE id = 1 RETURNING *
+        `, [annual_fee, mpesa_details, tigopesa_details, payee_name, support_whatsapp, instructions, mpesa_active, tigopesa_active]);
+        res.json(result.rows[0]);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.get('/api/admin/school-subscriptions', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    try {
+        const result = await pool.query('SELECT id, name, district, payment_status, payment_reference, payment_proof, subscription_start_date, subscription_end_date FROM schools ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.put('/api/admin/verify-payment/:school_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    const { school_id } = req.params;
+    const { action } = req.body; // 'APPROVE' au 'REJECT'
+
+    try {
+        if (action === 'APPROVE') {
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setFullYear(startDate.getFullYear() + 1); // Mwaka mmoja
+
+            await pool.query(`
+                UPDATE schools 
+                SET payment_status = 'APPROVED', is_paid = true, subscription_start_date = $1, subscription_end_date = $2 
+                WHERE id = $3
+            `, [startDate, endDate, school_id]);
+
+            await pool.query(`INSERT INTO payment_audit_logs (school_id, action, admin_name, details) VALUES ($1, 'APPROVED', $2, 'Malipo yamekaguliwa na kuidhinishwa.')`, [school_id, req.user.name]);
+        } else {
+            await pool.query(`UPDATE schools SET payment_status = 'REJECTED', is_paid = false WHERE id = $1`, [school_id]);
+            await pool.query(`INSERT INTO payment_audit_logs (school_id, action, admin_name, details) VALUES ($1, 'REJECTED', $2, 'Malipo yamekataliwa.')`, [school_id, req.user.name]);
+        }
+        res.json({ message: "Hali ya malipo imebadilishwa." });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.get('/api/school/my-subscription', authenticateToken, async (req, res) => {
+    if (!req.user.school_id) return res.status(400).json({ error: "Hana shule." });
+    try {
+        const school = await pool.query('SELECT payment_status, payment_reference, subscription_start_date, subscription_end_date, system_fee FROM schools WHERE id = $1', [req.user.school_id]);
+        const settings = await pool.query('SELECT * FROM subscription_settings WHERE id = 1');
+        res.json({ school: school.rows[0], settings: settings.rows[0] });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+app.post('/api/school/submit-payment', authenticateToken, async (req, res) => {
+    if (!req.user.school_id) return res.status(400).json({ error: "Hana shule." });
+    const { payment_reference, payment_proof } = req.body; // proof itakua base64 string
+    try {
+        const checkRef = await pool.query('SELECT id FROM schools WHERE payment_reference = $1 AND id != $2', [payment_reference, req.user.school_id]);
+        if (checkRef.rows.length > 0) return res.status(400).json({ error: "Namba hii ya malipo imeshatumika kwenye shule nyingine." });
+
+        await pool.query(`
+            UPDATE schools SET payment_status = 'UNDER REVIEW', payment_reference = $1, payment_proof = $2 WHERE id = $3
+        `, [payment_reference, payment_proof, req.user.school_id]);
+        
+        res.json({ message: "Taarifa za malipo zimewasilishwa. Zinasubiri uhakiki." });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
+// API YA KUSAJILI SHULE
+// ==========================================
 app.post('/api/schools', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa ya kusajili shule." });
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     const { name, region, district, level, supervisor, second_master, academic_master, center_number, manager } = req.body;
     try {
         const check = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
         if (check.rows.length > 0) return res.status(400).json({ error: "Shule yenye jina hili imeshasajiliwa." });
-        const query = `INSERT INTO schools (name, region, district, level, supervisor, second_master, academic_master, center_number, manager, system_fee, is_paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 500000, false) RETURNING *`;
+        const query = `INSERT INTO schools (name, region, district, level, supervisor, second_master, academic_master, center_number, manager, system_fee, is_paid, payment_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 500000, false, 'PENDING') RETURNING *`;
         const result = await pool.query(query, [name, region, district, level, supervisor, second_master, academic_master, center_number, manager]);
         res.status(201).json(result.rows[0]);
     } catch (error) { res.status(500).json({ error: "Imeshindikana kusajili shule." }); }
@@ -162,52 +227,9 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
     try { const result = await pool.query('SELECT * FROM schools ORDER BY name ASC'); res.json(result.rows); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-app.get('/api/super-admin/system-payments', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
-    try {
-        const result = await pool.query('SELECT id, name, district, COALESCE(system_fee, 500000) as system_fee, COALESCE(is_paid, false) as is_paid FROM schools ORDER BY is_paid ASC, name ASC');
-        const schools = result.rows;
-        let totalExpected = 0, totalCollected = 0, totalOutstanding = 0;
-        const paidSchools = [], unpaidSchools = [];
-        schools.forEach(school => {
-            const fee = parseFloat(school.system_fee);
-            totalExpected += fee;
-            if (school.is_paid) { totalCollected += fee; paidSchools.push(school); } 
-            else { totalOutstanding += fee; unpaidSchools.push(school); }
-        });
-        res.json({ schools, paidSchools, unpaidSchools, totalExpected, totalCollected, totalOutstanding });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.put('/api/super-admin/toggle-payment/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
-    const { id } = req.params;
-    try {
-        const result = await pool.query('UPDATE schools SET is_paid = NOT is_paid WHERE id = $1 RETURNING *', [id]);
-        if (result.rowCount === 0) return res.status(404).json({ error: "Shule haijapatikana." });
-        res.json({ message: "Imebadilishwa.", school: result.rows[0] });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-app.get('/api/super-admin/district-stats', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
-    try {
-        const query = `SELECT sc.district, sc.id as school_id, sc.name as school_name, COUNT(st.id) as student_count FROM schools sc LEFT JOIN students st ON sc.id = st.school_id GROUP BY sc.district, sc.id, sc.name ORDER BY sc.district ASC, sc.name ASC`;
-        const result = await pool.query(query);
-        const districts = {};
-        result.rows.forEach(row => {
-            const distName = row.district ? row.district.trim() : 'Hakuna Halmashauri';
-            if (!districts[distName]) districts[distName] = { district: distName, totalSchools: 0, totalStudents: 0, schools: [] };
-            if (row.school_id) {
-                districts[distName].totalSchools += 1;
-                districts[distName].totalStudents += parseInt(row.student_count);
-                districts[distName].schools.push({ id: row.school_id, name: row.school_name, studentCount: parseInt(row.student_count) });
-            }
-        });
-        res.json(Object.values(districts));
-    } catch (error) { res.status(500).json({ error: "Imeshindikana" }); }
-});
-
+// ==========================================
+// API ZA DASHBOARD NA WANAFUNZI, WALIMU, N.K.
+// ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;

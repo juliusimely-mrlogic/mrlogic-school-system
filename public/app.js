@@ -1,35 +1,24 @@
 // ==========================================
-// 0. DYNAMIC LOGIN ANNOUNCEMENTS
+// 0. DYNAMIC LOGIN ANNOUNCEMENTS & AUTH
 // ==========================================
 async function loadLoginAnnouncements() {
     try {
         const res = await fetch('/api/public/announcements');
         if (!res.ok) throw new Error('Network error');
         const data = await res.json();
-        
         const annBox = document.getElementById('login-announcement');
-        const annSw = document.getElementById('login-ann-sw');
-        const annEn = document.getElementById('login-ann-en');
-
         if (data.length > 0) {
-            annSw.textContent = data[0].message_sw;
-            annEn.textContent = data[0].message_en || '';
+            document.getElementById('login-ann-sw').textContent = data[0].message_sw;
+            document.getElementById('login-ann-en').textContent = data[0].message_en || '';
             annBox.style.display = 'block';
         } else {
-            // Default Message
-            annSw.textContent = "Karibu MR-LOGIC School System. Tafadhali ingia kuendelea.";
-            annEn.textContent = "Welcome to MR-LOGIC School System. Please login to continue.";
+            document.getElementById('login-ann-sw').textContent = "Karibu MR-LOGIC School System. Tafadhali ingia kuendelea.";
+            document.getElementById('login-ann-en').textContent = "Welcome to MR-LOGIC School System. Please login to continue.";
             annBox.style.display = 'block';
         }
-    } catch (error) {
-        // Fallback default message on error
-        document.getElementById('login-ann-sw').textContent = "Karibu MR-LOGIC School System.";
-        document.getElementById('login-ann-en').textContent = "Welcome to MR-LOGIC School System.";
-        document.getElementById('login-announcement').style.display = 'block';
-    }
+    } catch (error) { console.log("Hakuna matangazo."); }
 }
 
-// Load announcements on page load
 document.addEventListener('DOMContentLoaded', loadLoginAnnouncements);
 
 async function login() {
@@ -63,9 +52,13 @@ async function showApp() {
     if (user && user.role === 'super_admin') {
         document.getElementById('nav-kusajili_shule').style.display = 'block';
         document.getElementById('nav-announcements').style.display = 'block';
+        document.getElementById('nav-subscription_mgmt').style.display = 'block';
+        document.getElementById('nav-my_subscription').style.display = 'none'; // Super admin has no school
     } else {
         document.getElementById('nav-kusajili_shule').style.display = 'none';
         document.getElementById('nav-announcements').style.display = 'none';
+        document.getElementById('nav-subscription_mgmt').style.display = 'none';
+        document.getElementById('nav-my_subscription').style.display = 'block';
     }
 
     // Fetch Role-Specific Announcements after login
@@ -73,7 +66,6 @@ async function showApp() {
         const res = await fetch('/api/my-announcements', { headers: authHeaders });
         if (res.ok) {
             const anns = await res.json();
-            // Kama kuna tangazo maalum kwa role hii, lionyeshe kama alert
             const roleSpecific = anns.filter(a => a.target_role !== 'all'); 
             if (roleSpecific.length > 0) {
                 alert(`TAARIFA MUHIMU:\n\n${roleSpecific[0].message_sw}\n\n${roleSpecific[0].message_en || ''}`);
@@ -95,6 +87,8 @@ function navigate(page) {
 
     if (page === 'dashboard') renderDashboard();
     else if (page === 'kusajili_shule') renderKusajiliShule();
+    else if (page === 'subscription_mgmt') renderSubscriptionMgmt();
+    else if (page === 'my_subscription') renderMySubscription();
     else if (page === 'announcements') renderAnnouncements();
     else if (page === 'wanafunzi') renderWanafunzi();
     else if (page === 'walimu') renderWalimu();
@@ -108,7 +102,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHBOARD (Na Login Management UI)
+// 1. DASHBOARD
 // ==========================================
 async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -173,53 +167,6 @@ async function renderDashboard(selectedSchoolId = null) {
                     `;
                 }
             } catch (e) { console.error(e); }
-
-            try {
-                const payRes = await fetch('/api/super-admin/system-payments', { headers: authHeaders });
-                if (payRes.ok) {
-                    const pd = await payRes.json();
-                    superAdminHtml += `
-                        <h2 style="margin-top:40px; color:#1e3a8a;">Kadi ya Malipo ya Mfumo</h2>
-                        <div class="grid-3">
-                            <div class="stat-card" style="background:#3b82f6;"><h3>MAKADIRIO YA MAKUSANYO</h3><p class="val">Tsh ${parseInt(pd.totalExpected).toLocaleString()}</p></div>
-                            <div class="stat-card" style="background:#16a34a;"><h3>ILIYOKUSANYWA</h3><p class="val">Tsh ${parseInt(pd.totalCollected).toLocaleString()}</p></div>
-                            <div class="stat-card" style="background:#dc2626;"><h3>MADENI</h3><p class="val">Tsh ${parseInt(pd.totalOutstanding).toLocaleString()}</p></div>
-                        </div>
-                        <div class="payment-grid">
-                            <div class="payment-box">
-                                <h4 style="color:#16a34a;">Shule Zilizolipia (${pd.paidSchools.length})</h4>
-                                <ul class="list-group">
-                                    ${pd.paidSchools.map(sch => `
-                                        <li class="list-item">
-                                            <span><strong>${sch.name}</strong> <br><small style="color:#6b7280;">${sch.district || 'Hakuna Halmashauri'}</small></span>
-                                            <div>
-                                                <span class="badge-paid">Tsh ${parseInt(sch.system_fee).toLocaleString()}</span>
-                                                <button class="btn-sm" style="background:#dc2626; margin-left:5px;" onclick="togglePayment(${sch.id})">Badilisha</button>
-                                            </div>
-                                        </li>
-                                    `).join('')}
-                                    ${pd.paidSchools.length === 0 ? '<p style="text-align:center; color:#6b7280;">Hakuna shule iliyolipia bado.</p>' : ''}
-                                </ul>
-                            </div>
-                            <div class="payment-box">
-                                <h4 style="color:#dc2626;">Shule Hazijalipia (${pd.unpaidSchools.length})</h4>
-                                <ul class="list-group">
-                                    ${pd.unpaidSchools.map(sch => `
-                                        <li class="list-item">
-                                            <span><strong>${sch.name}</strong> <br><small style="color:#6b7280;">${sch.district || 'Hakuna Halmashauri'}</small></span>
-                                            <div>
-                                                <span class="badge-unpaid">Tsh ${parseInt(sch.system_fee).toLocaleString()}</span>
-                                                <button class="btn-sm" style="background:#16a34a; margin-left:5px;" onclick="togglePayment(${sch.id})">Weka Amelipa</button>
-                                            </div>
-                                        </li>
-                                    `).join('')}
-                                    ${pd.unpaidSchools.length === 0 ? '<p style="text-align:center; color:#6b7280;">Shule zote zimelipia!</p>' : ''}
-                                </ul>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (e) { console.error(e); }
         }
 
         content.innerHTML = `
@@ -254,17 +201,8 @@ async function renderDashboard(selectedSchoolId = null) {
     } catch (e) { content.innerHTML = `<h2 style="color:red;">Kosa: ${e.message}</h2>`; }
 }
 
-async function togglePayment(schoolId) {
-    if(!confirm('Je, una uhakika unataka kubadilisha hali ya malipo ya shule hii?')) return;
-    try {
-        const res = await fetch(`/api/super-admin/toggle-payment/${schoolId}`, { method: 'PUT', headers: authHeaders });
-        if(!res.ok) throw new Error("Imeshindikana");
-        renderDashboard();
-    } catch (error) { alert(error.message); }
-}
-
 // ==========================================
-// 2. KUSAJILI SHULE & ANNOUNCEMENTS
+// 2. KUSAJILI SHULE NA MODAL YA MALIPO
 // ==========================================
 async function renderKusajiliShule() {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -331,8 +269,8 @@ async function renderKusajiliShule() {
         <div class="card" style="overflow-x:auto;">
             <h3>Orodha ya Shule Zilizosajiliwa (${schools.length})</h3>
             <table>
-                <thead><tr><th>Jina la Shule</th><th>Ngazi</th><th>Mkoa</th><th>Halmashauri</th><th>Centre No.</th><th>Supervisor</th></tr></thead>
-                <tbody>${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.region || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td>${s.supervisor || '-'}</td></tr>`).join('')}</tbody>
+                <thead><tr><th>Jina la Shule</th><th>Ngazi</th><th>Halmashauri</th><th>Centre No.</th><th>Hali ya Malipo</th></tr></thead>
+                <tbody>${schools.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.level || '-'}</td><td>${s.district || '-'}</td><td>${s.center_number || '-'}</td><td><span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span></td></tr>`).join('')}</tbody>
             </table>
         </div>
     `;
@@ -354,112 +292,240 @@ async function addSchool() {
         const res = await fetch('/api/schools', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Imeshindikana kusajili");
-        alert("Shule imesajiliwa kikamilifu!");
+        
+        // Onyesha Modal ya Maelekezo ya Malipo
+        showPaymentModal(data.name);
         renderKusajiliShule();
     } catch (error) { alert(error.message); }
 }
 
+function showPaymentModal(schoolName) {
+    const modal = document.getElementById('paymentModal');
+    const body = document.getElementById('modal-body');
+    
+    body.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="color: #16a34a;">Shule ya ${schoolName} Imesajiliwa Kikamilifu!</h3>
+            <p>Tafadhali lipia Ada ya Mfumo (System Fee) ili kuanza kutumia huduma zote.</p>
+        </div>
+        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+            <p><strong>Ada ya Mwaka:</strong> Tsh 500,000 (Unaweza kuibadilisha kwenye mipangilio)</p>
+            <p><strong>Jina la Mpokeaji:</strong> MR LOGIC SYSTEM</p>
+            <p><strong>M-PESA:</strong> Lipa Namba 500100</p>
+            <p><strong>TIGO PESA:</strong> Lipa Namba 400200</p>
+            <p><strong>Msaada:</strong> WhatsApp +255700000000</p>
+        </div>
+        <p style="font-size: 14px; color: #ef4444; margin-bottom: 20px;">
+            <strong>MUHIMU:</strong> Baada ya kulipia, ingia kwenye mfumo kama Msimamizi wa Shule (School Admin) na uwasilishe Namba ya Malipo (Reference) chini ya ukurasa wa "My Subscription".
+        </p>
+        <button class="btn-primary" onclick="closePaymentModal()" style="width: 100%;">Nimeelewa</button>
+    `;
+    modal.style.display = 'block';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
 // ==========================================
-// ANNOUNCEMENTS MANAGEMENT (LOGIN PAGE)
+// 3. MY SUBSCRIPTION (KWA SHULE)
 // ==========================================
-async function renderAnnouncements() {
+async function renderMySubscription() {
+    content.innerHTML = `<h2>Inapakia Taarifa za Usajili...</h2>`;
+    try {
+        const res = await fetch('/api/school/my-subscription', { headers: authHeaders });
+        const d = await res.json();
+        
+        if (!res.ok) throw new Error(d.error);
+
+        const s = d.school;
+        const settings = d.settings;
+
+        let remainingDays = 0;
+        if (s.subscription_end_date) {
+            const end = new Date(s.subscription_end_date);
+            const today = new Date();
+            const diffTime = Math.abs(end - today);
+            remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        content.innerHTML = `
+            <div class="card">
+                <h3>Hali ya Usajili wa Shule Yako</h3>
+                <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:15px;">
+                    <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px;">
+                        <p><strong>Hali ya Malipo:</strong> <span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span></p>
+                        <p><strong>Namba ya Malipo:</strong> ${s.payment_reference || 'Hakuna'}</p>
+                    </div>
+                    <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px;">
+                        <p><strong>Kuanza:</strong> ${s.subscription_start_date ? new Date(s.subscription_start_date).toLocaleDateString() : '-'}</p>
+                        <p><strong>Kuisha:</strong> ${s.subscription_end_date ? new Date(s.subscription_end_date).toLocaleDateString() : '-'}</p>
+                        <p><strong>Siku Zilizobaki:</strong> ${remainingDays} siku</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Wasilisha Malipo Mapya</h3>
+                <form onsubmit="event.preventDefault(); submitPayment();">
+                    <div class="form-group">
+                        <label>Namba ya Malipo (Reference Number):</label>
+                        <input type="text" id="pay_ref" required placeholder="Mfano: MP123456789">
+                    </div>
+                    <div class="form-group">
+                        <label>Pakia Picha ya Risiti (Screenshot):</label>
+                        <input type="file" id="pay_proof" accept="image/*" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%;">Wasilisha Malipo</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Maelekezo ya Malipo</h3>
+                <p>${settings.instructions}</p>
+                <p><strong>Ada:</strong> Tsh ${parseInt(settings.annual_fee).toLocaleString()}</p>
+                <p><strong>M-PESA:</strong> ${settings.mpesa_details}</p>
+                <p><strong>TIGO PESA:</strong> ${settings.tigopesa_details}</p>
+                <p><strong>WhatsApp:</strong> ${settings.support_whatsapp}</p>
+            </div>
+        `;
+    } catch (error) { content.innerHTML = `<h2 style="color:red;">Kosa: ${error.message}</h2>`; }
+}
+
+async function submitPayment() {
+    const ref = document.getElementById('pay_ref').value;
+    const file = document.getElementById('pay_proof').files[0];
+    if (!ref || !file) return alert('Weka namba ya malipo na pakia risiti.');
+
+    const reader = new FileReader();
+    reader.onload = async function() {
+        const base64String = reader.result;
+        try {
+            const res = await fetch('/api/school/submit-payment', {
+                method: 'POST',
+                headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payment_reference: ref, payment_proof: base64String })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            alert('Malipo yamewasilishwa! Yanasubiri uhakiki wa Super Admin.');
+            renderMySubscription();
+        } catch (error) { alert(error.message); }
+    };
+    reader.readAsDataURL(file);
+}
+
+// ==========================================
+// 4. SUPER ADMIN SUBSCRIPTION MANAGEMENT
+// ==========================================
+async function renderSubscriptionMgmt() {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user || user.role !== 'super_admin') return;
 
-    content.innerHTML = `<h2>Inapakia Matangazo...</h2>`;
-    const res = await fetch('/api/admin/announcements', { headers: authHeaders });
-    const anns = await res.json();
+    content.innerHTML = `<h2>Inapakia Mipangilio ya Malipo...</h2>`;
+    try {
+        const [setRes, schRes] = await Promise.all([
+            fetch('/api/admin/subscription-settings', { headers: authHeaders }),
+            fetch('/api/admin/school-subscriptions', { headers: authHeaders })
+        ]);
+        const settings = await setRes.json();
+        const schools = await schRes.json();
 
-    content.innerHTML = `
-        <div class="card">
-            <h3>Ongeza Tangazo Jipya la Ukurasa wa Kuingia</h3>
-            <form onsubmit="event.preventDefault(); addAnnouncement();">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Ujumbe kwa Kiswahili (Swahili):</label>
-                        <textarea id="ann_sw" required placeholder="Mfano: Karibu kwenye mfumo mpya wa shule..."></textarea>
+        content.innerHTML = `
+            <div class="card">
+                <h3>Mipangilio ya Malipo (Subscription Settings)</h3>
+                <form onsubmit="event.preventDefault(); saveSubSettings();">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Ada ya Mwaka (Tsh):</label>
+                            <input type="number" id="sub_fee" value="${settings.annual_fee}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>M-PESA Details:</label>
+                            <input type="text" id="sub_mpesa" value="${settings.mpesa_details}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>TIGO PESA Details:</label>
+                            <input type="text" id="sub_tigo" value="${settings.tigopesa_details}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Jina la Mpokeaji:</label>
+                            <input type="text" id="sub_payee" value="${settings.payee_name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>WhatsApp Support:</label>
+                            <input type="text" id="sub_whatsapp" value="${settings.support_whatsapp}" required>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Ujumbe kwa Kiingereza (English):</label>
-                        <textarea id="ann_en" placeholder="Mfano: Welcome to the new school system..."></textarea>
+                        <label>Maelekezo ya Jumla:</label>
+                        <textarea id="sub_instructions" required>${settings.instructions}</textarea>
                     </div>
-                    <div class="form-group">
-                        <label>Nani Aone Ujumbe Huu:</label>
-                        <select id="ann_role">
-                            <option value="all">Wote (Login Page)</option>
-                            <option value="super_admin">Super Admin Pekee (Baada ya kuingia)</option>
-                            <option value="mtaaluma_mkuu">Mtaaluma Mkuu Pekee (Baada ya kuingia)</option>
-                            <option value="mtaaluma">Wataaluma Pekee (Baada ya kuingia)</option>
-                            <option value="teacher">Walimu Pekee (Baada ya kuingia)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Tarehe ya Kuanza (Start Date):</label>
-                        <input type="date" id="ann_start" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tarehe ya Mwisho (Expiry Date):</label>
-                        <input type="date" id="ann_end" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn-primary" style="margin-top:15px; width:100%;">Hifadhi Tangazo</button>
-            </form>
-        </div>
+                    <button type="submit" class="btn-primary" style="width:100%;">Hifadhi Mipangilio</button>
+                </form>
+            </div>
 
-        <div class="card" style="overflow-x:auto;">
-            <h3>Matangazo Yaliyopo (${anns.length})</h3>
-            <table>
-                <thead><tr><th>Ujumbe (SW)</th><th>Wataoiona</th><th>Muda</th><th>Hali</th><th>Vitendo</th></tr></thead>
-                <tbody>
-                    ${anns.map(a => `
-                        <tr>
-                            <td>${a.message_sw.substring(0, 30)}...</td>
-                            <td>${a.target_role}</td>
-                            <td>${new Date(a.start_date).toLocaleDateString()} - ${new Date(a.end_date).toLocaleDateString()}</td>
-                            <td><span class="badge-${a.is_active ? 'paid' : 'unpaid'}">${a.is_active ? 'Inafanya Kazi' : 'Imezimwa'}</span></td>
-                            <td>
-                                <button class="btn-sm" style="background:${a.is_active ? '#f59e0b' : '#16a34a'};" onclick="toggleAnnouncement(${a.id})">${a.is_active ? 'Zima' : 'Washa'}</button>
-                                <button class="btn-sm" style="background:#dc2626;" onclick="deleteAnnouncement(${a.id})">Futa</button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+            <div class="card" style="overflow-x:auto;">
+                <h3>Usimamizi wa Shule (${schools.length})</h3>
+                <table>
+                    <thead><tr><th>Shule</th><th>Halmashauri</th><th>Hali</th><th>Ref</th><th>Vitendo</th></tr></thead>
+                    <tbody>
+                        ${schools.map(s => `
+                            <tr>
+                                <td><strong>${s.name}</strong></td>
+                                <td>${s.district || '-'}</td>
+                                <td>
+                                    <span class="badge-${s.payment_status === 'APPROVED' ? 'paid' : 'unpaid'}">${s.payment_status}</span>
+                                    ${s.payment_proof ? `<br><a href="#" onclick="alert('Risiti imewasilishwa. (Inaweza kuonekana kwenye DB)')" style="font-size:12px;">Ona Risiti</a>` : ''}
+                                </td>
+                                <td>${s.payment_reference || '-'}</td>
+                                <td>
+                                    ${s.payment_status !== 'APPROVED' ? `<button class="btn-sm" style="background:#16a34a;" onclick="verifyPayment(${s.id}, 'APPROVE')">Approve</button>` : ''}
+                                    ${s.payment_status !== 'REJECTED' ? `<button class="btn-sm" style="background:#dc2626; margin-left:5px;" onclick="verifyPayment(${s.id}, 'REJECT')">Reject</button>` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) { content.innerHTML = `<h2 style="color:red;">Kosa: ${error.message}</h2>`; }
 }
 
-async function addAnnouncement() {
+async function saveSubSettings() {
     const payload = {
-        message_sw: document.getElementById('ann_sw').value,
-        message_en: document.getElementById('ann_en').value,
-        target_role: document.getElementById('ann_role').value,
-        start_date: document.getElementById('ann_start').value,
-        end_date: document.getElementById('ann_end').value,
-        is_active: true
+        annual_fee: document.getElementById('sub_fee').value,
+        mpesa_details: document.getElementById('sub_mpesa').value,
+        tigopesa_details: document.getElementById('sub_tigo').value,
+        payee_name: document.getElementById('sub_payee').value,
+        support_whatsapp: document.getElementById('sub_whatsapp').value,
+        instructions: document.getElementById('sub_instructions').value,
+        mpesa_active: true,
+        tigopesa_active: true
     };
     try {
-        const res = await fetch('/api/admin/announcements', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        await fetch('/api/admin/subscription-settings', { method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        alert('Mipangilio imehifadhiwa!');
+    } catch (e) { alert('Kosa la kuhifadhi.'); }
+}
+
+async function verifyPayment(schoolId, action) {
+    if(!confirm(`Je, una uhakika unataka ${action} malipo ya shule hii?`)) return;
+    try {
+        const res = await fetch(`/api/admin/verify-payment/${schoolId}`, {
+            method: 'PUT',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        alert("Tangazo limehifadhiwa!");
-        renderAnnouncements();
+        alert('Hali ya malipo imebadilishwa!');
+        renderSubscriptionMgmt();
     } catch (error) { alert(error.message); }
 }
 
-async function toggleAnnouncement(id) {
-    await fetch(`/api/admin/announcements/${id}/toggle`, { method: 'PUT', headers: authHeaders });
-    renderAnnouncements();
-}
-
-async function deleteAnnouncement(id) {
-    if(!confirm('Futa tangazo hili?')) return;
-    await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE', headers: authHeaders });
-    renderAnnouncements();
-}
-
 // ==========================================
-// 3. WANAFUNZI
+// 5. WANAFUNZI
 // ==========================================
 async function renderWanafunzi() {
     content.innerHTML = `<h2>Inapakia Wanafunzi...</h2>`;
@@ -493,7 +559,7 @@ async function addStudent() {
 async function delStudent(id) { if(confirm('Futa mwanafunzi huyu?')) { await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders }); renderWanafunzi(); } }
 
 // ==========================================
-// 4. WALIMU
+// 6. WALIMU
 // ==========================================
 async function renderWalimu() {
     content.innerHTML = `<h2>Inapakia Walimu...</h2>`;
@@ -527,7 +593,7 @@ async function addTeacher() {
 async function delTeacher(id) { if(confirm('Futa mwalimu huyu?')) { await fetch('/api/teachers/' + id, { method: 'DELETE', headers: authHeaders }); renderWalimu(); } }
 
 // ==========================================
-// 5. ADA
+// 7. ADA
 // ==========================================
 async function renderAda() {
     content.innerHTML = `<h2>Inapakia Ada...</h2>`;
@@ -559,7 +625,7 @@ async function addFee() {
 }
 
 // ==========================================
-// 6. ALAMA
+// 8. ALAMA
 // ==========================================
 async function renderAlama() {
     content.innerHTML = `<h2>Inapakia Mfumo wa Alama...</h2>`;
@@ -682,7 +748,7 @@ async function uploadExcel() {
 }
 
 // ==========================================
-// 7. BROADSHEET
+// 9. BROADSHEET
 // ==========================================
 async function renderBroadsheet() {
     content.innerHTML = `<h2>Inapakia Broadsheet...</h2>`;
@@ -715,7 +781,7 @@ async function loadBroadsheet() {
 }
 
 // ==========================================
-// 8. MAHUDHURIO
+// 10. MAHUDHURIO
 // ==========================================
 async function renderMahudhurio() {
     content.innerHTML = `<h2>Inapakia Mahudhurio...</h2>`;
@@ -753,7 +819,7 @@ async function saveAttendance() {
 }
 
 // ==========================================
-// 9. KUPANGA WALIMU
+// 11. KUPANGA WALIMU
 // ==========================================
 async function renderKupanga() {
     content.innerHTML = `<h2>Inapakia Kupanga Walimu...</h2>`;
@@ -785,7 +851,7 @@ async function addAssignment() {
 }
 
 // ==========================================
-// 10. RIPOTI (BORA & WABOVU)
+// 12. RIPOTI (BORA & WABOVU)
 // ==========================================
 async function renderRipoti() {
     content.innerHTML = `<h2>Inapakia Ripoti...</h2>`;
@@ -819,7 +885,7 @@ async function loadRipoti() {
 }
 
 // ==========================================
-// 11. MIPANGILIO
+// 13. MIPANGILIO
 // ==========================================
 async function renderMipangilio() {
     content.innerHTML = `<h2>Inapakia Mipangilio...</h2>`;
@@ -875,6 +941,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('app-screen').style.display = 'none';
-        loadLoginAnnouncements(); // Vuta matangazo ya login
+        loadLoginAnnouncements(); 
     }
 });

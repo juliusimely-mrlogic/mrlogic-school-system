@@ -65,16 +65,13 @@
     .school-name { font-weight: 500; color: #334155; font-size: 14px; }
     .school-students { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
 
-    /* KADI ZA MALIPO YA MFUMO */
-    .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-    .payment-box { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .payment-box h4 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-    .list-group { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; }
-    .list-item { padding: 10px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; }
-    .list-item:last-child { border-bottom: none; }
-    .badge-paid { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-    .badge-unpaid { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; color: white; }
+    /* MODAL STYLES */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+    .modal-content { background-color: #fefefe; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+    .modal-header h2 { margin: 0; color: #1e3a8a; font-size: 20px; }
+    .close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover { color: red; }
 
     /* Fomu na Vichupo */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -91,13 +88,10 @@
   <div id="login-screen">
     <div class="login-box">
       <h2>MR-LOGIC Login</h2>
-      
-      <!-- Sehemu ya Matangazo (Dynamic Login Welcome Message) -->
       <div id="login-announcement">
           <p class="sw" id="login-ann-sw"></p>
           <p class="en" id="login-ann-en"></p>
       </div>
-
       <input type="text" id="username" placeholder="Jina la Mtumiaji (Username)" />
       <input type="password" id="password" placeholder="Neno la Siri (Password)" />
       <button onclick="login()">Ingia Mfumo</button>
@@ -115,6 +109,9 @@
       <div class="sidebar">
         <a onclick="navigate('dashboard')" class="nav-link active" id="nav-dashboard">📊 Dashibodi</a>
         <a onclick="navigate('kusajili_shule')" class="nav-link" id="nav-kusajili_shule" style="display: none;">🏫 Kusajili Shule</a>
+        <a onclick="navigate('subscription_mgmt')" class="nav-link" id="nav-subscription_mgmt" style="display: none;">💳 Subscription Management</a>
+        <a onclick="navigate('my_subscription')" class="nav-link" id="nav-my_subscription">📄 My Subscription</a>
+        
         <a onclick="navigate('announcements')" class="nav-link" id="nav-announcements" style="display: none;">📢 Login Page Management</a>
         <a onclick="navigate('wanafunzi')" class="nav-link" id="nav-wanafunzi">👨‍🎓 Wanafunzi</a>
         <a onclick="navigate('walimu')" class="nav-link" id="nav-walimu">👨‍🏫 Walimu</a>
@@ -129,6 +126,19 @@
 
       <div class="content-area" id="content-area">
         <!-- Dynamic Content Here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL YA MALIPO -->
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Maelekezo ya Malipo</h2>
+        <span class="close" onclick="closePaymentModal()">&times;</span>
+      </div>
+      <div id="modal-body">
+        <!-- Itajazwa na JS -->
       </div>
     </div>
   </div>
