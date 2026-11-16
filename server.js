@@ -45,94 +45,26 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// API YA LOGIN (IMEREKEBISHWA KWA NGUVU)
-// ==========================================
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
-        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        if (result.rows.length === 0) return res.status(401).json({ error: "Jina la mtumiaji si sahihi" });
-        const user = result.rows[0];
-        const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
-        
-        let finalSchoolId = user.school_id;
-        let userDistrict = user.district;
-
-        // KAMA HANA school_id KWENYE USERS, TAFUTA KWENYE TEACHERS
-        if (!finalSchoolId && (user.role === 'teacher' || user.role === 'mtaaluma' || user.role === 'mtaaluma_mkuu')) {
-            try {
-                const teacherRes = await pool.query('SELECT school_id FROM teachers WHERE username = $1', [username]);
-                if (teacherRes.rows.length > 0) {
-                    finalSchoolId = teacherRes.rows[0].school_id;
-                }
-            } catch (err) { console.log("Teacher lookup failed."); }
-        }
-
-        // KAMA BADO HAIPO, CHUKUA SHULE YA KWANZA (KINGA YA MWISHO)
-        if (!finalSchoolId && user.role !== 'super_admin' && user.role !== 'district_officer') {
-            try {
-                const firstSchool = await pool.query('SELECT id FROM schools LIMIT 1');
-                if (firstSchool.rows.length > 0) {
-                    finalSchoolId = firstSchool.rows[0].id;
-                }
-            } catch (err) { console.log("Fallback school lookup failed."); }
-        }
-
-        // Kagua Subscription
-        if (user.role !== 'super_admin' && user.role !== 'district_officer' && finalSchoolId) {
-            try {
-                const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [finalSchoolId]);
-                if (check.rows.length > 0) {
-                    const s = check.rows[0];
-                    const today = new Date();
-                    if (s.subscription_status === 'TRIAL_ACTIVE' && s.trial_end_date && new Date(s.trial_end_date) < today) {
-                        await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [finalSchoolId]);
-                    } else if (s.subscription_status === 'SUBSCRIPTION_ACTIVE' && s.subscription_end_date && new Date(s.subscription_end_date) < today) {
-                        await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [finalSchoolId]);
-                    }
-                }
-            } catch (err) { console.log("Subscription check skipped."); }
-        }
-
-        const token = jwt.sign({ 
-            id: user.id, role: user.role, school_id: finalSchoolId, district: userDistrict, name: user.full_name 
-        }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
-        
-        const userResponse = { ...user, school_id: finalSchoolId };
-        res.json({ token, user: userResponse });
-    } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
-});
-
-// ==========================================
-// API YA DASHIBODI (IMEREKEBISHWA KWA NGUVU)
+// API YA DASHIBODI (IMEREKEBISHWA KWA UHAKIKA)
 // ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
         let targetSchoolId;
 
-        // 1. Kama ni Super Admin au District Officer, tumia waliochagua kwenye URL
+        // Kama ni Super Admin au District Officer, tumia aliyochagua kwenye Dropdown (query param)
         if (user.role === 'super_admin' || user.role === 'district_officer') {
             targetSchoolId = req.query.school_id;
         } else {
-            // 2. Kama ni mtumiaji wa kawaida, tumia school_id yake kutoka kwenye token
+            // Kama ni mtumiaji wa kawaida, tumia school_id yake
             targetSchoolId = user.school_id;
-            
-            // 3. Kama bado haipo kwenye token, tafuta kwenye database
-            if (!targetSchoolId) {
-                const userRes = await pool.query('SELECT school_id FROM users WHERE id = $1', [user.id]);
-                if (userRes.rows.length > 0 && userRes.rows[0].school_id) {
-                    targetSchoolId = userRes.rows[0].school_id;
-                } else {
-                    const teacherRes = await pool.query('SELECT school_id FROM teachers WHERE username = $1', [user.name.toLowerCase().replace(/\s+/g, '')]);
-                    if (teacherRes.rows.length > 0) targetSchoolId = teacherRes.rows[0].school_id;
-                }
-            }
         }
         
+        // Kama bado haipo, chukua ya kwanza (Kinga)
         if (!targetSchoolId) {
-            return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: {}, districtRank: "-", totalSchoolsInDistrict: 0 });
+            const firstSchool = await pool.query('SELECT id FROM schools LIMIT 1');
+            if (firstSchool.rows.length > 0) targetSchoolId = firstSchool.rows[0].id;
+            else return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: {}, districtRank: "-", totalSchoolsInDistrict: 0 });
         }
 
         let schoolName = "Shule", districtName = null;
@@ -163,6 +95,59 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
 
         res.json({ schoolName, totalStudents, totalTeachers, totalClasses, totalExpectedFees, totalCollectedFees, totalOutstandingFees, overallGender: {M: maleCount, F: femaleCount}, streamGenderStats, examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, role: user.role, districtRank: "-", totalSchoolsInDistrict: 0 });
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
+// API YA LOGIN (IMEREKEBISHWA KWA NGUVU)
+// ==========================================
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (result.rows.length === 0) return res.status(401).json({ error: "Jina la mtumiaji si sahihi" });
+        const user = result.rows[0];
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) return res.status(401).json({ error: "Password si sahihi" });
+        
+        let finalSchoolId = user.school_id;
+        let userDistrict = user.district;
+
+        if (!finalSchoolId && (user.role === 'teacher' || user.role === 'mtaaluma' || user.role === 'mtaaluma_mkuu')) {
+            try {
+                const teacherRes = await pool.query('SELECT school_id FROM teachers WHERE username = $1', [username]);
+                if (teacherRes.rows.length > 0) finalSchoolId = teacherRes.rows[0].school_id;
+            } catch (err) { console.log("Teacher lookup failed."); }
+        }
+
+        if (!finalSchoolId && user.role !== 'super_admin' && user.role !== 'district_officer') {
+            try {
+                const firstSchool = await pool.query('SELECT id FROM schools LIMIT 1');
+                if (firstSchool.rows.length > 0) finalSchoolId = firstSchool.rows[0].id;
+            } catch (err) { console.log("Fallback school lookup failed."); }
+        }
+
+        if (user.role !== 'super_admin' && user.role !== 'district_officer' && finalSchoolId) {
+            try {
+                const check = await pool.query('SELECT subscription_status, trial_end_date, subscription_end_date FROM schools WHERE id = $1', [finalSchoolId]);
+                if (check.rows.length > 0) {
+                    const s = check.rows[0];
+                    const today = new Date();
+                    if (s.subscription_status === 'TRIAL_ACTIVE' && s.trial_end_date && new Date(s.trial_end_date) < today) {
+                        await pool.query("UPDATE schools SET subscription_status = 'TRIAL_EXPIRED' WHERE id = $1", [finalSchoolId]);
+                    } else if (s.subscription_status === 'SUBSCRIPTION_ACTIVE' && s.subscription_end_date && new Date(s.subscription_end_date) < today) {
+                        await pool.query("UPDATE schools SET subscription_status = 'SUBSCRIPTION_EXPIRED' WHERE id = $1", [finalSchoolId]);
+                    }
+                }
+            } catch (err) { console.log("Subscription check skipped."); }
+        }
+
+        const token = jwt.sign({ 
+            id: user.id, role: user.role, school_id: finalSchoolId, district: userDistrict, name: user.full_name 
+        }, process.env.JWT_SECRET || 'siri_yako_ya_siri', { expiresIn: '1d' });
+        
+        const userResponse = { ...user, school_id: finalSchoolId };
+        res.json({ token, user: userResponse });
+    } catch (error) { res.status(500).json({ error: "Kuna tatizo la kiufundi" }); }
 });
 
 // ==========================================
@@ -199,10 +184,7 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
         const query = `INSERT INTO schools (name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, subscription_status, trial_start_date, trial_end_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'TRIAL_ACTIVE', $11, $12) RETURNING *`;
         const result = await pool.query(query, [name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, trialStart, trialEnd]);
         res.status(201).json(result.rows[0]);
-    } catch (error) { 
-        console.error("School registration error:", error);
-        res.status(500).json({ error: `Imeshindikana kusajili shule.` }); 
-    }
+    } catch (error) { res.status(500).json({ error: `Imeshindikana kusajili shule.` }); }
 });
 
 // ==========================================

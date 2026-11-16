@@ -98,7 +98,7 @@ function navigate(page) {
 }
 
 // ==========================================
-// 1. DASHIBODI YA SHULE (NA CHAGUO LA SHULE KWA SUPER ADMIN)
+// 1. DASHIBODI YA SHULE (IMEREKEBISHWA VIZURI)
 // ==========================================
 async function renderDashboard(selectedSchoolId = null) {
     content.innerHTML = `<h2>Inapakia Takwimu...</h2>`;
@@ -110,6 +110,7 @@ async function renderDashboard(selectedSchoolId = null) {
         const resS = await fetch('/api/schools', { headers: authHeaders });
         const schools = await resS.json();
         
+        // Chukua ID kutoka dropdown kama ipo, au tumia iliyopitishwa, au ya kwanza
         let currentSelectedId = selectedSchoolId;
         if (!currentSelectedId) {
             const dropdown = document.getElementById('school-selector');
@@ -117,6 +118,7 @@ async function renderDashboard(selectedSchoolId = null) {
         }
         if (!currentSelectedId && schools.length > 0) currentSelectedId = schools[0].id;
         
+        // HAPA NDIPO MARKEBISHO: Tuma school_id iliyochaguliwa
         if (currentSelectedId) targetSchoolQuery = `?school_id=${currentSelectedId}`;
 
         schoolSelectorHtml = `
@@ -130,6 +132,7 @@ async function renderDashboard(selectedSchoolId = null) {
     }
 
     try {
+        // API hii sasa itapokea ?school_id=... ikiwa ni Super Admin
         const res = await fetch('/api/dashboard/stats' + targetSchoolQuery, { headers: authHeaders });
         const d = await res.json();
         
@@ -157,7 +160,7 @@ async function renderDashboard(selectedSchoolId = null) {
     } catch (e) { content.innerHTML = `<h2 style="color:red;">Kosa: ${e.message}</h2>`; }
 }
 
-// (Weka function zingine zote za renderDistrictDashboard, renderWanafunzi, n.k. hapa chini kama zilivyokuwa kwenye code ya awali)
+// (Weka function zingine zote hapa kama zilivyokuwa)
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('token')) {
         showApp();
