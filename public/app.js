@@ -1,5 +1,5 @@
- // ==========================================
-// 0. AUTH & ANNOUNCEMENTS
+// ==========================================
+// 0. DYNAMIC LOGIN ANNOUNCEMENTS & AUTH
 // ==========================================
 async function loadLoginAnnouncements() {
     try {
