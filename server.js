@@ -6,7 +6,6 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const crypto = require('crypto'); // Kwa ajili ya webhook verification
-const fetch = require('node-fetch'); // Hakikisha umeweka: npm install node-fetch
 const pool = require('./db'); 
 
 const app = express();
