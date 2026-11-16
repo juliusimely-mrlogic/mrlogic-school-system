@@ -46,7 +46,6 @@ async function showApp() {
     document.getElementById('app-screen').style.display = 'flex';
     const user = JSON.parse(localStorage.getItem('user'));
     
-    // Onyesha menu kulingana na role
     if (user && user.role === 'super_admin') {
         document.getElementById('nav-kusajili_shule').style.display = 'block';
         document.getElementById('nav-announcements').style.display = 'block';
@@ -67,7 +66,6 @@ async function showApp() {
         document.getElementById('nav-district_dashboard').style.display = 'none';
     }
     
-    // Mpe route ya kwanza kulingana na role
     if (user.role === 'district_officer') navigate('district_dashboard');
     else navigate('dashboard');
 }

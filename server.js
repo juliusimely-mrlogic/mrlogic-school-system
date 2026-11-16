@@ -60,12 +60,14 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
         let targetDistrict = user.role === 'super_admin' ? req.query.district : user.district;
         if (!targetDistrict) return res.status(400).json({ error: "Halmashauri haijawekwa." });
 
-        // 1. Pata shule zote za halmashauri hii
         const schoolsRes = await pool.query('SELECT id, name, subscription_status, trial_end_date, subscription_end_date, level FROM schools WHERE district = $1 ORDER BY name ASC', [targetDistrict]);
         const schools = schoolsRes.rows;
         const schoolIds = schools.map(s => s.id);
 
-        // 2. Idadi ya wanafunzi, walimu, madarasa
+        if (schoolIds.length === 0) {
+            return res.json({ district_name: targetDistrict, total_schools: 0, total_students: 0, male_students: 0, female_students: 0, total_teachers: 0, total_classes: 0, total_pass: 0, total_fail: 0, schools: [] });
+        }
+
         const [studentsRes, teachersRes, classesRes] = await Promise.all([
             pool.query('SELECT COUNT(*) as count, gender FROM students WHERE school_id = ANY($1) GROUP BY gender', [schoolIds]),
             pool.query('SELECT COUNT(*) as count FROM teachers WHERE school_id = ANY($1)', [schoolIds]),
@@ -81,27 +83,19 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
         const totalTeachers = parseInt(teachersRes.rows[0].count);
         const totalClasses = parseInt(classesRes.rows[0].count);
 
-        // 3. Pata mitihani ya mwisho kwa kila shule na hesabu ufaulu
         const schoolRankings = [];
         let totalPass = 0, totalFail = 0;
         
         for (const school of schools) {
-            // Pata mtihani wa mwisho wa shule hii
             const examRes = await pool.query('SELECT id, name FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1', [school.id]);
             if (examRes.rows.length === 0) continue;
             const examId = examRes.rows[0].id;
 
-            // Pata masomo
             const subjRes = await pool.query('SELECT COUNT(DISTINCT subject_id) as total FROM results WHERE exam_id = $1 AND school_id = $2', [examId, school.id]);
             const totalSubjects = parseInt(subjRes.rows[0].total);
             if (totalSubjects === 0) continue;
 
-            // Pata matokeo
-            const resultsRes = await pool.query(`
-                SELECT s.id, r.score FROM students s 
-                LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1
-                WHERE s.school_id = $2
-            `, [examId, school.id]);
+            const resultsRes = await pool.query(`SELECT s.id, r.score FROM students s LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1 WHERE s.school_id = $2`, [examId, school.id]);
 
             const studentScores = {};
             resultsRes.rows.forEach(row => {
@@ -126,7 +120,6 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
             totalPass += schoolPass;
             totalFail += schoolFail;
 
-            // Hesabu GPA ya shule (Wastani wa Pointi kwa mwanafunzi)
             let totalPoints = 0, totalStudentsWithResults = 0;
             Object.values(studentScores).forEach(scores => {
                 if (scores.length === totalSubjects) {
@@ -137,32 +130,18 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
             const schoolGPA = totalStudentsWithResults > 0 ? parseFloat((totalPoints / totalStudentsWithResults).toFixed(2)) : 0;
 
             schoolRankings.push({
-                id: school.id,
-                name: school.name,
-                level: school.level,
-                subscription_status: school.subscription_status,
-                gpa: schoolGPA,
-                pass: schoolPass,
-                fail: schoolFail,
-                studentsWithResults: totalStudentsWithResults
+                id: school.id, name: school.name, level: school.level, subscription_status: school.subscription_status,
+                gpa: schoolGPA, pass: schoolPass, fail: schoolFail, studentsWithResults: totalStudentsWithResults
             });
         }
 
-        // Panga shule kwa GPA (Ndogo ni nzuri zaidi)
         schoolRankings.sort((a, b) => a.gpa - b.gpa);
         schoolRankings.forEach((s, i) => s.rank = i + 1);
 
         res.json({
-            district_name: targetDistrict,
-            total_schools: schools.length,
-            total_students: totalStudents,
-            male_students: maleCount,
-            female_students: femaleCount,
-            total_teachers: totalTeachers,
-            total_classes: totalClasses,
-            total_pass: totalPass,
-            total_fail: totalFail,
-            schools: schoolRankings
+            district_name: targetDistrict, total_schools: schools.length, total_students: totalStudents,
+            male_students: maleCount, female_students: femaleCount, total_teachers: totalTeachers,
+            total_classes: totalClasses, total_pass: totalPass, total_fail: totalFail, schools: schoolRankings
         });
 
     } catch (error) {
@@ -172,7 +151,7 @@ app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// API YA LOGIN
+// API YA LOGIN (TENANT ISOLATION FIX)
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -206,9 +185,6 @@ app.post('/api/login', async (req, res) => {
 // ==========================================
 // API NYINGINE ZA MSINGI (ZINABAKI KAMA ZILIVYO)
 // ==========================================
-// (Weka APIs zote za schools, dashboard ya shule, teachers, students, streams, subjects, exams, fees, results, reports, subscription, announcements hapa)
-// Nakupa code kamili ya APIs hizi chini.
-
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { 
         if (req.user.role === 'district_officer') {
@@ -246,6 +222,9 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
+// ==========================================
+// DASHBOARD YA SHULE (TENANT ISOLATION KAMILI)
+// ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
@@ -285,7 +264,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// (Weka APIs zote za Walimu, Wanafunzi, Streams, Subjects, Exams, Fees, Results, Reports, Subscription, Announcements kama nilivyokupa kwenye majibu yaliyopita)
+// (Weka APIs zote zilizobaki za Walimu, Wanafunzi, Streams, Subjects, Exams, Fees, Results, Reports, Subscription, Announcements kama nilivyokupa kwenye majibu yaliyopita)
 // Nakupa code kamili kwa ukamilifu chini:
 
 app.get('/api/teachers', authenticateToken, async (req, res) => {
