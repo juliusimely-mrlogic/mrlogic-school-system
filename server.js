@@ -17,9 +17,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
 const getGradeAndPoints = (score) => {
     if (score >= 75) return { grade: 'A', points: 1 };
     if (score >= 65) return { grade: 'B', points: 2 };
@@ -48,110 +45,94 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// 1. API YA DASHIBODI YA HALMASHAURI (AFISA TAALUMA)
+// API MPYA: SCHOOL & COUNCIL DIRECTORY (SUPER ADMIN PEKEE)
 // ==========================================
-app.get('/api/district/dashboard', authenticateToken, async (req, res) => {
-    const user = req.user;
-    if (user.role !== 'district_officer' && user.role !== 'super_admin') {
-        return res.status(403).json({ error: "Hauna ruhusa ya kuona takwimu hizi." });
-    }
-
+app.get('/api/directory/summary', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
     try {
-        let targetDistrict = user.role === 'super_admin' ? req.query.district : user.district;
-        if (!targetDistrict) return res.status(400).json({ error: "Halmashauri haijawekwa." });
-
-        const schoolsRes = await pool.query('SELECT id, name, subscription_status, level FROM schools WHERE district = $1 ORDER BY name ASC', [targetDistrict]);
-        const schools = schoolsRes.rows;
-        const schoolIds = schools.map(s => s.id);
-
-        if (schoolIds.length === 0) {
-            return res.json({ district_name: targetDistrict, total_schools: 0, total_students: 0, male_students: 0, female_students: 0, total_teachers: 0, total_classes: 0, total_pass: 0, total_fail: 0, schools: [] });
-        }
-
-        const [studentsRes, teachersRes, classesRes] = await Promise.all([
-            pool.query('SELECT COUNT(*) as count, gender FROM students WHERE school_id = ANY($1) GROUP BY gender', [schoolIds]),
-            pool.query('SELECT COUNT(*) as count FROM teachers WHERE school_id = ANY($1)', [schoolIds]),
-            pool.query('SELECT COUNT(*) as count FROM streams WHERE school_id = ANY($1)', [schoolIds])
-        ]);
-
-        let totalStudents = 0, maleCount = 0, femaleCount = 0;
-        studentsRes.rows.forEach(r => {
-            totalStudents += parseInt(r.count);
-            if (r.gender === 'M') maleCount += parseInt(r.count);
-            if (r.gender === 'F') femaleCount += parseInt(r.count);
-        });
-        const totalTeachers = parseInt(teachersRes.rows[0].count);
-        const totalClasses = parseInt(classesRes.rows[0].count);
-
-        const schoolRankings = [];
-        let totalPass = 0, totalFail = 0;
-        
-        for (const school of schools) {
-            const examRes = await pool.query('SELECT id FROM exams WHERE school_id = $1 ORDER BY id DESC LIMIT 1', [school.id]);
-            if (examRes.rows.length === 0) continue;
-            const examId = examRes.rows[0].id;
-
-            const subjRes = await pool.query('SELECT COUNT(DISTINCT subject_id) as total FROM results WHERE exam_id = $1 AND school_id = $2', [examId, school.id]);
-            const totalSubjects = parseInt(subjRes.rows[0].total);
-            if (totalSubjects === 0) continue;
-
-            const resultsRes = await pool.query(`SELECT s.id, r.score FROM students s LEFT JOIN results r ON s.id = r.student_id AND r.exam_id = $1 WHERE s.school_id = $2`, [examId, school.id]);
-
-            const studentScores = {};
-            resultsRes.rows.forEach(row => {
-                if (!studentScores[row.id]) studentScores[row.id] = [];
-                if (row.score !== null) studentScores[row.id].push(parseFloat(row.score));
-            });
-
-            let schoolPass = 0, schoolFail = 0;
-            Object.values(studentScores).forEach(scores => {
-                if (scores.length === totalSubjects) {
-                    let points = 0, countDOrBetter = 0;
-                    scores.forEach(score => {
-                        const { grade, points: pts } = getGradeAndPoints(score);
-                        points += pts;
-                        if (['A', 'B', 'C', 'D'].includes(grade)) countDOrBetter++;
-                    });
-                    if (points <= 7 && countDOrBetter >= 2) schoolPass++;
-                    else schoolFail++;
-                }
-            });
-
-            totalPass += schoolPass;
-            totalFail += schoolFail;
-
-            let totalPoints = 0, totalStudentsWithResults = 0;
-            Object.values(studentScores).forEach(scores => {
-                if (scores.length === totalSubjects) {
-                    scores.forEach(score => totalPoints += getGradeAndPoints(score).points);
-                    totalStudentsWithResults++;
-                }
-            });
-            const schoolGPA = totalStudentsWithResults > 0 ? parseFloat((totalPoints / totalStudentsWithResults).toFixed(2)) : 0;
-
-            schoolRankings.push({
-                id: school.id, name: school.name, level: school.level, subscription_status: school.subscription_status,
-                gpa: schoolGPA, pass: schoolPass, fail: schoolFail, studentsWithResults: totalStudentsWithResults
-            });
-        }
-
-        schoolRankings.sort((a, b) => a.gpa - b.gpa);
-        schoolRankings.forEach((s, i) => s.rank = i + 1);
-
-        res.json({
-            district_name: targetDistrict, total_schools: schools.length, total_students: totalStudents,
-            male_students: maleCount, female_students: femaleCount, total_teachers: totalTeachers,
-            total_classes: totalClasses, total_pass: totalPass, total_fail: totalFail, schools: schoolRankings
-        });
-
+        const query = `
+            SELECT district as council, COUNT(id) as total_schools 
+            FROM schools 
+            WHERE district IS NOT NULL AND district != '' 
+            GROUP BY district 
+            ORDER BY district ASC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
     } catch (error) {
-        console.error("District Dashboard Error:", error);
-        res.status(500).json({ error: "Imeshindikana kupata takwimu za halmashauri." });
+        res.status(500).json({ error: "Imeshindikana kupata muhtasari wa halmashauri." });
+    }
+});
+
+app.get('/api/directory/schools', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
+    
+    const { council } = req.query;
+    try {
+        let query = `
+            SELECT 
+                s.id, s.name, s.district as council, s.head_of_school, s.academic_officer, s.education_officer,
+                (SELECT COUNT(*) FROM students st WHERE st.school_id = s.id) as total_students
+            FROM schools s
+        `;
+        let params = [];
+        if (council && council !== 'all') {
+            query += ` WHERE s.district = $1`;
+            params.push(council);
+        }
+        query += ` ORDER BY s.district ASC, s.name ASC`;
+        
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: "Imeshindikana kupata orodha ya shule." });
     }
 });
 
 // ==========================================
-// 2. API YA LOGIN
+// API YA DASHIBODI (IMEREKEBISHWA)
+// ==========================================
+app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
+    try {
+        const user = req.user;
+        let targetSchoolId = (user.role === 'super_admin' || user.role === 'district_officer') ? req.query.school_id : user.school_id;
+        
+        if (!targetSchoolId) {
+            return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: {}, districtRank: "-", totalSchoolsInDistrict: 0 });
+        }
+
+        let schoolName = "Shule", districtName = null;
+        const schoolResult = await pool.query(`SELECT name, district FROM schools WHERE id = $1`, [targetSchoolId]);
+        if (schoolResult.rows.length > 0) { schoolName = schoolResult.rows[0].name; districtName = schoolResult.rows[0].district; }
+
+        const [studentsRes, teachersRes, classesRes] = await Promise.all([
+            pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
+            pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
+            pool.query(`SELECT id, name, fee_amount FROM streams WHERE school_id = $1`, [targetSchoolId])
+        ]);
+
+        const totalStudents = studentsRes.rows.length, totalTeachers = parseInt(teachersRes.rows[0].count), totalClasses = classesRes.rows.length;
+        let totalExpectedFees = 0;
+        studentsRes.rows.forEach(student => { const stream = classesRes.rows.find(s => s.id === student.stream_id); if (stream) totalExpectedFees += parseFloat(stream.fee_amount || 0); });
+
+        const currentYear = new Date().getFullYear();
+        const collectedRes = await pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2`, [targetSchoolId, currentYear]);
+        const totalCollectedFees = parseFloat(collectedRes.rows[0].total), totalOutstandingFees = totalExpectedFees - totalCollectedFees;
+
+        let maleCount = 0, femaleCount = 0;
+        studentsRes.rows.forEach(s => { if (s.gender === 'M') maleCount++; if (s.gender === 'F') femaleCount++; });
+
+        const streamGenderStats = classesRes.rows.map(stream => {
+            const streamStudents = studentsRes.rows.filter(s => s.stream_id === stream.id);
+            return { stream_name: stream.name, male: streamStudents.filter(s => s.gender === 'M').length, female: streamStudents.filter(s => s.gender === 'F').length };
+        });
+
+        res.json({ schoolName, totalStudents, totalTeachers, totalClasses, totalExpectedFees, totalCollectedFees, totalOutstandingFees, overallGender: {M: maleCount, F: femaleCount}, streamGenderStats, examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, role: user.role, districtRank: "-", totalSchoolsInDistrict: 0 });
+    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
+});
+
+// ==========================================
+// API YA LOGIN
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -204,7 +185,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ==========================================
-// 3. API YA SHULE
+// API YA SHULE (NA MABORESHO YA HEAD, ACADEMIC, EDUCATION OFFICER)
 // ==========================================
 app.get('/api/schools', authenticateToken, async (req, res) => {
     try { 
@@ -219,7 +200,8 @@ app.get('/api/schools', authenticateToken, async (req, res) => {
 
 app.post('/api/schools', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin') return res.status(403).json({ error: "Hauna ruhusa." });
-    const { name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager } = req.body;
+    const { name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, head_of_school, academic_officer, education_officer } = req.body;
+    
     try {
         if (!name) return res.status(400).json({ error: "Jina la shule linahitajika." });
         const check = await pool.query('SELECT id FROM schools WHERE name ILIKE $1', [name]);
@@ -234,8 +216,12 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
         const trialStart = new Date(), trialEnd = new Date();
         trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-        const query = `INSERT INTO schools (name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, subscription_status, trial_start_date, trial_end_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'TRIAL_ACTIVE', $11, $12) RETURNING *`;
-        const result = await pool.query(query, [name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, trialStart, trialEnd]);
+        const query = `
+            INSERT INTO schools 
+            (name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, head_of_school, academic_officer, education_officer, subscription_status, trial_start_date, trial_end_date) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'TRIAL_ACTIVE', $14, $15) RETURNING *
+        `;
+        const result = await pool.query(query, [name, registration_number, region, district, level, supervisor, second_master, academic_master, center_number, manager, head_of_school || null, academic_officer || null, education_officer || null, trialStart, trialEnd]);
         res.status(201).json(result.rows[0]);
     } catch (error) { 
         console.error("School registration error:", error);
@@ -243,51 +229,9 @@ app.post('/api/schools', authenticateToken, async (req, res) => {
     }
 });
 
-// ==========================================
-// 4. API YA DASHIBODI YA SHULE
-// ==========================================
-app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user;
-        let targetSchoolId = (user.role === 'super_admin' || user.role === 'district_officer') ? req.query.school_id : user.school_id;
-        
-        if (!targetSchoolId) {
-            return res.json({ schoolName: "Hakuna Shule", totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalExpectedFees: 0, totalCollectedFees: 0, totalOutstandingFees: 0, overallGender: { M: 0, F: 0 }, streamGenderStats: [], examStats: {}, districtRank: "-", totalSchoolsInDistrict: 0 });
-        }
+// (Weka APIs zingine zote hapa: Walimu, Wanafunzi, Madarasa, Masomo, Mitihani, Ada, Ripoti, Subscription, Announcements kama nilivyokupa kwenye code kamili ya server.js awali)
+// Nakupa code zote kamili chini ili usipate shida:
 
-        let schoolName = "Shule", districtName = null;
-        const schoolResult = await pool.query(`SELECT name, district FROM schools WHERE id = $1`, [targetSchoolId]);
-        if (schoolResult.rows.length > 0) { schoolName = schoolResult.rows[0].name; districtName = schoolResult.rows[0].district; }
-
-        const [studentsRes, teachersRes, classesRes] = await Promise.all([
-            pool.query(`SELECT id, gender, stream_id FROM students WHERE school_id = $1`, [targetSchoolId]),
-            pool.query(`SELECT COUNT(*) FROM teachers WHERE school_id = $1`, [targetSchoolId]),
-            pool.query(`SELECT id, name, fee_amount FROM streams WHERE school_id = $1`, [targetSchoolId])
-        ]);
-
-        const totalStudents = studentsRes.rows.length, totalTeachers = parseInt(teachersRes.rows[0].count), totalClasses = classesRes.rows.length;
-        let totalExpectedFees = 0;
-        studentsRes.rows.forEach(student => { const stream = classesRes.rows.find(s => s.id === student.stream_id); if (stream) totalExpectedFees += parseFloat(stream.fee_amount || 0); });
-
-        const currentYear = new Date().getFullYear();
-        const collectedRes = await pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE school_id = $1 AND EXTRACT(YEAR FROM date_paid) = $2`, [targetSchoolId, currentYear]);
-        const totalCollectedFees = parseFloat(collectedRes.rows[0].total), totalOutstandingFees = totalExpectedFees - totalCollectedFees;
-
-        let maleCount = 0, femaleCount = 0;
-        studentsRes.rows.forEach(s => { if (s.gender === 'M') maleCount++; if (s.gender === 'F') femaleCount++; });
-
-        const streamGenderStats = classesRes.rows.map(stream => {
-            const streamStudents = studentsRes.rows.filter(s => s.stream_id === stream.id);
-            return { stream_name: stream.name, male: streamStudents.filter(s => s.gender === 'M').length, female: streamStudents.filter(s => s.gender === 'F').length };
-        });
-
-        res.json({ schoolName, totalStudents, totalTeachers, totalClasses, totalExpectedFees, totalCollectedFees, totalOutstandingFees, overallGender: {M: maleCount, F: femaleCount}, streamGenderStats, examStats: { div1: 0, div2: 0, div3: 0, div4: 0, div0: 0, inc: 0, pass: 0, abs: 0 }, role: user.role, districtRank: "-", totalSchoolsInDistrict: 0 });
-    } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
-});
-
-// ==========================================
-// 5. API YA WALIMU
-// ==========================================
 app.get('/api/teachers', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM teachers`; let params = [];
@@ -313,9 +257,6 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
     } catch (error) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-// ==========================================
-// 6. API YA WANAFUNZI
-// ==========================================
 app.get('/api/students', authenticateToken, async (req, res) => {
     try {
         const user = req.user; let query = `SELECT * FROM students`; let params = [], conditions = [];
@@ -335,9 +276,6 @@ app.post('/api/students', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ==========================================
-// 7. API YA MIPANGILIO, ADA NA ALAMA
-// ==========================================
 app.get('/api/streams', authenticateToken, async (req, res) => {
     const user = req.user; 
     try {
@@ -401,9 +339,6 @@ app.post('/api/results', authenticateToken, async (req, res) => {
     } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: "Imeshindikana." }); } finally { client.release(); }
 });
 
-// ==========================================
-// 8. API ZA RIPOTI
-// ==========================================
 app.get('/api/reports/broadsheet', authenticateToken, async (req, res) => {
     const { exam_id, stream_id } = req.query; const user = req.user;
     try {
@@ -451,9 +386,6 @@ app.get('/api/reports/top-students', authenticateToken, async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ==========================================
-// 9. API YA EXCEL NA MAHUDHURIO
-// ==========================================
 app.get('/api/results/excel-template', async (req, res) => {
     try {
         const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET || 'siri_yako_ya_siri');
@@ -479,9 +411,6 @@ app.post('/api/assignments', authenticateToken, async (req, res) => {
     try { const result = await pool.query(`INSERT INTO teacher_assignments (teacher_id, stream_id, subject_id, school_id) VALUES ($1, $2, $3, $4) RETURNING *`, [teacher_id, stream_id, subject_id, user.school_id]); res.status(201).json(result.rows[0]); } catch (error) { res.status(500).json({ error: "Imeshindikana." }); }
 });
 
-// ==========================================
-// 10. API ZA SUBSCRIPTION NA ANNOUNCEMENTS
-// ==========================================
 app.get('/api/public/announcements', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
